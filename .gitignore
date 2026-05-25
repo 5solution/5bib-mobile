@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native builds
+ios/Pods/
+ios/build/
+ios/*.xcworkspace/xcuserdata
+ios/*.xcodeproj/xcuserdata
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.cer
+
+# EAS
+.easignore
+credentials/
+
+# Firebase config (sensitive — never commit)
+google-services.json
+GoogleService-Info.plist
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Test
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Misc
+.cache/
+tmp/
+
+# Sentry
+.sentryclirc

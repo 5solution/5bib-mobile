@@ -1,0 +1,53 @@
+{
+  "_comment": "EAS Build + Submit + Update profiles. Reference: https://docs.expo.dev/eas/json/",
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "_comment": "Local dev build with Expo Dev Client — sideload via QR / TestFlight Internal",
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "ios": { "simulator": false },
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-dev.5bib.com"
+      }
+    },
+    "preview": {
+      "_comment": "Internal QA / stakeholder builds — TestFlight + Google Internal Testing",
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": { "simulator": false },
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-staging.5bib.com"
+      }
+    },
+    "production": {
+      "_comment": "Public store release — paired with EAS Update production channel",
+      "channel": "production",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.5bib.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "_comment": "TODO(Toan): fill App Store Connect credentials via `eas credentials`",
+        "appleId": "TODO_APPLE_ID",
+        "ascAppId": "TODO_ASC_APP_ID",
+        "appleTeamId": "TODO_APPLE_TEAM_ID"
+      },
+      "android": {
+        "_comment": "TODO(Toan): place service-account.json in repo root or use EAS Secret",
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "internal"
+      }
+    }
+  }
+}

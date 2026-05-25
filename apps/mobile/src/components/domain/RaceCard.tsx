@@ -1,0 +1,151 @@
+/**
+ * apps/mobile/src/components/domain/RaceCard.tsx
+ *
+ * Race list card variant (compact list + featured carousel).
+ */
+
+import React from 'react';
+import { View, Text, Image } from 'react-native';
+import { Card } from '../Card';
+import { Badge } from '../Badge';
+import { tokens } from '../../theme/tokens';
+import type { Race } from '../../sdk/models';
+
+export interface RaceCardProps {
+  race: Race;
+  variant?: 'list' | 'featured';
+  onPress?: () => void;
+}
+
+function statusBadge(status: Race['status']): { variant: 'success' | 'info' | 'default' | 'warning'; label: string } {
+  switch (status) {
+    case 'OPEN_FOR_SALE':
+      return { variant: 'success', label: 'Đang mở đăng ký' };
+    case 'COMING_SOON':
+      return { variant: 'info', label: 'Sắp mở' };
+    case 'CLOSED':
+      return { variant: 'warning', label: 'Đã đóng' };
+    case 'FINISHED':
+      return { variant: 'default', label: 'Đã kết thúc' };
+  }
+}
+
+function fmtDate(iso: string) {
+  if (!iso) return 'Chưa xác định';
+  try {
+    const d = new Date(iso);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  } catch {
+    return iso;
+  }
+}
+
+export function RaceCard({ race, variant = 'list', onPress }: RaceCardProps) {
+  const sb = statusBadge(race.status);
+  const distances = race.courses?.map((c) => c.distance).join('/') ?? '';
+  const a11y = `Giải ${race.title}, ${fmtDate(race.startDate)}, ${race.location ?? ''}, ${sb.label}`;
+
+  if (variant === 'featured') {
+    return (
+      <Card padding="none" onPress={onPress} accessibilityLabel={a11y}>
+        <View
+          style={{
+            height: 180,
+            backgroundColor: tokens.color.neutral200,
+            borderTopLeftRadius: tokens.radius.lg,
+            borderTopRightRadius: tokens.radius.lg,
+            overflow: 'hidden',
+          }}
+        >
+          {race.coverImageUrl ? (
+            <Image
+              source={{ uri: race.coverImageUrl }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+          ) : null}
+          {race.isHighlight && (
+            <View style={{ position: 'absolute', top: 12, left: 12 }}>
+              <Badge variant="brand">⭐ Nổi bật</Badge>
+            </View>
+          )}
+        </View>
+        <View style={{ padding: tokens.space[4], gap: tokens.space[2] }}>
+          <Text
+            style={{
+              fontSize: tokens.fontSize.h3,
+              fontWeight: tokens.fontWeight.bold,
+              color: tokens.color.neutral900,
+            }}
+            numberOfLines={2}
+          >
+            {race.title}
+          </Text>
+          <Text style={{ fontSize: tokens.fontSize.bodyMd, color: tokens.color.neutral600 }}>
+            📅 {fmtDate(race.startDate)} · 📍 {race.location ?? race.city ?? '—'}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: tokens.space[2], marginTop: tokens.space[1] }}>
+            <Badge variant={sb.variant}>{sb.label}</Badge>
+            {distances && <Badge variant="default">{distances}</Badge>}
+          </View>
+        </View>
+      </Card>
+    );
+  }
+
+  // list variant
+  return (
+    <Card onPress={onPress} accessibilityLabel={a11y}>
+      <View style={{ flexDirection: 'row', gap: tokens.space[3] }}>
+        <View
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: tokens.radius.md,
+            backgroundColor: tokens.color.neutral200,
+            overflow: 'hidden',
+          }}
+        >
+          {race.coverImageUrl ? (
+            <Image
+              source={{ uri: race.coverImageUrl }}
+              style={{ width: 80, height: 80 }}
+              resizeMode="cover"
+            />
+          ) : null}
+        </View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[1] }}>
+            <Text
+              style={{
+                fontSize: tokens.fontSize.bodyLg,
+                fontWeight: tokens.fontWeight.semibold,
+                color: tokens.color.neutral900,
+                flex: 1,
+              }}
+              numberOfLines={2}
+            >
+              {race.title}
+            </Text>
+            {race.isHighlight && (
+              <Text style={{ fontSize: 14 }} accessibilityLabel="Nổi bật">
+                ⭐
+              </Text>
+            )}
+          </View>
+          <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
+            📅 {fmtDate(race.startDate)}
+          </Text>
+          <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
+            📍 {race.location ?? race.city ?? '—'}
+            {distances ? ` · ${distances}` : ''}
+          </Text>
+          <View style={{ marginTop: 4 }}>
+            <Badge variant={sb.variant}>{sb.label}</Badge>
+          </View>
+        </View>
+      </View>
+    </Card>
+  );
+}
