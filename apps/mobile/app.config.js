@@ -1,33 +1,42 @@
 /**
  * apps/mobile/app.config.js
  *
- * Dynamic Expo config — switches between dev/prod Firebase configs + bundle IDs.
+ * Dynamic Expo config — switches Firebase project between dev/prod.
  *
- * Picks env from process.env.APP_ENV (set via EAS build profile):
- *   - APP_ENV=development  → bundle .dev + firebase-configs/*.dev.*
- *   - APP_ENV=production   → bundle prod + firebase-configs/*.prod.*
- *   - default              → production
+ * Strategy (Danny 2026-05-25): kế thừa setup team cũ
+ *   - 2 Firebase projects RIÊNG: `5bib` (prod) + `5bib-dev` (dev)
+ *   - CÙNG bundle ID iOS + package Android cho cả 2 env (user uninstall+reinstall khi switch env)
  *
- * EAS profiles in eas.json should set APP_ENV per channel.
+ * Picks env from process.env.APP_ENV (set via EAS build profile in eas.json):
+ *   - APP_ENV=development  → firebase-configs/*.dev.*  + Firebase project `5bib-dev`
+ *   - APP_ENV=production   → firebase-configs/*.prod.* + Firebase project `5bib`
+ *   - default              → production (safe fallback)
+ *
+ * Build flow:
+ *   eas build --profile development → APP_ENV=development → dev Firebase project
+ *   eas build --profile production  → APP_ENV=production  → prod Firebase project
  */
 
 const APP_ENV = process.env.APP_ENV ?? 'production';
 const IS_DEV = APP_ENV === 'development';
 
-// TODO(Danny): replace with REAL bundle IDs từ Firebase Console (Step 1 của guide)
-const PROD_BUNDLE_ID = 'com.fivebib.mobile';   // ← thay bằng bundle ID app cũ thật
-const DEV_BUNDLE_ID = `${PROD_BUNDLE_ID}.dev`; // suffix .dev cho app dev
+// TODO(Danny): replace với bundle ID THẬT của app cũ trên store (verify trong Firebase Console)
+// Same bundle cho cả dev + prod (theo decision Danny 2026-05-25)
+const BUNDLE_ID = 'com.fivebib.mobile';
 
-const bundleId = IS_DEV ? DEV_BUNDLE_ID : PROD_BUNDLE_ID;
+// App display name — distinguishable trên device để dev team biết đang test env nào
 const appName = IS_DEV ? '5BIB Dev' : '5BIB';
 
+// Firebase config files — different project per env
 const googleServiceIos = IS_DEV
-  ? './firebase-configs/GoogleService-Info.dev.plist'
-  : './firebase-configs/GoogleService-Info.prod.plist';
+  ? './firebase-configs/GoogleService-Info.dev.plist'  // ← từ Firebase project `5bib-dev`
+  : './firebase-configs/GoogleService-Info.prod.plist'; // ← từ Firebase project `5bib`
 
 const googleServiceAndroid = IS_DEV
-  ? './firebase-configs/google-services.dev.json'
-  : './firebase-configs/google-services.prod.json';
+  ? './firebase-configs/google-services.dev.json'  // ← từ Firebase project `5bib-dev`
+  : './firebase-configs/google-services.prod.json'; // ← từ Firebase project `5bib`
+
+const firebaseProjectId = IS_DEV ? '5bib-dev' : '5bib';
 
 module.exports = {
   expo: {
@@ -46,7 +55,7 @@ module.exports = {
     },
     assetBundlePatterns: ['**/*'],
     ios: {
-      bundleIdentifier: bundleId,
+      bundleIdentifier: BUNDLE_ID, // Same bundle for dev+prod (Danny 2026-05-25)
       supportsTablet: false,
       associatedDomains: ['applinks:5bib.com', 'applinks:www.5bib.com'],
       googleServicesFile: googleServiceIos, // ← Firebase iOS config
@@ -63,7 +72,7 @@ module.exports = {
       },
     },
     android: {
-      package: bundleId,
+      package: BUNDLE_ID, // Same package for dev+prod (Danny 2026-05-25)
       googleServicesFile: googleServiceAndroid, // ← Firebase Android config
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
@@ -133,7 +142,7 @@ module.exports = {
       },
       // Runtime env exposed via Constants.expoConfig.extra
       APP_ENV,
-      firebaseProjectId: '5bib', // ← Firebase Project ID hiện tại (verify lại trong Console)
+      firebaseProjectId, // dynamic: '5bib' (prod) | '5bib-dev' (dev)
     },
     updates: {
       url: 'https://u.expo.dev/TODO_EAS_PROJECT_ID',
