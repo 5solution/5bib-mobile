@@ -307,7 +307,7 @@ apps/mobile/
     "userInterfaceStyle": "light",
     "splash": { "image": "./assets/splash/splash.png", "resizeMode": "contain", "backgroundColor": "#FFFFFF" },
     "ios": {
-      "bundleIdentifier": "com.5bib.???",  // 🛑 PAUSE — Toàn confirm bundle ID app cũ
+      "bundleIdentifier": "com.5bib.???",  // 🛑 PAUSE — Danny confirm bundle ID app cũ
       "buildNumber": "1",  // 🛑 PAUSE — phải > app cũ + 1
       "supportsTablet": false,
       "infoPlist": {
@@ -319,7 +319,7 @@ apps/mobile/
       "associatedDomains": ["applinks:5bib.com"]
     },
     "android": {
-      "package": "com.5bib.???",  // 🛑 PAUSE — Toàn confirm
+      "package": "com.5bib.???",  // 🛑 PAUSE — Danny confirm
       "versionCode": 1,  // 🛑 PAUSE — phải > app cũ + 1
       "permissions": ["CAMERA", "POST_NOTIFICATIONS", "ACCESS_FINE_LOCATION"],
       "intentFilters": [{
@@ -441,14 +441,14 @@ Schema: `{ event_name: snake_case, params: { ... } }`
 
 ## 🛑 PAUSE Conditions (carry-over từ Manager init + BA add)
 
-> Cần Danny / Toàn / Backend team trả lời TRƯỚC khi `/5bib-code`.
+> Cần Danny / Danny / Backend team trả lời TRƯỚC khi `/5bib-code`.
 
 ### Critical (BLOCK code start)
 
-- [ ] **PAUSE-01:** Bundle ID iOS + Android app cũ — Toàn confirm chính xác string
-- [ ] **PAUSE-02:** Android keystore cũ (`.jks` + alias + password) — Toàn cấp cho mobile team
-- [ ] **PAUSE-03:** Apple Developer account access — Toàn add mobile team với role Developer/Admin
-- [ ] **PAUSE-04:** Google Play Console access — Toàn add mobile team với role Admin
+- [ ] **PAUSE-01:** Bundle ID iOS + Android app cũ — Danny confirm chính xác string
+- [ ] **PAUSE-02:** Android keystore cũ (`.jks` + alias + password) — Danny cấp cho mobile team
+- [ ] **PAUSE-03:** Apple Developer account access — Danny add mobile team với role Developer/Admin
+- [ ] **PAUSE-04:** Google Play Console access — Danny add mobile team với role Admin
 - [ ] **PAUSE-05:** Backend endpoint `POST /refresh` — Backend confirm có hay phải build mới (TD-007)
 - [ ] **PAUSE-06:** Backend endpoint `POST /auth/apple/login` — Backend cần build (TD-008)
 - [ ] **PAUSE-07:** Backend endpoints `POST /devices/register` + `DELETE /devices/{token}` — Backend cần build (TD-009)
@@ -461,7 +461,7 @@ Schema: `{ event_name: snake_case, params: { ... } }`
 ### Important (BLOCK production release)
 
 - [ ] **PAUSE-13:** Apple Sign-In review prep — Backend xác nhận flow + iOS app review preparation
-- [ ] **PAUSE-14:** Payment review prep — Toàn confirm app cũ đã pass Apple review với gateway VN nào, có video demo lưu lại không?
+- [ ] **PAUSE-14:** Payment review prep — Danny confirm app cũ đã pass Apple review với gateway VN nào, có video demo lưu lại không?
 - [ ] **PAUSE-15:** Privacy policy URL + Terms URL cho App Store/Play Store submission
 - [ ] **PAUSE-16:** App Store screenshots (6.5" iPhone, 5.5" iPhone, iPad nếu support) + Play Store screenshots → designer chuẩn bị
 - [ ] **PAUSE-17:** App description vi/en/de cho 2 store
@@ -538,7 +538,7 @@ Sau Wave 1 → Danny chạy `/5bib-plan` để Manager review. APPROVE → BA vi
 | Team RN — in-house hay hire | **DEFER Danny** — BA không có thông tin team. Note: nếu hire ngoài, timeline +4 tuần ramp-up |
 | Backend `POST /refresh` | **DEFER Backend confirm** — PAUSE-05 |
 | Backend `POST /auth/apple/login` | **DEFER Backend** — BA spec contract trong EPIC-1 |
-| Android keystore cũ từ Toàn | **DEFER Danny+Toàn** — PAUSE-02 critical |
+| Android keystore cũ từ Danny | **DEFER Danny+Danny** — PAUSE-02 critical |
 | Backend device-token endpoints | **DEFER Backend** — BA spec contract trong EPIC-9 |
 | Deep link domain config | **DEFER Web team** — BA spec file content cần serve trong EPIC-9 |
 | ~~Figma có sẵn chưa~~ **REVISED 2026-05-25** — Danny dùng **Claude Design** AI agent generate UI code trực tiếp từ PRD. KHÔNG cần Figma + human designer. | Wireframe text + states + components spec trong PRD đã đủ cho Claude Design consume → output TSX components. |

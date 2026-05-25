@@ -191,10 +191,10 @@ Mọi screen + business logic dựa trên PRD trong `docs/`. Workflow:
 ## 🛑 Critical PAUSE conditions (chưa resolve)
 
 Phải có trước khi code start:
-- [ ] Bundle ID iOS + Android cũ (Toàn confirm)
-- [ ] Android keystore `.jks` cũ (Toàn cấp)
-- [ ] Apple Developer account access (Toàn invite)
-- [ ] Google Play Console access (Toàn invite)
+- [ ] Bundle ID iOS + Android cũ (Danny confirm)
+- [ ] Android keystore `.jks` cũ (Danny cấp)
+- [ ] Apple Developer account access (Danny invite)
+- [ ] Google Play Console access (Danny invite)
 - [ ] Backend `POST /refresh` endpoint
 - [ ] Backend `POST /auth/apple/login` endpoint (Apple Guideline 4.8)
 - [ ] Backend `POST /devices/register` (FCM/APNs token)
@@ -213,7 +213,7 @@ Phải có trước khi code start:
 ## 👥 Team
 
 - **Owner:** Danny Nguyen (`@dannynguyen`)
-- **PM:** Toàn (App Store + Play Console rights)
+- **PM:** Danny (App Store + Play Console rights)
 - **Mobile dev:** TBD
 
 ## 📄 License

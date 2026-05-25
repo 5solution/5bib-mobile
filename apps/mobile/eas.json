@@ -38,13 +38,13 @@
   "submit": {
     "production": {
       "ios": {
-        "_comment": "TODO(Toan): fill App Store Connect credentials via `eas credentials`",
+        "_comment": "TODO(Danny): fill App Store Connect credentials via `eas credentials`",
         "appleId": "TODO_APPLE_ID",
         "ascAppId": "TODO_ASC_APP_ID",
         "appleTeamId": "TODO_APPLE_TEAM_ID"
       },
       "android": {
-        "_comment": "TODO(Toan): place service-account.json in repo root or use EAS Secret",
+        "_comment": "TODO(Danny): place service-account.json in repo root or use EAS Secret",
         "serviceAccountKeyPath": "./service-account.json",
         "track": "internal"
       }

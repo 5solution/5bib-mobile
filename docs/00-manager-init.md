@@ -14,7 +14,7 @@
 
 5BIB có mobile app đã public trên App Store + Google Play, nhưng **mất source code** → không update được + nhiều issue prod. Cần build lại từ đầu, tính năng y hệt web (minus Group Buy), publish thay thế app cũ.
 
-Toàn (PM) còn quyền console → giữ bundle ID cũ → user auto-update, KEEP rating.
+Danny (owner) còn quyền console → giữ bundle ID cũ → user auto-update, KEEP rating.
 
 ---
 
@@ -103,8 +103,8 @@ apps/mobile/                    ← NEW — React Native + Expo
 
 - 🔴 **HIGH — App store transition.**
   - Bundle ID cũ phải match chính xác → version code/build number phải > app cũ +1
-  - Sign keystore Android cũ (file `.jks`) phải lấy từ Toàn — KHÔNG được tạo keystore mới (Google Play sẽ reject upload với conflict signature)
-  - iOS: provisioning profile + cert mới hoặc xin từ Toàn
+  - Sign keystore Android cũ (file `.jks`) phải lấy từ Danny — KHÔNG được tạo keystore mới (Google Play sẽ reject upload với conflict signature)
+  - iOS: provisioning profile + cert mới hoặc xin từ Danny
 
 - 🔴 **HIGH — Apple review payment policy.**
   - 4 gateway VN (VNPay/PayX/Payoo/OnePay) qua WebView + deep link return
@@ -146,7 +146,7 @@ apps/mobile/                    ← NEW — React Native + Expo
 - [ ] **Team RN:** Ai code? In-house đã có React Native skill chưa? (Web team đã có TS/React → onboarding RN ~ 1-2 tuần)
 - [ ] **Backend refresh token:** `POST /refresh` đã có chưa? Nếu chưa → cần task backend song song
 - [ ] **Backend Apple Sign-In:** `POST /auth/apple/login` đã có chưa?
-- [ ] **Android signing keystore cũ:** Toàn có giữ file `.jks` + alias + password không? **CRITICAL** — không có = không upload được app mới cùng bundle ID
+- [ ] **Android signing keystore cũ:** Danny có giữ file `.jks` + alias + password không? **CRITICAL** — không có = không upload được app mới cùng bundle ID
 - [ ] **Backend device-token endpoints:** `POST /devices/register` + `DELETE /devices/{token}` đã có chưa?
 - [ ] **Deep link domain:** Có config được `5bib.com/.well-known/*` không?
 - [ ] **Design Figma:** Có sẵn cho mobile chưa? Hay design parallel với code?

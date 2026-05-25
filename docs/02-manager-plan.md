@@ -1,6 +1,6 @@
 # FEATURE-003: Plan Review — Wave 1+2+3 PRD COMPLETE
 
-**Status:** ✅ **APPROVED rev3 (2026-05-25)** — Toàn bộ 6 EPIC PRD ready cho Claude Design generate UI.
+**Status:** ✅ **APPROVED rev3 (2026-05-25)** — Danny bộ 6 EPIC PRD ready cho Claude Design generate UI.
 
 > **DECISION LOG 2026-05-25:** Danny chốt **Option A** cho SDK normalization strategy. FEATURE-002 scope expanded để include normalization layer (xem [FEATURE-002 00-manager-init.md "SCOPE EXPANSION"](../FEATURE-002-extract-sdk-monorepo/00-manager-init.md#-scope-expansion-2026-05-25-danny-chốt-option-a-từ-feature-003-plan-review)). BA fix Wave 1 PRD theo Option A: spec clean DTOs cho mobile + reference SDK normalization mapping table.
 >

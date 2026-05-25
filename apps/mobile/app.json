@@ -1,5 +1,5 @@
 {
-  "_comment": "Expo config — EPIC-9 infrastructure. TODO(Toan): confirm bundle ID, package, EAS projectId, Sentry DSN before first build.",
+  "_comment": "Expo config — EPIC-9 infrastructure. TODO(Danny): confirm bundle ID, package, EAS projectId, Sentry DSN before first build.",
   "expo": {
     "name": "5BIB",
     "slug": "5bib-mobile",
@@ -16,7 +16,7 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "_comment": "TODO(Toan): confirm bundle identifier vs Apple Developer account",
+      "_comment": "TODO(Danny): confirm bundle identifier vs Apple Developer account",
       "bundleIdentifier": "com.fivebib.mobile",
       "supportsTablet": false,
       "associatedDomains": ["applinks:5bib.com", "applinks:www.5bib.com"],
@@ -29,7 +29,7 @@
       }
     },
     "android": {
-      "_comment": "TODO(Toan): confirm package name vs Google Play account",
+      "_comment": "TODO(Danny): confirm package name vs Google Play account",
       "package": "com.fivebib.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -83,13 +83,13 @@
       "sentry-expo"
     ],
     "extra": {
-      "_comment": "EAS project linkage — TODO(Toan): paste real projectId after `eas init`",
+      "_comment": "EAS project linkage — TODO(Danny): paste real projectId after `eas init`",
       "eas": {
         "projectId": "TODO_EAS_PROJECT_ID"
       }
     },
     "updates": {
-      "_comment": "OTA updates via EAS Update — TODO(Toan): replace URL once channel created",
+      "_comment": "OTA updates via EAS Update — TODO(Danny): replace URL once channel created",
       "url": "https://u.expo.dev/TODO_EAS_PROJECT_ID",
       "fallbackToCacheTimeout": 30000
     },
