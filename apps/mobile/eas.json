@@ -13,24 +13,27 @@
       "ios": { "simulator": false },
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-dev.5bib.com"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "https://dapi.5bib.com"
       }
     },
     "preview": {
-      "_comment": "Internal QA / stakeholder builds — TestFlight + Google Internal Testing",
+      "_comment": "Internal QA / stakeholder builds — TestFlight + Google Internal Testing. Uses DEV Firebase + staging API.",
       "distribution": "internal",
       "channel": "preview",
       "ios": { "simulator": false },
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-staging.5bib.com"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "https://dapi.5bib.com"
       }
     },
     "production": {
-      "_comment": "Public store release — paired with EAS Update production channel",
+      "_comment": "Public store release — paired with EAS Update production channel. Uses PROD Firebase + prod API.",
       "channel": "production",
       "autoIncrement": true,
       "env": {
+        "APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://api.5bib.com"
       }
     }

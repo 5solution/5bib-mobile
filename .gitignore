@@ -63,3 +63,6 @@ tmp/
 
 # Sentry
 .sentryclirc
+
+# Firebase configs (sensitive — never commit, tải lại từ Firebase Console khi cần)
+apps/mobile/firebase-configs/
