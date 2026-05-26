@@ -44,6 +44,14 @@ const googleServiceAndroid = IS_DEV
 
 const firebaseProjectId = IS_DEV ? 'bib-dev-b4d19' : 'bib-60bff';
 
+// Sentry — 2 projects (created Danny 2026-05-26)
+// Org slug: 5bib | Org ID: o4511451510079488
+//   - prod project ID: 4511454305714176
+//   - dev  project ID: 4511454317051904
+const sentryDsn = IS_DEV
+  ? 'https://31e0233dd1879a493f47e4d1f5f89f45@o4511451510079488.ingest.us.sentry.io/4511454317051904'
+  : 'https://dd6dce4439bb5f324faccbb2b2e450f4@o4511451510079488.ingest.us.sentry.io/4511454305714176';
+
 module.exports = {
   expo: {
     name: appName,
@@ -149,7 +157,8 @@ module.exports = {
       },
       // Runtime env exposed via Constants.expoConfig.extra
       APP_ENV,
-      firebaseProjectId, // dynamic: '5bib' (prod) | '5bib-dev' (dev)
+      firebaseProjectId, // dynamic: 'bib-60bff' (prod) | 'bib-dev-b4d19' (dev)
+      sentryDsn,         // dynamic per env
     },
     updates: {
       url: 'https://u.expo.dev/TODO_EAS_PROJECT_ID',
@@ -163,8 +172,12 @@ module.exports = {
         {
           file: 'sentry-expo/upload-sourcemaps',
           config: {
-            organization: 'TODO_SENTRY_ORG',
-            project: '5bib-mobile',
+            organization: '5bib',
+            project: IS_DEV ? '5bib-mobile-dev' : '5bib-mobile-prod',
+            // SENTRY_AUTH_TOKEN must be set as EAS Secret (or env var locally for testing)
+            // Create at: https://sentry.io/settings/account/api/auth-tokens/
+            // Scopes required: project:read, project:releases, org:read
+            authToken: process.env.SENTRY_AUTH_TOKEN,
           },
         },
       ],
