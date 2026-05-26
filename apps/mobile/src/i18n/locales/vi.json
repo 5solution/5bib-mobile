@@ -319,7 +319,43 @@
     "cancelTransactionMsg": "Order chưa hoàn tất sẽ tự huỷ sau 15 phút",
     "sessionExpired": "Phiên thanh toán hết hạn",
     "remainingTime": "Còn lại: {{time}}",
-    "checking": "Đang kiểm tra..."
+    "checking": "Đang kiểm tra...",
+    "steps": {
+      "course": "Chọn cự ly",
+      "athlete": "Thông tin VĐV",
+      "discount": "Mã giảm giá",
+      "insurance": "Bảo hiểm",
+      "summary": "Xác nhận"
+    },
+    "discount": {
+      "validating": "Đang kiểm tra...",
+      "valid": "Mã hợp lệ",
+      "invalid": "Mã không hợp lệ",
+      "expired": "Mã đã hết hạn"
+    },
+    "insurance": {
+      "title": "Bảo hiểm vận động viên",
+      "toggle": "Mua bảo hiểm vận động viên Igloo",
+      "description": "Bảo vệ bạn trước rủi ro chấn thương trong suốt giải đấu."
+    },
+    "summary": {
+      "subtotal": "Tạm tính",
+      "discount": "Giảm giá",
+      "insurance": "Bảo hiểm",
+      "total": "Tổng cộng"
+    },
+    "payment": {
+      "picker": {
+        "vnpay": "VNPay",
+        "payx": "PayX",
+        "payoo": "Payoo",
+        "onepay": "OnePay"
+      }
+    },
+    "errors": {
+      "createOrderFailed": "Không tạo được đơn hàng. Vui lòng thử lại.",
+      "discountInvalid": "Mã không hợp lệ hoặc đã hết hạn"
+    }
   },
   "tickets": {
     "tabTitle": "Vé của tôi",
@@ -481,6 +517,36 @@
     "napas": "Thẻ ATM nội địa",
     "visaCredit": "Thẻ tín dụng/ghi nợ",
     "fee0": "Phí 0đ",
-    "fee0_247": "Phí 0đ · 24/7"
+    "fee0_247": "Phí 0đ · 24/7",
+    "webview": {
+      "loading": "Đang chuẩn bị cổng thanh toán...",
+      "error": "Không tải được trang thanh toán",
+      "retry": "Thử lại",
+      "cancelConfirmTitle": "Hủy thanh toán?",
+      "cancelConfirmMsg": "Đơn hàng sẽ ở trạng thái chờ thanh toán",
+      "externalBlocked": "Liên kết ngoài đã bị chặn vì lý do bảo mật"
+    },
+    "result": {
+      "success": {
+        "title": "Thanh toán thành công",
+        "subtitle": "BIB của bạn đã được xác nhận. Cảm ơn bạn đã đăng ký!",
+        "viewTicket": "Xem ticket"
+      },
+      "pending": {
+        "title": "Đang xử lý...",
+        "subtitle": "Chúng tôi đang xác nhận giao dịch với ngân hàng. Vui lòng chờ trong giây lát.",
+        "refresh": "Kiểm tra trạng thái",
+        "timeoutBanner": "Hết thời gian chờ tự động. Bạn có thể kiểm tra lại thủ công."
+      },
+      "failed": {
+        "title": "Thanh toán thất bại",
+        "subtitle": "Giao dịch không thành công. Bạn có thể thử lại với phương thức khác.",
+        "retry": "Thử lại thanh toán",
+        "cancel": "Hủy đơn hàng",
+        "cancelConfirmTitle": "Hủy đơn hàng?",
+        "cancelConfirmMsg": "Đơn hàng sẽ bị hủy vĩnh viễn và không thể khôi phục.",
+        "cancelSuccess": "Đã hủy đơn hàng"
+      }
+    }
   }
 }

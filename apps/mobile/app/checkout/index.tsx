@@ -3,10 +3,13 @@
  *
  * Single screen orchestrates S-CHECKOUT-01/02/03 in 3 steps via local state.
  * Auto-saves draft to AsyncStorage with TTL 24h (BR-CHECKOUT-16).
+ *
+ * Wires real SDK calls (race-course list, price-rule validate, order.createOrder)
+ * and navigates to /checkout/payment-webview after successful order creation.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -17,11 +20,22 @@ import { Input } from '../../src/components/Input';
 import { Card } from '../../src/components/Card';
 import { Stepper } from '../../src/components/domain/Stepper';
 import { CourseCard } from '../../src/components/domain/CourseCard';
-import { PaymentMethodPicker, PaymentMethodId } from '../../src/components/PaymentMethodPicker';
+import {
+  PaymentMethodPicker,
+  PaymentMethodId,
+  PaymentMethodOption,
+} from '../../src/components/PaymentMethodPicker';
 import { FormLayout, FormSection, SectionDivider } from '../../src/components/FormLayout';
 import { useToast } from '../../src/components/Toast';
 import { useOnline, useDraftPersist } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
+import { raceCourse, priceRule, order } from '../../src/sdk';
+import type {
+  RaceCourse,
+  OrderCreateInput,
+  PaymentGateway,
+} from '../../src/sdk/models';
+import { useCheckoutStore } from '../../src/stores/useCheckoutStore';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VN_PHONE_RX = /^(0|\+84)[35789][0-9]{8}$/;
@@ -47,25 +61,46 @@ interface AthleteForm {
   delegatorCccd?: string;
 }
 
-const PAYMENT_OPTIONS = [
-  { id: 'PAYX_QR' as PaymentMethodId, group: 'Khuyến nghị', label: 'Quét QR PayX', description: 'Phí 0đ · 24/7', logoText: 'PayX' },
-  { id: 'VNPAY_QR' as PaymentMethodId, group: 'Khuyến nghị', label: 'Quét QR VNPay', description: 'Phí 0đ', logoText: 'VNPay' },
-  { id: 'NAPAS' as PaymentMethodId, group: 'Thẻ ngân hàng', label: 'Thẻ ATM nội địa', logoText: 'NAPAS' },
-  { id: 'VISA_VNPAY' as PaymentMethodId, group: 'Thẻ ngân hàng', label: 'Thẻ tín dụng (VNPay)', logoText: 'Visa' },
-  { id: 'ONEPAY_INTL' as PaymentMethodId, group: 'Thẻ ngân hàng', label: 'Thẻ quốc tế (OnePay)', logoText: 'OnePay' },
-  { id: 'PAYOO_WALLET' as PaymentMethodId, group: 'Ví điện tử', label: 'Ví Payoo', logoText: 'Payoo' },
+/** Map UI picker id → backend payment gateway (URL path slug). */
+const PICKER_TO_GATEWAY: Record<PaymentMethodId, PaymentGateway> = {
+  PAYX_QR: 'payx',
+  PAYX_ATM: 'payx',
+  VNPAY_QR: 'vnpay',
+  NAPAS: 'vnpay',
+  VISA_VNPAY: 'vnpay',
+  ONEPAY_INTL: 'onepay',
+  PAYOO_WALLET: 'payoo',
+};
+
+const PAYMENT_OPTIONS: PaymentMethodOption[] = [
+  { id: 'VNPAY_QR', label: 'VNPay', description: 'QR / ATM / Visa', logoText: 'VNPay' },
+  { id: 'PAYX_QR', label: 'PayX', description: 'Quét QR · 24/7', logoText: 'PayX' },
+  { id: 'PAYOO_WALLET', label: 'Payoo', description: 'Ví điện tử', logoText: 'Payoo' },
+  { id: 'ONEPAY_INTL', label: 'OnePay', description: 'Thẻ quốc tế', logoText: 'OnePay' },
 ];
+
+function fmtVnd(n: number): string {
+  return n.toLocaleString('vi-VN') + 'đ';
+}
 
 export default function CheckoutScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const toast = useToast();
   const online = useOnline();
-  const { race_id, course_id } = useLocalSearchParams<{ race_id: string; course_id: string }>();
-  const draft = useDraftPersist<AthleteForm>(`draft_checkout_${race_id}_${course_id}`, 24);
+  const { race_id, course_id } = useLocalSearchParams<{ race_id?: string; course_id?: string }>();
+
+  const raceId = race_id ?? '';
+  const initialCourseId = course_id ?? '';
+
+  // Persistent checkout store (multi-step state, draft sync).
+  const checkoutStore = useCheckoutStore();
 
   const [step, setStep] = useState<0 | 1 | 2>(0);
-  const [selectedCourseId, setSelectedCourseId] = useState(course_id);
+  const [courses, setCourses] = useState<RaceCourse[] | null>(null);
+  const [coursesError, setCoursesError] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(initialCourseId);
+
   const [form, setForm] = useState<AthleteForm>({
     mode: 'self',
     firstName: '',
@@ -82,22 +117,59 @@ export default function CheckoutScreen() {
     emergencyContactName: '',
     emergencyContactPhone: '',
   });
+
   const [discountCode, setDiscountCode] = useState('');
-  const [discountApplied, setDiscountApplied] = useState<{ amount: number } | null>(null);
+  const [discountValidating, setDiscountValidating] = useState(false);
+  const [discountApplied, setDiscountApplied] = useState<{ amount: number; code: string } | null>(null);
   const [discountError, setDiscountError] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>('PAYX_QR');
+
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>('VNPAY_QR');
+  const [includeInsurance, setIncludeInsurance] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // Mock race data — replace with sdk.race.get(race_id)
-  const courses = [
-    { id: 'c1', name: '5 km', distance: '5 km', price: 200_000, availableSlots: 50 },
-    { id: 'c2', name: '10 km', distance: '10 km', price: 350_000 },
-    { id: 'c3', name: '21 km', distance: '21 km', price: 500_000 },
-  ];
-  const selectedCourse = courses.find((c) => c.id === selectedCourseId) ?? courses[0];
+  // Draft persist scoped to race + course (BR-CHECKOUT-16, 24h TTL).
+  const draft = useDraftPersist<AthleteForm>(
+    `draft_checkout_${raceId}_${selectedCourseId || 'pending'}`,
+    24,
+  );
 
-  // Restore draft on mount
+  // Sync race id into checkout store on mount.
   useEffect(() => {
+    if (raceId) checkoutStore.setRace(raceId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raceId]);
+
+  // Load courses for race.
+  useEffect(() => {
+    if (!raceId) {
+      setCoursesError(t('errors.generic'));
+      setCourses([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await raceCourse.listCoursesByRace(raceId);
+        if (cancelled) return;
+        setCourses(list);
+        if (!selectedCourseId && list.length > 0) {
+          setSelectedCourseId(list[0]!.id);
+        }
+      } catch {
+        if (cancelled) return;
+        setCoursesError(t('errors.generic'));
+        setCourses([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raceId]);
+
+  // Restore draft on mount once a course is selected.
+  useEffect(() => {
+    if (!selectedCourseId) return;
     (async () => {
       const restored = await draft.restore();
       if (restored) {
@@ -106,17 +178,64 @@ export default function CheckoutScreen() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedCourseId]);
 
-  // Auto-save draft (debounced 1s)
+  // Auto-save draft (debounced 1s) when in athlete step.
   useEffect(() => {
-    if (step !== 1) return;
-    const id = setTimeout(() => draft.save(form), 1000);
+    if (step !== 1 || !selectedCourseId) return;
+    const id = setTimeout(() => {
+      draft.save(form);
+      checkoutStore.saveDraft();
+    }, 1000);
     return () => clearTimeout(id);
-  }, [form, step, draft]);
+  }, [form, step, selectedCourseId, draft, checkoutStore]);
 
-  const total = Math.max(0, selectedCourse.price - (discountApplied?.amount ?? 0));
-  const fmtVnd = (n: number) => n.toLocaleString('vi-VN') + 'đ';
+  // Sync course/payment changes into store.
+  useEffect(() => {
+    if (selectedCourseId) checkoutStore.setCourse(selectedCourseId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCourseId]);
+
+  const selectedCourse: RaceCourse | undefined = courses?.find(
+    (c) => c.id === selectedCourseId,
+  );
+
+  // Loading / empty-state guard — shows spinner until courses load.
+  if (!courses) {
+    return (
+      <>
+        <Header
+          title={t('checkout.step1Title')}
+          leading="back"
+          onLeadingPress={() => router.back()}
+        />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={tokens.color.brandPrimary} />
+        </View>
+      </>
+    );
+  }
+
+  if (courses.length === 0 || coursesError) {
+    return (
+      <>
+        <Header
+          title={t('checkout.step1Title')}
+          leading="back"
+          onLeadingPress={() => router.back()}
+        />
+        <View style={{ padding: tokens.space[4] }}>
+          <Banner variant="error" message={coursesError ?? t('errors.generic')} />
+        </View>
+      </>
+    );
+  }
+
+  // Once courses are populated, fall back to first if selection is empty/stale.
+  const activeCourse: RaceCourse = selectedCourse ?? courses[0]!;
+  const subtotal = activeCourse.price;
+  const insuranceFee = includeInsurance ? 0 : 0; // Fee TBD by backend; UI flag only for now.
+  const total = Math.max(0, subtotal + insuranceFee - (discountApplied?.amount ?? 0));
 
   const validateAthlete = (): boolean => {
     if (form.firstName.trim().length < 1) return false;
@@ -139,47 +258,115 @@ export default function CheckoutScreen() {
     return true;
   };
 
-  const applyDiscount = async () => {
-    if (!discountCode.trim()) return;
+  const applyDiscount = useCallback(async () => {
+    const code = discountCode.trim();
+    if (!code) return;
     setDiscountError(null);
+    setDiscountValidating(true);
     try {
-      // const r = await sdk.priceRule.findOne({ text: discountCode, raceId: race_id });
-      await new Promise((r) => setTimeout(r, 400));
-      if (discountCode.toUpperCase() === 'NHAPMA') {
-        setDiscountApplied({ amount: 20_000 });
-        toast.show({ variant: 'success', message: t('checkout.discountAppliedFmt', { amount: '20.000' }) });
-      } else {
+      const rule = await priceRule.getByCode(code);
+      if (!rule) {
         setDiscountApplied(null);
-        setDiscountError(t('checkout.discountInvalid'));
-        toast.show({ variant: 'error', message: t('checkout.discountInvalid') });
+        setDiscountError(t('checkout.errors.discountInvalid'));
+        toast.show({ variant: 'error', message: t('checkout.discount.invalid') });
+        return;
       }
-    } catch {
-      setDiscountError(t('errors.generic'));
-    }
-  };
-
-  const submitOrder = async () => {
-    if (!paymentMethod) return;
-    setSubmitting(true);
-    try {
-      // const order = await sdk.order.create({ raceId, courseId, athlete, discountCode });
-      // const { url } = await sdk.payment.getUrl({ orderId: order.orderId, paymentMethod, returnUrl: 'bib5://payment-return' });
-      const fakeOrderId = `ORD-${Date.now()}`;
-      const fakeUrl = `https://sandbox.vnpayment.vn/pay?order=${fakeOrderId}`;
-      await draft.clear();
-      router.push({
-        pathname: '/checkout/payment-webview',
-        params: { orderId: fakeOrderId, url: fakeUrl, method: paymentMethod },
+      // Expiry guard.
+      if (rule.endDate && Date.parse(rule.endDate) < Date.now()) {
+        setDiscountApplied(null);
+        setDiscountError(t('checkout.discount.expired'));
+        toast.show({ variant: 'error', message: t('checkout.discount.expired') });
+        return;
+      }
+      // Resolve amount: fixed = absolute VND; percentage = % of subtotal.
+      const value = rule.value ?? 0;
+      const amount =
+        rule.type === 'percentage' ? Math.round((subtotal * value) / 100) : value;
+      const next = { amount, code };
+      setDiscountApplied(next);
+      checkoutStore.applyDiscount({ code, amount, valid: true });
+      toast.show({
+        variant: 'success',
+        message: t('checkout.discountAppliedFmt', { amount: amount.toLocaleString('vi-VN') }),
       });
     } catch {
-      toast.show({ variant: 'error', message: t('errors.generic') });
+      setDiscountApplied(null);
+      setDiscountError(t('errors.generic'));
+    } finally {
+      setDiscountValidating(false);
+    }
+  }, [discountCode, subtotal, t, toast, checkoutStore]);
+
+  const buildOrderInput = (): OrderCreateInput => ({
+    raceId,
+    courseId: activeCourse.id,
+    athlete: {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      email: form.email.trim(),
+      phone: form.phone,
+      dob: form.dob,
+      gender: (form.gender || 'other') as 'male' | 'female' | 'other',
+      nationality: form.nationality,
+      idNumber: form.idNumber,
+      tshirtSize: form.tshirtSize,
+      racekit: form.racekit || form.tshirtSize,
+      nameOnBib: form.nameOnBib,
+      emergencyContactName: form.emergencyContactName,
+      emergencyContactPhone: form.emergencyContactPhone,
+    },
+    ...(discountApplied ? { discountCode: discountApplied.code } : {}),
+    includedInsurance: includeInsurance,
+  });
+
+  const submitOrder = async () => {
+    // Debounce: ignore re-tap while in-flight (BR-CHECKOUT — backend has no idempotency key).
+    if (submitting) return;
+    if (!paymentMethod) return;
+    if (!online) {
+      toast.show({ variant: 'error', message: t('errors.network') });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const input = buildOrderInput();
+      const created = await order.createOrder(input);
+      await draft.clear();
+      const gateway = PICKER_TO_GATEWAY[paymentMethod];
+      checkoutStore.selectPaymentMethod(
+        gateway === 'vnpay' ? 'VNPAY' : gateway === 'payoo' ? 'PAYOO' : null,
+      );
+      router.push({
+        pathname: '/checkout/payment-webview',
+        params: { order_id: created.orderId, gateway },
+      });
+    } catch {
+      toast.show({ variant: 'error', message: t('checkout.errors.createOrderFailed') });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const headerTitle =
-    step === 0 ? t('checkout.step1Title') : step === 1 ? t('checkout.step2Title') : t('checkout.step3Title');
+  // DEV-only: bypass real gateway, mark order paid via fake-payment endpoint.
+  const submitFakePayment = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const input = buildOrderInput();
+      const created = await order.createOrder(input);
+      await order.fakePayment(created.orderId, total, input.athlete.email);
+      await draft.clear();
+      router.push({
+        pathname: '/checkout/result',
+        params: { order_id: created.orderId, status: 'paid' },
+      });
+    } catch {
+      toast.show({ variant: 'error', message: t('checkout.errors.createOrderFailed') });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const stepLabels = [t('checkout.step1Title'), t('checkout.step2Title'), t('checkout.step3Title')];
 
   return (
@@ -187,7 +374,7 @@ export default function CheckoutScreen() {
       <Header
         title={t('common.continue')}
         leading="back"
-        onLeadingPress={() => (step === 0 ? router.back() : setStep((step - 1) as any))}
+        onLeadingPress={() => (step === 0 ? router.back() : setStep((step - 1) as 0 | 1))}
       />
       <Stepper steps={stepLabels} current={step} />
       {!online && <Banner variant="warning" message={t('errors.network')} />}
@@ -206,24 +393,16 @@ export default function CheckoutScreen() {
             </Button>
           }
         >
-          <Card>
-            <Text
-              style={{
-                fontSize: tokens.fontSize.h3,
-                fontWeight: tokens.fontWeight.bold,
-                color: tokens.color.neutral900,
-              }}
-            >
-              Saigon Marathon 2026
-            </Text>
-            <Text style={{ marginTop: 4, color: tokens.color.neutral600 }}>📅 15/03/2026 · 📍 TP.HCM</Text>
-          </Card>
-
           <FormSection title={t('checkout.selectedCourse')}>
             {courses.map((c) => (
               <CourseCard
                 key={c.id}
-                course={c}
+                course={{
+                  id: c.id,
+                  distance: c.distance || c.name,
+                  price: c.price,
+                  availableSlots: c.availableSlots ?? undefined,
+                }}
                 selected={selectedCourseId === c.id}
                 asRadio
                 onPress={() => setSelectedCourseId(c.id)}
@@ -458,26 +637,39 @@ export default function CheckoutScreen() {
       {step === 2 && (
         <FormLayout
           stickyBottom={
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              disabled={!paymentMethod || submitting || !online}
-              loading={submitting}
-              onPress={submitOrder}
-            >
-              {submitting
-                ? t('checkout.creatingOrder')
-                : t('checkout.payWithAmountFmt', { amount: fmtVnd(total) })}
-            </Button>
+            <View style={{ gap: tokens.space[2] }}>
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                disabled={!paymentMethod || submitting || !online}
+                loading={submitting}
+                onPress={submitOrder}
+              >
+                {submitting
+                  ? t('checkout.creatingOrder')
+                  : t('checkout.payWithAmountFmt', { amount: fmtVnd(total) })}
+              </Button>
+              {__DEV__ && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  fullWidth
+                  disabled={submitting}
+                  onPress={submitFakePayment}
+                >
+                  [DEV] Fake payment
+                </Button>
+              )}
+            </View>
           }
         >
           <Card>
             <Text style={{ fontWeight: tokens.fontWeight.semibold, color: tokens.color.neutral900 }}>
-              Saigon Marathon 2026
+              {activeCourse.name || activeCourse.distance}
             </Text>
             <Text style={{ color: tokens.color.neutral600 }}>
-              {selectedCourse.distance} · {form.firstName} {form.lastName}
+              {activeCourse.distance} · {form.firstName} {form.lastName}
             </Text>
           </Card>
 
@@ -491,24 +683,92 @@ export default function CheckoutScreen() {
                   error={discountError ?? undefined}
                 />
               </View>
-              <Button variant="outline" size="lg" disabled={!discountCode.trim()} onPress={applyDiscount}>
-                {t('checkout.discountApply')}
+              <Button
+                variant="outline"
+                size="lg"
+                disabled={!discountCode.trim() || discountValidating}
+                loading={discountValidating}
+                onPress={applyDiscount}
+              >
+                {discountValidating ? t('checkout.discount.validating') : t('checkout.discountApply')}
               </Button>
             </View>
             {discountApplied && (
               <Text style={{ color: tokens.color.success, fontSize: tokens.fontSize.bodySm }}>
-                ✓ {t('checkout.discountAppliedFmt', { amount: discountApplied.amount.toLocaleString('vi-VN') })}
+                ✓ {t('checkout.discount.valid')} —{' '}
+                {t('checkout.discountAppliedFmt', {
+                  amount: discountApplied.amount.toLocaleString('vi-VN'),
+                })}
               </Text>
             )}
           </FormSection>
 
           <SectionDivider />
 
+          <FormSection title={t('checkout.insurance.title')}>
+            <Pressable
+              onPress={() => setIncludeInsurance((v) => !v)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: includeInsurance }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: tokens.space[2],
+                minHeight: tokens.touchTarget.minIOS,
+              }}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: tokens.radius.sm,
+                  borderWidth: 2,
+                  borderColor: includeInsurance ? tokens.color.brandPrimary : tokens.color.neutral400,
+                  backgroundColor: includeInsurance ? tokens.color.brandPrimary : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {includeInsurance && (
+                  <Text style={{ color: tokens.color.neutral0, fontWeight: '700' }}>✓</Text>
+                )}
+              </View>
+              <Text
+                style={{
+                  fontSize: tokens.fontSize.bodyLg,
+                  fontWeight: tokens.fontWeight.semibold,
+                  color: tokens.color.neutral900,
+                }}
+              >
+                {t('checkout.insurance.toggle')}
+              </Text>
+            </Pressable>
+            <Text
+              style={{
+                fontSize: tokens.fontSize.bodySm,
+                color: tokens.color.neutral600,
+                marginTop: tokens.space[1],
+              }}
+            >
+              {t('checkout.insurance.description')}
+            </Text>
+          </FormSection>
+
+          <SectionDivider />
+
           <FormSection title={t('checkout.paymentDetails')}>
-            <Row label={t('checkout.subtotal')} value={fmtVnd(selectedCourse.price)} />
-            {discountApplied && <Row label={t('checkout.discount')} value={`− ${fmtVnd(discountApplied.amount)}`} />}
+            <Row label={t('checkout.summary.subtotal')} value={fmtVnd(subtotal)} />
+            {discountApplied && (
+              <Row
+                label={t('checkout.summary.discount')}
+                value={`− ${fmtVnd(discountApplied.amount)}`}
+              />
+            )}
+            {includeInsurance && (
+              <Row label={t('checkout.summary.insurance')} value={fmtVnd(insuranceFee)} />
+            )}
             <View style={{ height: 1, backgroundColor: tokens.color.neutral200 }} />
-            <Row label={t('checkout.total')} value={fmtVnd(total)} bold brand />
+            <Row label={t('checkout.summary.total')} value={fmtVnd(total)} bold brand />
           </FormSection>
 
           <SectionDivider />
@@ -526,7 +786,17 @@ export default function CheckoutScreen() {
   );
 }
 
-function Row({ label, value, bold, brand }: { label: string; value: string; bold?: boolean; brand?: boolean }) {
+function Row({
+  label,
+  value,
+  bold,
+  brand,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  brand?: boolean;
+}) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
       <Text

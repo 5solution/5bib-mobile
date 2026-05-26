@@ -187,11 +187,13 @@ export interface GuardianPayload {
 
 export interface OrderCreateInput {
   raceId: string;
-  courseId: string;
+  courseId: string;             // legacy: also used as variantId; see ticketTypeId below
+  ticketTypeId?: string;        // from /pub/ticket-type/by-variant (optional, backend tolerates undefined)
   athlete: AthleteCreatePayload;
   delegator?: DelegatorPayload;
   guardian?: GuardianPayload;
   discountCode?: string;
+  includedInsurance?: boolean;  // Igloo insurance toggle (default false)
 }
 
 export interface OrderCreateResponse {

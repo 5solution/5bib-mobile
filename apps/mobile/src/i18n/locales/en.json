@@ -315,7 +315,43 @@
     "cancelTransactionMsg": "Unfinished order will auto-cancel in 15 minutes",
     "sessionExpired": "Payment session expired",
     "remainingTime": "Remaining: {{time}}",
-    "checking": "Checking..."
+    "checking": "Checking...",
+    "steps": {
+      "course": "Select course",
+      "athlete": "Athlete info",
+      "discount": "Discount code",
+      "insurance": "Insurance",
+      "summary": "Review"
+    },
+    "discount": {
+      "validating": "Validating...",
+      "valid": "Code valid",
+      "invalid": "Invalid code",
+      "expired": "Code expired"
+    },
+    "insurance": {
+      "title": "Athlete insurance",
+      "toggle": "Add Igloo athlete insurance",
+      "description": "Protect yourself against injury risk during the race."
+    },
+    "summary": {
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "insurance": "Insurance",
+      "total": "Total"
+    },
+    "payment": {
+      "picker": {
+        "vnpay": "VNPay",
+        "payx": "PayX",
+        "payoo": "Payoo",
+        "onepay": "OnePay"
+      }
+    },
+    "errors": {
+      "createOrderFailed": "Could not create order. Please try again.",
+      "discountInvalid": "Invalid or expired code"
+    }
   },
   "tickets": {
     "tabTitle": "My tickets",
@@ -477,6 +513,36 @@
     "napas": "Domestic ATM card",
     "visaCredit": "Credit / debit card",
     "fee0": "Fee 0₫",
-    "fee0_247": "Fee 0₫ · 24/7"
+    "fee0_247": "Fee 0₫ · 24/7",
+    "webview": {
+      "loading": "Preparing payment gateway...",
+      "error": "Failed to load payment page",
+      "retry": "Try again",
+      "cancelConfirmTitle": "Cancel payment?",
+      "cancelConfirmMsg": "The order will remain in pending state",
+      "externalBlocked": "External link blocked for security"
+    },
+    "result": {
+      "success": {
+        "title": "Payment successful",
+        "subtitle": "Your BIB has been confirmed. Thanks for registering!",
+        "viewTicket": "View ticket"
+      },
+      "pending": {
+        "title": "Processing...",
+        "subtitle": "We are confirming the transaction with your bank. Please wait a moment.",
+        "refresh": "Check status",
+        "timeoutBanner": "Auto-check timed out. You can refresh status manually."
+      },
+      "failed": {
+        "title": "Payment failed",
+        "subtitle": "The transaction did not succeed. You can retry with another method.",
+        "retry": "Retry payment",
+        "cancel": "Cancel order",
+        "cancelConfirmTitle": "Cancel order?",
+        "cancelConfirmMsg": "The order will be permanently cancelled and cannot be restored.",
+        "cancelSuccess": "Order cancelled"
+      }
+    }
   }
 }

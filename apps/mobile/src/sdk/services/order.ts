@@ -87,7 +87,7 @@ export const order = {
     const body = {
       order: {
         email: input.athlete.email.trim().toLowerCase(),
-        included_insurance: false,
+        included_insurance: input.includedInsurance ?? false,
         financial_status: 'pending',
         send_receipt: true,
         send_fulfillment_receipt: true,
@@ -100,11 +100,13 @@ export const order = {
         line_items: [
           {
             quantity: 1,
-            // Backend uses `variant_id` (legacy product variant); courseId
-            // serves dual purpose for our SDK. TODO: split into variantId
-            // + ticketTypeId once mobile flow uses /pub/ticket-type/by-variant.
+            // Backend uses `variant_id` (legacy product variant). courseId
+            // serves dual purpose; ticketTypeId optional (from
+            // /pub/ticket-type/by-variant) — backend tolerates undefined.
             variant_id: Number(input.courseId),
-            ticket_type_id: undefined,
+            ticket_type_id: input.ticketTypeId
+              ? Number(input.ticketTypeId)
+              : undefined,
             athlete_sub_info: [subInfo],
           },
         ],

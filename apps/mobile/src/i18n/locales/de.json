@@ -315,7 +315,43 @@
     "cancelTransactionMsg": "Unvollständige Bestellung wird in 15 Minuten storniert",
     "sessionExpired": "Zahlungssitzung abgelaufen",
     "remainingTime": "Restzeit: {{time}}",
-    "checking": "Prüft..."
+    "checking": "Prüft...",
+    "steps": {
+      "course": "Strecke wählen",
+      "athlete": "Athletendaten",
+      "discount": "Rabattcode",
+      "insurance": "Versicherung",
+      "summary": "Überprüfen"
+    },
+    "discount": {
+      "validating": "Prüft...",
+      "valid": "Code gültig",
+      "invalid": "Ungültiger Code",
+      "expired": "Code abgelaufen"
+    },
+    "insurance": {
+      "title": "Athletenversicherung",
+      "toggle": "Igloo-Athletenversicherung hinzufügen",
+      "description": "Schützen Sie sich vor Verletzungsrisiken während des Rennens."
+    },
+    "summary": {
+      "subtotal": "Zwischensumme",
+      "discount": "Rabatt",
+      "insurance": "Versicherung",
+      "total": "Gesamt"
+    },
+    "payment": {
+      "picker": {
+        "vnpay": "VNPay",
+        "payx": "PayX",
+        "payoo": "Payoo",
+        "onepay": "OnePay"
+      }
+    },
+    "errors": {
+      "createOrderFailed": "Bestellung konnte nicht erstellt werden. Bitte erneut versuchen.",
+      "discountInvalid": "Ungültiger oder abgelaufener Code"
+    }
   },
   "tickets": {
     "tabTitle": "Meine Tickets",
@@ -477,6 +513,36 @@
     "napas": "Inländische ATM-Karte",
     "visaCredit": "Kredit- / Debitkarte",
     "fee0": "Gebühr 0₫",
-    "fee0_247": "Gebühr 0₫ · 24/7"
+    "fee0_247": "Gebühr 0₫ · 24/7",
+    "webview": {
+      "loading": "Zahlungsportal wird vorbereitet...",
+      "error": "Zahlungsseite konnte nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "cancelConfirmTitle": "Zahlung abbrechen?",
+      "cancelConfirmMsg": "Die Bestellung bleibt im Status \"ausstehend\"",
+      "externalBlocked": "Externer Link aus Sicherheitsgründen blockiert"
+    },
+    "result": {
+      "success": {
+        "title": "Zahlung erfolgreich",
+        "subtitle": "Ihre BIB wurde bestätigt. Danke für die Anmeldung!",
+        "viewTicket": "Ticket ansehen"
+      },
+      "pending": {
+        "title": "Wird verarbeitet...",
+        "subtitle": "Wir bestätigen die Transaktion mit Ihrer Bank. Bitte einen Moment Geduld.",
+        "refresh": "Status prüfen",
+        "timeoutBanner": "Auto-Prüfung abgelaufen. Sie können den Status manuell aktualisieren."
+      },
+      "failed": {
+        "title": "Zahlung fehlgeschlagen",
+        "subtitle": "Die Transaktion war nicht erfolgreich. Sie können es mit einer anderen Methode versuchen.",
+        "retry": "Zahlung wiederholen",
+        "cancel": "Bestellung stornieren",
+        "cancelConfirmTitle": "Bestellung stornieren?",
+        "cancelConfirmMsg": "Die Bestellung wird dauerhaft storniert und kann nicht wiederhergestellt werden.",
+        "cancelSuccess": "Bestellung storniert"
+      }
+    }
   }
 }
