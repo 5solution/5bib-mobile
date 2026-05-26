@@ -247,7 +247,15 @@
     "courseDescription": "Mô tả",
     "courseMap": "Bản đồ",
     "elevation": "Độ cao",
-    "cutOff": "Cut-off"
+    "cutOff": "Cut-off",
+    "filterAll": "Tất cả",
+    "notFoundRace": "Không tìm thấy giải",
+    "fetchError": "Không tải được giải, vui lòng thử lại",
+    "filterDistance": "Cự ly",
+    "registerCourseFmt": "Đăng ký cự ly này — {{price}}đ",
+    "soldOutLabel": "Đã hết vé",
+    "saleClosed": "Đã đóng đăng ký",
+    "shareMessageFmt": "Tham gia {{title}} cùng tôi! {{url}}"
   },
   "checkout": {
     "stepOf": "Bước {{step}}/{{total}}",

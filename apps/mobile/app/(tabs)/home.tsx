@@ -3,10 +3,23 @@
  *
  * States: Loading (skeleton) | Filled | Empty | Error | Offline | Refreshing
  * Pull-to-refresh + infinite scroll (BR-GLOBAL-12, BR-BROWSE-01).
+ *
+ * Data: GET /pub/race via `race.listRaces({ status, pageNo, pageSize, sortField, sortDirection })`.
+ * Featured = client-side filter `isHighlight === true` (BR-BROWSE-03 — backend param
+ * `is_highlight` exists in SDK but compatibility with this dev env not confirmed —
+ * filter client-side is safe + identical UX).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, useWindowDimensions, ScrollView, Pressable } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  RefreshControl,
+  useWindowDimensions,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
@@ -17,74 +30,67 @@ import { Skeleton } from '../../src/components/Skeleton';
 import { Button } from '../../src/components/Button';
 import { RaceCard } from '../../src/components/domain/RaceCard';
 import { useOnline } from '../../src/hooks';
+import { useAuthStore } from '../../src/stores/useAuthStore';
+import { useToast } from '../../src/components';
 import { tokens } from '../../src/theme/tokens';
+import { race as raceSdk } from '../../src/sdk/services/race';
+import { FetcherError } from '../../src/sdk/core';
 import type { Race } from '../../src/sdk/models';
 
-// Mock data — replace with: sdk.race.list({ ... })
-const MOCK_RACES: Race[] = [
-  {
-    id: '1',
-    slug: 'saigon-marathon-2026',
-    title: 'Saigon Marathon 2026',
-    coverImageUrl: null,
-    startDate: '2026-03-15T06:00:00Z',
-    location: 'TP.HCM',
-    city: 'TP.HCM',
-    isHighlight: true,
-    bibSetUp: true,
-    status: 'OPEN_FOR_SALE',
-    courses: [
-      { id: 'c1', name: '5 km', distance: '5km', price: 200_000 },
-      { id: 'c2', name: '10 km', distance: '10km', price: 350_000 },
-      { id: 'c3', name: '21 km', distance: '21km', price: 500_000 },
-    ],
-  },
-  {
-    id: '2',
-    slug: 'hanoi-half-marathon-2026',
-    title: 'Hanoi Half Marathon 2026',
-    coverImageUrl: null,
-    startDate: '2026-04-20T06:00:00Z',
-    location: 'Hà Nội',
-    city: 'Hà Nội',
-    isHighlight: false,
-    bibSetUp: true,
-    status: 'OPEN_FOR_SALE',
-    courses: [
-      { id: 'c4', name: '5 km', distance: '5km', price: 180_000 },
-      { id: 'c5', name: '10 km', distance: '10km', price: 320_000 },
-      { id: 'c6', name: '21 km', distance: '21km', price: 480_000 },
-    ],
-  },
-];
-
 type LoadState = 'loading' | 'loaded' | 'error' | 'empty';
+const PAGE_SIZE = 10;
 
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const online = useOnline();
   const { width } = useWindowDimensions();
+  const { show: showToast } = useToast();
+  const user = useAuthStore((s) => s.user);
 
   const [state, setState] = useState<LoadState>('loading');
   const [races, setRaces] = useState<Race[]>([]);
-  const [featured, setFeatured] = useState<Race[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [userName] = useState<string | null>(null); // wire to authStore in real app
   const [carouselPage, setCarouselPage] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const featured = useMemo(() => races.filter((r) => r.isHighlight).slice(0, 5), [races]);
+
+  const fetchPage = useCallback(
+    async (pageNo: number): Promise<{ items: Race[]; totalPages: number } | null> => {
+      try {
+        const res = await raceSdk.listRaces({
+          pageNo,
+          pageSize: PAGE_SIZE,
+          status: 'OPEN_FOR_SALE',
+          sortField: 'start_date',
+          sortDirection: 'ASC',
+        });
+        return { items: res.items, totalPages: res.pagination.totalPages ?? 1 };
+      } catch (err) {
+        const msg =
+          err instanceof FetcherError ? err.message : t('browse.fetchError');
+        showToast({ variant: 'error', message: msg });
+        return null;
+      }
+    },
+    [showToast, t],
+  );
 
   const load = useCallback(async () => {
     setState('loading');
-    try {
-      // const result = await sdk.race.list({ status: 'OPEN_FOR_SALE', pageSize: 10 });
-      await new Promise((r) => setTimeout(r, 600));
-      setRaces(MOCK_RACES);
-      setFeatured(MOCK_RACES.filter((r) => r.isHighlight));
-      setState(MOCK_RACES.length ? 'loaded' : 'empty');
-    } catch {
+    const res = await fetchPage(1);
+    if (!res) {
       setState('error');
+      return;
     }
-  }, []);
+    setRaces(res.items);
+    setPage(1);
+    setTotalPages(res.totalPages);
+    setState(res.items.length ? 'loaded' : 'empty');
+  }, [fetchPage]);
 
   useEffect(() => {
     load();
@@ -92,8 +98,27 @@ export default function HomeScreen() {
 
   const refresh = async () => {
     setRefreshing(true);
-    await load();
+    const res = await fetchPage(1);
+    if (res) {
+      setRaces(res.items);
+      setPage(1);
+      setTotalPages(res.totalPages);
+      setState(res.items.length ? 'loaded' : 'empty');
+    }
     setRefreshing(false);
+  };
+
+  const loadMore = async () => {
+    if (loadingMore || page >= totalPages) return;
+    setLoadingMore(true);
+    const next = page + 1;
+    const res = await fetchPage(next);
+    if (res) {
+      setRaces((prev) => [...prev, ...res.items]);
+      setPage(next);
+      setTotalPages(res.totalPages);
+    }
+    setLoadingMore(false);
   };
 
   if (state === 'loading') {
@@ -133,9 +158,25 @@ export default function HomeScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
         <Header title="5BIB" titleAlign="left" leading="none" />
+        {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
         <EmptyState
           icon={<Text style={{ fontSize: 32 }}>🏃</Text>}
           title={t('browse.emptyNoFilter')}
+        />
+      </View>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+        <Header title="5BIB" titleAlign="left" leading="none" />
+        {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
+        <EmptyState
+          icon={<Text style={{ fontSize: 32 }}>⚠️</Text>}
+          title={t('browse.fetchError')}
+          ctaLabel={t('common.retry')}
+          onPress={load}
         />
       </View>
     );
@@ -148,8 +189,12 @@ export default function HomeScreen() {
         titleAlign="left"
         leading="none"
         actions={[
-          { icon: '🔍', label: t('common.search'), onPress: () => {/* open search modal */} },
-          { icon: '🔔', label: t('profile.notifications'), onPress: () => {/* notif screen */} },
+          {
+            icon: '🔍',
+            label: t('common.search'),
+            onPress: () => router.push('/events'),
+          },
+          { icon: '🔔', label: t('profile.notifications'), onPress: () => {} },
         ]}
       />
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
@@ -178,8 +223,8 @@ export default function HomeScreen() {
                 color: tokens.color.neutral700,
               }}
             >
-              {userName
-                ? t('browse.homeGreeting', { name: userName })
+              {user?.fullName
+                ? t('browse.homeGreeting', { name: user.fullName })
                 : t('browse.homeGreetingAnon')}
             </Text>
 
@@ -191,12 +236,22 @@ export default function HomeScreen() {
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
                   onMomentumScrollEnd={(e) =>
-                    setCarouselPage(Math.round(e.nativeEvent.contentOffset.x / (width - tokens.space[8])))
+                    setCarouselPage(
+                      Math.round(
+                        e.nativeEvent.contentOffset.x / (width - tokens.space[8]),
+                      ),
+                    )
                   }
                   accessibilityLabel={t('browse.featuredCarouselLabel')}
                 >
                   {featured.map((race) => (
-                    <View key={race.id} style={{ width: width - tokens.space[8], paddingRight: tokens.space[3] }}>
+                    <View
+                      key={race.id}
+                      style={{
+                        width: width - tokens.space[8],
+                        paddingRight: tokens.space[3],
+                      }}
+                    >
                       <RaceCard
                         race={race}
                         variant="featured"
@@ -221,7 +276,9 @@ export default function HomeScreen() {
                         height: 6,
                         borderRadius: 3,
                         backgroundColor:
-                          carouselPage === i ? tokens.color.brandPrimary : tokens.color.neutral300,
+                          carouselPage === i
+                            ? tokens.color.brandPrimary
+                            : tokens.color.neutral300,
                       }}
                     />
                   ))}
@@ -245,14 +302,35 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <RaceCard race={item} onPress={() => router.push(`/events/${item.slug}`)} />
         )}
+        onEndReachedThreshold={0.5}
+        onEndReached={loadMore}
         ListFooterComponent={
-          races.length >= 5 ? (
-            <View style={{ paddingTop: tokens.space[4] }}>
-              <Button variant="ghost" size="md" fullWidth onPress={() => router.push('/events')}>
+          <View style={{ paddingTop: tokens.space[4], gap: tokens.space[3] }}>
+            {loadingMore && (
+              <ActivityIndicator color={tokens.color.brandPrimary} />
+            )}
+            {page >= totalPages && races.length >= PAGE_SIZE && (
+              <Text
+                style={{
+                  color: tokens.color.neutral500,
+                  fontSize: tokens.fontSize.bodySm,
+                  textAlign: 'center',
+                }}
+              >
+                {t('browse.endOfList', { count: races.length })}
+              </Text>
+            )}
+            {races.length >= 5 && (
+              <Button
+                variant="ghost"
+                size="md"
+                fullWidth
+                onPress={() => router.push('/events')}
+              >
                 {t('browse.viewAllRaces')} →
               </Button>
-            </View>
-          ) : null
+            )}
+          </View>
         }
       />
     </View>

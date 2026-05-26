@@ -243,7 +243,15 @@
     "courseDescription": "Beschreibung",
     "courseMap": "Karte",
     "elevation": "Höhe",
-    "cutOff": "Cut-off"
+    "cutOff": "Cut-off",
+    "filterAll": "Alle",
+    "notFoundRace": "Lauf nicht gefunden",
+    "fetchError": "Läufe konnten nicht geladen werden, bitte erneut versuchen",
+    "filterDistance": "Distanz",
+    "registerCourseFmt": "Diese Strecke anmelden — {{price}} VND",
+    "soldOutLabel": "Ausverkauft",
+    "saleClosed": "Anmeldung geschlossen",
+    "shareMessageFmt": "Mach mit beim {{title}}! {{url}}"
   },
   "checkout": {
     "stepOf": "Schritt {{step}}/{{total}}",

@@ -1,9 +1,24 @@
 /**
  * apps/mobile/app/events/index.tsx — S-BROWSE-02 All events list.
+ *
+ * Wires `useBrowseFilterStore` (status, city, raceType, searchQuery) to
+ * `race.listRaces` calls. Filters debounce search (300ms — BR-BROWSE-06)
+ * before refetch. Filter chips reflect active store filters; tap-X removes one.
+ *
+ * Backend probe: `is_highlight`, `bib_set_up`, `race_type`, `title` params are
+ * declared in API_REFERENCE but not all confirmed live. SDK passes them through
+ * `toLegacyListParams`; if backend ignores, list returns full data (graceful).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
@@ -11,78 +26,230 @@ import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
-import { Button } from '../../src/components/Button';
+import { Input } from '../../src/components/Input';
 import { RaceCard } from '../../src/components/domain/RaceCard';
 import { FilterChip } from '../../src/components/domain/FilterChip';
-import { useOnline } from '../../src/hooks';
+import { RaceFilterSheet } from '../../src/components/domain/RaceFilterSheet';
+import { useOnline, useDebouncedValue } from '../../src/hooks';
+import { useBrowseFilterStore } from '../../src/stores/useBrowseFilterStore';
+import { useToast } from '../../src/components';
 import { tokens } from '../../src/theme/tokens';
-import type { Race } from '../../src/sdk/models';
+import { race as raceSdk } from '../../src/sdk/services/race';
+import { FetcherError } from '../../src/sdk/core';
+import type { Race, RaceStatus } from '../../src/sdk/models';
+
+const PAGE_SIZE = 10;
+
+function sortFieldToBackend(field: string): string {
+  switch (field) {
+    case 'date':
+      return 'start_date';
+    case 'name':
+      return 'title';
+    default:
+      return 'start_date';
+  }
+}
 
 export default function AllEventsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const online = useOnline();
+  const { show: showToast } = useToast();
+  const filterStore = useBrowseFilterStore();
 
   const [races, setRaces] = useState<Race[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [filters, setFilters] = useState<{ id: string; label: string }[]>([
-    { id: 'status', label: 'Đang mở' },
-    { id: 'city', label: 'TP.HCM' },
-  ]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [error, setError] = useState(false);
 
-  const load = useCallback(async (reset = false) => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    const mock: Race[] = Array.from({ length: 8 }, (_, i) => ({
-      id: `r${i + 1}`,
-      slug: `race-${i + 1}`,
-      title: `Giải số ${i + 1} năm 2026`,
-      coverImageUrl: null,
-      startDate: `2026-0${(i % 9) + 1}-15T06:00:00Z`,
-      location: i % 2 ? 'Hà Nội' : 'TP.HCM',
-      isHighlight: i === 0,
-      bibSetUp: true,
-      status: 'OPEN_FOR_SALE',
-      courses: [
-        { id: `${i}-1`, name: '5km', distance: '5km', price: 200_000 },
-        { id: `${i}-2`, name: '10km', distance: '10km', price: 350_000 },
-      ],
-    }));
-    setRaces(reset ? mock : [...races, ...mock]);
-    setTotalCount(40);
-    setHasMore(races.length + mock.length < 40);
-    setLoading(false);
-  }, [races]);
+  // Search bar local state — debounced before firing
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchInput, setSearchInput] = useState(filterStore.searchQuery);
+  const debouncedSearch = useDebouncedValue(searchInput, 300);
+
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  const fetchPage = useCallback(
+    async (pageNo: number) => {
+      const titleParam = debouncedSearch.trim() || undefined;
+      try {
+        const res = await raceSdk.listRaces({
+          pageNo,
+          pageSize: PAGE_SIZE,
+          status: filterStore.status === 'ALL' ? undefined : (filterStore.status as RaceStatus),
+          raceType: filterStore.raceType === 'ALL' ? undefined : filterStore.raceType,
+          title: titleParam,
+          sortField: sortFieldToBackend(filterStore.sortField),
+          sortDirection: filterStore.sortDirection === 'asc' ? 'ASC' : 'DESC',
+        });
+        return res;
+      } catch (err) {
+        const msg =
+          err instanceof FetcherError ? err.message : t('browse.fetchError');
+        showToast({ variant: 'error', message: msg });
+        return null;
+      }
+    },
+    [
+      debouncedSearch,
+      filterStore.status,
+      filterStore.raceType,
+      filterStore.sortField,
+      filterStore.sortDirection,
+      showToast,
+      t,
+    ],
+  );
+
+  const load = useCallback(
+    async (mode: 'initial' | 'refresh' = 'initial') => {
+      if (mode === 'initial') setLoading(true);
+      setError(false);
+      const res = await fetchPage(1);
+      if (!res) {
+        setError(true);
+        if (mode === 'initial') setLoading(false);
+        return;
+      }
+      // Client-side city filter (backend doesn't support city query param per API_REFERENCE)
+      const items = applyCityFilter(res.items, filterStore.city);
+      setRaces(items);
+      setPage(1);
+      setTotalPages(res.pagination.totalPages ?? 1);
+      setTotalCount(res.pagination.totalCount ?? items.length);
+      if (mode === 'initial') setLoading(false);
+    },
+    [fetchPage, filterStore.city],
+  );
 
   useEffect(() => {
-    load(true);
+    load('initial');
+  }, [load]);
+
+  // Persist search to store on debounced change
+  useEffect(() => {
+    filterStore.setFilter('searchQuery', debouncedSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [debouncedSearch]);
 
   const refresh = async () => {
     setRefreshing(true);
-    await load(true);
+    await load('refresh');
     setRefreshing(false);
   };
 
-  const filtered = races.length === 0 && filters.length > 0;
+  const loadMore = async () => {
+    if (loadingMore || loading || page >= totalPages) return;
+    setLoadingMore(true);
+    const next = page + 1;
+    const res = await fetchPage(next);
+    if (res) {
+      const items = applyCityFilter(res.items, filterStore.city);
+      setRaces((prev) => [...prev, ...items]);
+      setPage(next);
+      setTotalPages(res.pagination.totalPages ?? next);
+    }
+    setLoadingMore(false);
+  };
+
+  // Active filter chips derived from store
+  const activeChips = useMemo(() => {
+    const chips: { id: string; label: string; clear: () => void }[] = [];
+    if (filterStore.status !== 'ALL') {
+      chips.push({
+        id: 'status',
+        label: statusChipLabel(filterStore.status as RaceStatus, t),
+        clear: () => filterStore.setFilter('status', 'ALL'),
+      });
+    }
+    if (filterStore.raceType !== 'ALL') {
+      chips.push({
+        id: 'raceType',
+        label: filterStore.raceType,
+        clear: () => filterStore.setFilter('raceType', 'ALL'),
+      });
+    }
+    if (filterStore.city !== 'ALL') {
+      chips.push({
+        id: 'city',
+        label: filterStore.city,
+        clear: () => filterStore.setFilter('city', 'ALL'),
+      });
+    }
+    return chips;
+  }, [filterStore.status, filterStore.raceType, filterStore.city, t, filterStore]);
+
+  const hasFilter =
+    activeChips.length > 0 || (debouncedSearch?.trim().length ?? 0) > 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
-      <Header
-        title={t('browse.allRacesTitle')}
-        onLeadingPress={() => router.back()}
-        actions={[
-          { icon: '🔍', label: t('common.search'), onPress: () => {} },
-          { icon: '⚙', label: t('browse.filter'), onPress: () => {} },
-        ]}
-      />
+      {searchActive ? (
+        <View
+          style={{
+            paddingTop: tokens.space[6],
+            paddingHorizontal: tokens.space[3],
+            paddingBottom: tokens.space[2],
+            backgroundColor: tokens.color.surfaceBg,
+            borderBottomWidth: 1,
+            borderBottomColor: tokens.color.neutral200,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: tokens.space[2],
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Input
+              variant="search"
+              placeholder={t('browse.searchPlaceholder')}
+              value={searchInput}
+              onChangeText={setSearchInput}
+              autoFocus
+              onClear={() => setSearchInput('')}
+            />
+          </View>
+          <Text
+            onPress={() => {
+              setSearchActive(false);
+              setSearchInput('');
+            }}
+            style={{
+              color: tokens.color.brandPrimary,
+              fontWeight: tokens.fontWeight.semibold,
+              padding: tokens.space[2],
+            }}
+            accessibilityRole="button"
+          >
+            {t('common.cancel')}
+          </Text>
+        </View>
+      ) : (
+        <Header
+          title={t('browse.allRacesTitle')}
+          onLeadingPress={() => router.back()}
+          actions={[
+            {
+              icon: '🔍',
+              label: t('common.search'),
+              onPress: () => setSearchActive(true),
+            },
+            {
+              icon: '⚙',
+              label: t('browse.filter'),
+              onPress: () => setFilterSheetOpen(true),
+            },
+          ]}
+        />
+      )}
+
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
 
-      {filters.length > 0 && (
+      {activeChips.length > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -92,12 +259,8 @@ export default function AllEventsScreen() {
             gap: tokens.space[2],
           }}
         >
-          {filters.map((f) => (
-            <FilterChip
-              key={f.id}
-              label={f.label}
-              onRemove={() => setFilters((p) => p.filter((x) => x.id !== f.id))}
-            />
+          {activeChips.map((f) => (
+            <FilterChip key={f.id} label={f.label} onRemove={f.clear} />
           ))}
         </ScrollView>
       )}
@@ -127,11 +290,25 @@ export default function AllEventsScreen() {
             </View>
           ))}
         </View>
+      ) : error && races.length === 0 ? (
+        <EmptyState
+          icon={<Text style={{ fontSize: 32 }}>⚠️</Text>}
+          title={t('browse.fetchError')}
+          ctaLabel={t('common.retry')}
+          onPress={() => load('initial')}
+        />
       ) : races.length === 0 ? (
         <EmptyState
-          title={filtered ? t('browse.emptyFiltered') : t('browse.emptyNoFilter')}
-          ctaLabel={filtered ? t('browse.filterClearAll') : undefined}
-          onPress={() => setFilters([])}
+          title={hasFilter ? t('browse.emptyFiltered') : t('browse.emptyNoFilter')}
+          ctaLabel={hasFilter ? t('browse.filterClearAll') : undefined}
+          onPress={
+            hasFilter
+              ? () => {
+                  filterStore.clearFilters();
+                  setSearchInput('');
+                }
+              : undefined
+          }
         />
       ) : (
         <FlatList
@@ -149,22 +326,46 @@ export default function AllEventsScreen() {
             <RaceCard race={item} onPress={() => router.push(`/events/${item.slug}`)} />
           )}
           onEndReachedThreshold={0.5}
-          onEndReached={() => hasMore && !loading && load()}
+          onEndReached={loadMore}
           ListFooterComponent={
             <View style={{ paddingVertical: tokens.space[4], alignItems: 'center' }}>
-              {hasMore && loading ? (
-                <Text style={{ color: tokens.color.neutral500, fontSize: tokens.fontSize.bodySm }}>
-                  {t('browse.loadingMore')}
-                </Text>
-              ) : !hasMore ? (
-                <Text style={{ color: tokens.color.neutral500, fontSize: tokens.fontSize.bodySm }}>
-                  {t('browse.endOfList', { count: totalCount })}
+              {loadingMore ? (
+                <ActivityIndicator color={tokens.color.brandPrimary} />
+              ) : page >= totalPages ? (
+                <Text
+                  style={{ color: tokens.color.neutral500, fontSize: tokens.fontSize.bodySm }}
+                >
+                  {t('browse.endOfList', { count: totalCount || races.length })}
                 </Text>
               ) : null}
             </View>
           }
         />
       )}
+
+      <RaceFilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        onApply={() => load('refresh')}
+      />
     </View>
   );
+}
+
+function applyCityFilter(items: Race[], city: string | 'ALL'): Race[] {
+  if (city === 'ALL') return items;
+  return items.filter((r) => r.city === city || r.location === city);
+}
+
+function statusChipLabel(s: RaceStatus, t: (k: string) => string): string {
+  switch (s) {
+    case 'OPEN_FOR_SALE':
+      return t('browse.statusOpen');
+    case 'COMING_SOON':
+      return t('browse.statusComingSoon');
+    case 'CLOSED':
+      return t('browse.statusClosed');
+    case 'FINISHED':
+      return t('browse.statusFinished');
+  }
 }

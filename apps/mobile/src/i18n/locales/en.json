@@ -243,7 +243,15 @@
     "courseDescription": "Description",
     "courseMap": "Map",
     "elevation": "Elevation",
-    "cutOff": "Cut-off"
+    "cutOff": "Cut-off",
+    "filterAll": "All",
+    "notFoundRace": "Race not found",
+    "fetchError": "Could not load races, please try again",
+    "filterDistance": "Distance",
+    "registerCourseFmt": "Register this course — {{price}} VND",
+    "soldOutLabel": "Sold out",
+    "saleClosed": "Registration closed",
+    "shareMessageFmt": "Join {{title}} with me! {{url}}"
   },
   "checkout": {
     "stepOf": "Step {{step}}/{{total}}",
