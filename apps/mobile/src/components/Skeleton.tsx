@@ -65,15 +65,19 @@ export function Spinner({ size = 'small', color = tokens.color.brandPrimary, lab
   );
 }
 
-/** Full-screen loader — for cold start only (BR-GLOBAL-09). */
-export function FullScreenLoading({ label = 'Đang tải...' }: { label?: string }) {
+/** Full-screen loader — for cold start only (BR-GLOBAL-09). `inline` = overlay (not full screen). */
+export function FullScreenLoading({
+  label = 'Đang tải...',
+  inline = false,
+}: { label?: string; inline?: boolean }) {
   return (
     <View
       style={{
-        flex: 1,
+        flex: inline ? undefined : 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: tokens.color.surfaceBg,
+        backgroundColor: inline ? 'transparent' : tokens.color.surfaceBg,
+        paddingVertical: inline ? tokens.space[4] : 0,
       }}
       accessibilityRole="progressbar"
     >

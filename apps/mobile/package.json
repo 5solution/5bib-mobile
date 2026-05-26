@@ -11,8 +11,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@5bib/sdk": "workspace:*",
-    "@gorhom/bottom-sheet": "^5.0.6",
+    "@gorhom/bottom-sheet": "5.0.6",
     "@hookform/resolvers": "^3.9.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/netinfo": "11.3.1",

@@ -20,6 +20,7 @@ export interface ListItemProps {
   divider?: boolean;
   disabled?: boolean;
   accessibilityHint?: string;
+  accessibilityLabel?: string;
 }
 
 export function ListItem({
@@ -34,6 +35,7 @@ export function ListItem({
   divider,
   disabled,
   accessibilityHint,
+  accessibilityLabel,
 }: ListItemProps) {
   const content = (
     <View
@@ -88,7 +90,7 @@ export function ListItem({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+      accessibilityLabel={accessibilityLabel ?? (subtitle ? `${title}, ${subtitle}` : title)}
       accessibilityHint={accessibilityHint}
       android_ripple={{ color: tokens.color.neutral100 }}
       style={({ pressed }) => [pressed && { backgroundColor: tokens.color.neutral50 }]}

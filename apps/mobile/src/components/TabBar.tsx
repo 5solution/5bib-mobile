@@ -44,7 +44,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       accessibilityRole="tablist"
     >
       {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
+        const descriptor = descriptors[route.key];
+        if (!descriptor) return null;
+        const { options } = descriptor;
         const focused = state.index === index;
         const label =
           (typeof options.tabBarLabel === 'string' && options.tabBarLabel) ||
