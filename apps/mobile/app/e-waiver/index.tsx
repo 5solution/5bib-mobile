@@ -30,36 +30,9 @@ import { useToast } from '../../src/components/Toast';
 import { useOnline, useCountdown } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
 import type { SigningRace, SigningTicket } from '../../src/sdk/models';
+import { eWaiver } from '../../src/sdk/services/e-waiver';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const MOCK_RACES: SigningRace[] = [
-  { raceId: '1', title: 'Saigon Marathon 2026' },
-  { raceId: '2', title: 'Hanoi Half Marathon 2026' },
-];
-
-const MOCK_TICKETS: SigningTicket[] = [
-  {
-    id: 'st1',
-    name: 'Nguyễn Văn A',
-    email: 'a@example.com',
-    codeValue: 'TKT-A1234',
-    signPath: 'https://sign.5bib.com/A1234',
-    disclaimerStatus: false,
-    athleteSubInfo: { contactPhone: '0912...', dob: '01/01/1990' },
-    courseInfo: { raceName: 'Saigon Marathon', courseName: '5km' },
-  },
-  {
-    id: 'st2',
-    name: 'Trần Văn B',
-    email: 'a@example.com',
-    codeValue: 'TKT-B0001',
-    signPath: 'https://sign.5bib.com/B0001',
-    disclaimerStatus: true,
-    athleteSubInfo: { contactPhone: '0987...', dob: '02/02/1985' },
-    courseInfo: { raceName: 'Saigon Marathon', courseName: '10km' },
-  },
-];
 
 export default function WaiverScreen() {
   const { t } = useTranslation();
@@ -75,7 +48,8 @@ export default function WaiverScreen() {
 
   const [step, setStep] = useState<0 | 1 | 2>(skipStep1 ? 1 : 0);
   const [races, setRaces] = useState<SigningRace[]>([]);
-  const [racesLoading, setRacesLoading] = useState(true);
+  const [racesLoading, setRacesLoading] = useState(false);
+  const [racesLoaded, setRacesLoaded] = useState(false);
   const [raceId, setRaceId] = useState<string>(params.prefill_race ?? '');
   const [email, setEmail] = useState(params.prefill_email ?? '');
   const [emailErr, setEmailErr] = useState<string | null>(null);
@@ -85,19 +59,35 @@ export default function WaiverScreen() {
   const [tickets, setTickets] = useState<SigningTicket[] | null>(null);
   const cd = useCountdown(60, step === 1);
 
-  useEffect(() => {
-    (async () => {
-      await new Promise((r) => setTimeout(r, 400));
-      setRaces(MOCK_RACES);
-      if (!raceId) setRaceId(MOCK_RACES[0]?.raceId ?? '');
-      setRacesLoading(false);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const fetchRaces = React.useCallback(
+    async (forEmail: string) => {
+      if (!EMAIL_RX.test(forEmail.trim())) return;
+      setRacesLoading(true);
+      try {
+        const list = await eWaiver.getSigningRaces({ email: forEmail });
+        setRaces(list);
+        setRacesLoaded(true);
+        if (list.length > 0 && !list.find((r) => r.raceId === raceId)) {
+          setRaceId(list[0]?.raceId ?? '');
+        }
+      } catch (e: unknown) {
+        const status = (e as { status?: number } | null)?.status;
+        toast.show({
+          variant: 'error',
+          message: status === 404 ? t('waiver.emailNoBib') : t('errors.generic'),
+        });
+        setRaces([]);
+        setRacesLoaded(true);
+      } finally {
+        setRacesLoading(false);
+      }
+    },
+    [raceId, t, toast],
+  );
 
+  // Prefill path (BR-WAIVER-08): if we arrive with race + email, jump to OTP.
   useEffect(() => {
     if (skipStep1 && step === 1 && raceId && email) {
-      // fire signing-request once
       void requestOtp();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,15 +96,15 @@ export default function WaiverScreen() {
   const requestOtp = async () => {
     setSubmitting(true);
     try {
-      // await sdk.waiver.requestOtp({ raceId, email });
-      await new Promise((r) => setTimeout(r, 600));
+      await eWaiver.sendSigningOtp({ email: email.trim(), raceId });
       toast.show({ variant: 'success', message: t('auth.otpSentTo', { email }) });
       setStep(1);
       cd.restart(60);
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const status = (e as { status?: number } | null)?.status;
       toast.show({
         variant: 'error',
-        message: e?.status === 404 ? t('waiver.emailNoBib') : t('errors.generic'),
+        message: status === 404 ? t('waiver.emailNoBib') : t('errors.generic'),
       });
     } finally {
       setSubmitting(false);
@@ -125,13 +115,17 @@ export default function WaiverScreen() {
     if (otp.length !== 6) return;
     setSubmitting(true);
     try {
-      // const r = await sdk.waiver.verifyOtp({ raceId, email, otp });
-      await new Promise((r) => setTimeout(r, 700));
-      setTickets(MOCK_TICKETS);
+      const result = await eWaiver.verifySigningOtp({
+        email: email.trim(),
+        raceId,
+        otp,
+      });
+      setTickets(result);
       toast.show({ variant: 'success', message: t('waiver.verifySuccess') });
       setStep(2);
-    } catch (e: any) {
-      if (e?.status === 410) setOtpErr(t('validation.otpExpired'));
+    } catch (e: unknown) {
+      const status = (e as { status?: number } | null)?.status;
+      if (status === 410) setOtpErr(t('validation.otpExpired'));
       else {
         setOtpErr(t('validation.otpWrong'));
         setOtp('');
@@ -185,6 +179,10 @@ export default function WaiverScreen() {
           <FormSection title={t('waiver.selectRace')}>
             {racesLoading ? (
               <Skeleton height={48} />
+            ) : !racesLoaded ? (
+              <Text style={{ color: tokens.color.neutral500 }}>
+                {t('waiver.step1Desc')}
+              </Text>
             ) : races.length === 0 ? (
               <Text style={{ color: tokens.color.neutral500 }}>{t('waiver.noRaceAvailable')}</Text>
             ) : (
@@ -227,8 +225,25 @@ export default function WaiverScreen() {
             required
             variant="email"
             value={email}
-            onChangeText={setEmail}
-            onBlur={() => email && !EMAIL_RX.test(email.trim()) && setEmailErr(t('validation.emailInvalid'))}
+            onChangeText={(v) => {
+              setEmail(v);
+              setEmailErr(null);
+              if (racesLoaded) {
+                setRacesLoaded(false);
+                setRaces([]);
+                setRaceId('');
+              }
+            }}
+            onBlur={() => {
+              if (!email) return;
+              if (!EMAIL_RX.test(email.trim())) {
+                setEmailErr(t('validation.emailInvalid'));
+                return;
+              }
+              if (!racesLoaded && !racesLoading && online) {
+                void fetchRaces(email);
+              }
+            }}
             error={emailErr ?? undefined}
             placeholder="you@example.com"
           />

@@ -2,8 +2,8 @@
  * apps/mobile/app/result/index.tsx — S-RESULT-01 Result Hub (redirect)
  */
 
-import React, { useState } from 'react';
-import { View, Text, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Linking, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
@@ -11,15 +11,38 @@ import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
+import { Card } from '../../src/components/Card';
+import { Skeleton } from '../../src/components/Skeleton';
 import { FormLayout, FormSection } from '../../src/components/FormLayout';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
+import { result as resultSdk } from '../../src/sdk/services/result';
+import type { RaceResultRow } from '../../src/sdk/models';
 
 export default function ResultHubScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const online = useOnline();
   const [query, setQuery] = useState('');
+  const [myResults, setMyResults] = useState<RaceResultRow[]>([]);
+  const [myLoading, setMyLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await resultSdk.listMyResults({ pageSize: 3 });
+        if (!cancelled) setMyResults(rows);
+      } catch {
+        if (!cancelled) setMyResults([]);
+      } finally {
+        if (!cancelled) setMyLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const openResult = (url: string) =>
     router.push({ pathname: '/result/webview', params: { url } });
@@ -73,6 +96,66 @@ export default function ResultHubScreen() {
         >
           {t('result.openInBrowser')}
         </Button>
+
+        <FormSection title={t('result.historyTitle')}>
+          {myLoading ? (
+            <View style={{ gap: tokens.space[2] }}>
+              <Skeleton height={64} />
+              <Skeleton height={64} />
+            </View>
+          ) : myResults.length === 0 ? (
+            <Text style={{ color: tokens.color.neutral500, fontSize: tokens.fontSize.bodySm }}>
+              {t('errors.noResults')}
+            </Text>
+          ) : (
+            <View style={{ gap: tokens.space[2] }}>
+              {myResults.map((r) => (
+                <Pressable
+                  key={r.id}
+                  onPress={() =>
+                    openResult(
+                      r.certificateUrl ??
+                        `https://result.5bib.com/event/${r.raceId ?? ''}/bib/${r.bib ?? ''}`,
+                    )
+                  }
+                  accessibilityRole="button"
+                >
+                  <Card>
+                    <Text
+                      style={{
+                        fontSize: tokens.fontSize.bodyMd,
+                        fontWeight: tokens.fontWeight.semibold,
+                        color: tokens.color.neutral900,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {r.raceName ?? '—'}
+                    </Text>
+                    <Text
+                      style={{
+                        color: tokens.color.neutral600,
+                        fontSize: tokens.fontSize.bodySm,
+                        marginTop: 2,
+                      }}
+                    >
+                      {[r.courseName, r.bib && `BIB ${r.bib}`, r.finishTime]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </Text>
+                  </Card>
+                </Pressable>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                fullWidth
+                onPress={() => router.push('/result/race-history')}
+              >
+                {t('result.viewDetail')} →
+              </Button>
+            </View>
+          )}
+        </FormSection>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[3], marginVertical: tokens.space[3] }}>
           <View style={{ flex: 1, height: 1, backgroundColor: tokens.color.neutral200 }} />

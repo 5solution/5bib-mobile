@@ -43,7 +43,8 @@
     "generic": "Something went wrong. Please try again",
     "needNetwork": "Network connection required",
     "noResults": "No results",
-    "fieldRequired": "This field is required"
+    "fieldRequired": "This field is required",
+    "formInvalid": "Please complete all required fields"
   },
   "validation": {
     "emailInvalid": "Invalid email",

@@ -17,38 +17,38 @@ import { Button } from '../../src/components/Button';
 import { Skeleton } from '../../src/components/Skeleton';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
-import type { MyResultItem } from '../../src/sdk/models';
-
-const MOCK: MyResultItem[] = [
-  {
-    raceId: '1',
-    raceName: 'Saigon Marathon',
-    courseId: 'c1',
-    courseName: '5km',
-    distance: '5km',
-    distanceMeters: 5000,
-    raceDate: '2026-03-15T06:00:00Z',
-    bib: 'A1234',
-    finishTime: '23:45',
-    overallRank: 15,
-    medal: 'gold',
-  },
-  {
-    raceId: '2',
-    raceName: 'Hanoi Half',
-    courseId: 'c2',
-    courseName: '21km',
-    distance: '21km',
-    distanceMeters: 21097,
-    raceDate: '2025-11-22T05:30:00Z',
-    bib: 'B0567',
-    finishTime: '2:11:42',
-    overallRank: 87,
-    medal: null,
-  },
-];
+import type { MyResultItem, RaceResultRow } from '../../src/sdk/models';
+import { athlete } from '../../src/sdk/services/athlete';
+import { result as resultSdk } from '../../src/sdk/services/result';
 
 const medalIcon: Record<string, string> = { gold: '🥇', silver: '🥈', bronze: '🥉' };
+
+/**
+ * Pick a medal tier from rank when backend doesn't provide one.
+ */
+function medalFromRank(rank?: number): MyResultItem['medal'] {
+  if (rank === 1) return 'gold';
+  if (rank === 2) return 'silver';
+  if (rank === 3) return 'bronze';
+  return null;
+}
+
+function rowToItem(r: RaceResultRow): MyResultItem {
+  const raceDate = r.raceDate ?? new Date().toISOString();
+  return {
+    raceId: r.raceId ?? r.id,
+    raceName: r.raceName ?? '—',
+    courseId: r.courseId ?? '',
+    courseName: r.courseName ?? '',
+    distance: r.courseName ?? '',
+    distanceMeters: 0,
+    raceDate,
+    bib: r.bib ?? '',
+    finishTime: r.finishTime ?? '',
+    overallRank: r.rank ?? 0,
+    medal: medalFromRank(r.rank),
+  };
+}
 
 export default function RaceHistoryScreen() {
   const { t } = useTranslation();
@@ -57,19 +57,39 @@ export default function RaceHistoryScreen() {
   const [items, setItems] = useState<MyResultItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = React.useCallback(async () => {
+    setError(null);
+    try {
+      // Prefer flat `result.listMyResults` shape — `athlete.getMyResults`
+      // returns a paged envelope used by other screens.
+      const rows = await resultSdk.listMyResults({ pageSize: 100 });
+      if (rows.length > 0) {
+        setItems(rows.map(rowToItem));
+        return;
+      }
+      // Fallback: athlete service (already-normalized items) when the public
+      // path returns nothing.
+      const fallback = await athlete.getMyResults({ pageSize: 100 });
+      setItems(fallback.items);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'load_failed');
+      setItems([]);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
-      await new Promise((r) => setTimeout(r, 500));
-      setItems(MOCK);
+      await load();
       setLoading(false);
     })();
-  }, []);
+  }, [load]);
 
   const grouped = items.reduce<Record<string, MyResultItem[]>>((acc, it) => {
     const year = String(new Date(it.raceDate).getFullYear());
-    if (!acc[year]) acc[year] = [];
-    acc[year].push(it);
+    const bucket = acc[year] ?? (acc[year] = []);
+    bucket.push(it);
     return acc;
   }, {});
 
@@ -87,6 +107,7 @@ export default function RaceHistoryScreen() {
         onLeadingPress={() => router.back()}
       />
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
+      {error && <Banner variant="error" message={t('errors.generic')} />}
 
       {loading ? (
         <View style={{ padding: tokens.space[4], gap: tokens.space[3] }}>
@@ -113,7 +134,7 @@ export default function RaceHistoryScreen() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
-                await new Promise((r) => setTimeout(r, 500));
+                await load();
                 setRefreshing(false);
               }}
               tintColor={tokens.color.brandPrimary}

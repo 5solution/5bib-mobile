@@ -43,7 +43,8 @@
     "generic": "Có lỗi xảy ra, thử lại sau",
     "needNetwork": "Cần kết nối mạng",
     "noResults": "Không có kết quả",
-    "fieldRequired": "Vui lòng nhập trường này"
+    "fieldRequired": "Vui lòng nhập trường này",
+    "formInvalid": "Vui lòng nhập đầy đủ các trường bắt buộc"
   },
   "validation": {
     "emailInvalid": "Email không hợp lệ",

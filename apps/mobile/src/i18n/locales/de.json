@@ -43,7 +43,8 @@
     "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen",
     "needNetwork": "Netzwerkverbindung erforderlich",
     "noResults": "Keine Ergebnisse",
-    "fieldRequired": "Pflichtfeld"
+    "fieldRequired": "Pflichtfeld",
+    "formInvalid": "Bitte alle Pflichtfelder ausfüllen"
   },
   "validation": {
     "emailInvalid": "Ungültige E-Mail",
