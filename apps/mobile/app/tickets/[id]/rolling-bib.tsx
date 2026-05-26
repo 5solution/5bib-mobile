@@ -43,35 +43,18 @@ import Animated, {
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
+import * as Haptics from 'expo-haptics';
+
 import { Header } from '../../../src/components/Header';
 import { Button } from '../../../src/components/Button';
-import { FullScreenLoading, Spinner } from '../../../src/components/Skeleton';
+import { FullScreenLoading } from '../../../src/components/Skeleton';
 import { useToast } from '../../../src/components/Toast';
 import { useCountdown } from '../../../src/hooks';
 import { tokens } from '../../../src/theme/tokens';
-
-// TODO(@5bib/sdk): replace stub once SDK is wired
-// import { sdk } from '../../../src/sdk/client';
-// import { useRollingBibStore } from '../../../src/stores/rolling-bib.store';
-
-// TODO(@components): real domain components — placeholders below render inline
-// import { GradientCard } from '../../../src/components/domain/GradientCard';
-// import { RollingNumber } from '../../../src/components/domain/RollingNumber';
-// import { SlotMachine } from '../../../src/components/domain/SlotMachine';
-// import { BIBNumberCard } from '../../../src/components/domain/BIBNumberCard';
-// import { CountdownTimer } from '../../../src/components/domain/CountdownTimer';
-
-// TODO(expo-haptics): add package and replace stub
-const Haptics = {
-  ImpactFeedbackStyle: { Light: 'light' as const },
-  NotificationFeedbackType: { Success: 'success' as const },
-  impactAsync: async (_style: string) => {
-    /* no-op until expo-haptics installed */
-  },
-  notificationAsync: async (_type: string) => {
-    /* no-op */
-  },
-};
+import { ticket as ticketSdk } from '../../../src/sdk/services/ticket';
+import { athlete as athleteSdk } from '../../../src/sdk/services/athlete';
+import { FetcherError } from '../../../src/sdk/core';
+import type { Ticket } from '../../../src/sdk/models';
 
 // ---------------------------------------------------------------------------
 // Constants — design system anchors
@@ -95,11 +78,26 @@ export default function RollingBibScreen() {
   const toast = useToast();
   const { id: ticketId } = useLocalSearchParams<{ id: string }>();
 
+  const [ticket, setTicket] = useState<Ticket | null>(null);
   const [phase, setPhase] = useState<Phase>('noBib');
   const [newBib, setNewBib] = useState<string | null>(null);
   const [validUntilEpoch, setValidUntilEpoch] = useState<number | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ---- Load ticket context (need courseId + code) ---------------------------
+  useEffect(() => {
+    if (!ticketId) return;
+    (async () => {
+      try {
+        const tk = await ticketSdk.getTicketById(ticketId);
+        setTicket(tk);
+      } catch (e) {
+        if (e instanceof FetcherError && e.status === 401) return;
+        toast.show({ variant: 'error', message: t('errors.network') });
+      }
+    })();
+  }, [ticketId, t, toast]);
 
   // ---- Accessibility: reduce motion detection (TC-TICKETS-29) ---------------
   useEffect(() => {
@@ -134,60 +132,74 @@ export default function RollingBibScreen() {
 
   // ---- Handlers --------------------------------------------------------------
 
+  const previewRoll = useCallback(async () => {
+    if (!ticket?.basicInfo?.courseId || !ticket?.value) {
+      throw new Error('missing-course');
+    }
+    // confirmed=false → preview (returns ephemeral new BIB + valid_until).
+    const raw = await athleteSdk.rollingBib(
+      ticket.basicInfo.courseId,
+      ticket.value,
+      false,
+    );
+    return parseRollingResponse(raw);
+  }, [ticket?.basicInfo?.courseId, ticket?.value]);
+
   const startSpin = useCallback(async () => {
     // TC-TICKETS-21: State 1 → tap CTA → State 2 + API call fired
+    if (!ticket?.basicInfo?.courseId || !ticket?.value) {
+      toast.show({ variant: 'error', message: t('tickets.rollingBib.missingCourse') });
+      return;
+    }
     setPhase('spinning');
     if (reduceMotion) {
       // TC-TICKETS-29: skip animation → jump to State 3
-      await runRollApiAndGoConfirm();
+      await runRollAndGoConfirm();
       return;
     }
 
     // Haptic ticks during spin (TC-TICKETS-22)
     tickIntervalRef.current = setInterval(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }, 120);
 
-    // Fire API in parallel với spin
-    const apiPromise = mockRollingBibApi(ticketId);
+    // Fire API in parallel with spin
+    const apiPromise = previewRoll();
 
     // Settle phase (2700ms in)
     setTimeout(() => setPhase('settling'), SETTLE_AT_MS);
 
     try {
-      const result = await Promise.race([
+      // Hold-until pattern: wait for the longer of (API resolves, full spin duration).
+      const [result] = await Promise.all([
         apiPromise,
-        new Promise<typeof apiPromise extends Promise<infer R> ? R : never>((resolve) =>
-          setTimeout(
-            () => apiPromise.then((r) => resolve(r as never)),
-            SPIN_DURATION_MS + 200,
-          ),
-        ),
+        new Promise<void>((resolve) => setTimeout(resolve, SPIN_DURATION_MS + 200)),
       ]);
-
       setNewBib(result.bib);
-      setValidUntilEpoch(Date.parse(result.validUntil));
+      setValidUntilEpoch(result.validUntilEpoch);
       if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
       setPhase('confirm');
     } catch (err) {
       // TC-TICKETS-28: network fail mid-roll → toast + back to State 1
       if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
+      if (err instanceof FetcherError && err.status === 401) return;
       toast.show({ variant: 'error', message: t('errors.network') });
       setPhase('noBib');
     }
-  }, [reduceMotion, ticketId, toast, t]);
+  }, [reduceMotion, ticket, previewRoll, toast, t]);
 
-  const runRollApiAndGoConfirm = useCallback(async () => {
+  const runRollAndGoConfirm = useCallback(async () => {
     try {
-      const result = await mockRollingBibApi(ticketId);
+      const result = await previewRoll();
       setNewBib(result.bib);
-      setValidUntilEpoch(Date.parse(result.validUntil));
+      setValidUntilEpoch(result.validUntilEpoch);
       setPhase('confirm');
-    } catch {
+    } catch (e) {
+      if (e instanceof FetcherError && e.status === 401) return;
       toast.show({ variant: 'error', message: t('errors.network') });
       setPhase('noBib');
     }
-  }, [ticketId, toast, t]);
+  }, [previewRoll, toast, t]);
 
   const cancelSpin = useCallback(() => {
     // TC-TICKETS-23: cancel mid-spin → confirm dialog
@@ -228,19 +240,23 @@ export default function RollingBibScreen() {
   }, [startSpin, t]);
 
   const confirmBib = useCallback(async () => {
-    // TC-TICKETS-26: tap "Xác nhận" → success → State 4 + haptic
+    // TC-TICKETS-26: tap "Xác nhận" → commit → State 4 + haptic
+    if (!ticket?.basicInfo?.courseId || !ticket?.value) {
+      toast.show({ variant: 'error', message: t('tickets.rollingBib.missingCourse') });
+      return;
+    }
     setPhase('submitting');
     try {
-      // TODO(@5bib/sdk): PAUSE-EPIC4-09 — confirm endpoint TBD
-      // await sdk.athlete.confirmRollingBib({ ticketId, bib: newBib });
-      await new Promise((r) => setTimeout(r, 700));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // PAUSE-EPIC4-09 (resolved per API_REFERENCE): same endpoint with confirmed=true commits.
+      await athleteSdk.rollingBib(ticket.basicInfo.courseId, ticket.value, true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setPhase('success');
-    } catch {
+    } catch (e) {
+      if (e instanceof FetcherError && e.status === 401) return;
       toast.show({ variant: 'error', message: t('errors.generic') });
       setPhase('confirm');
     }
-  }, [toast, t]);
+  }, [ticket, toast, t]);
 
   const goToTicket = useCallback(() => {
     // TC-TICKETS-27: tap "Xem chi tiết vé" → S-TICKETS-02 với refreshed data
@@ -274,7 +290,13 @@ export default function RollingBibScreen() {
         />
       )}
       {phase === 'success' && newBib && (
-        <SuccessState bib={newBib} onView={goToTicket} t={t} />
+        <SuccessState
+          bib={newBib}
+          distance={ticket?.basicInfo?.courseDistance ?? ''}
+          raceName={ticket?.race?.title ?? ticket?.basicInfo?.raceName ?? ''}
+          onView={goToTicket}
+          t={t}
+        />
       )}
     </View>
   );
@@ -492,10 +514,14 @@ function ConfirmState({
 
 function SuccessState({
   bib,
+  distance,
+  raceName,
   onView,
   t,
 }: {
   bib: string;
+  distance: string;
+  raceName: string;
   onView: () => void;
   t: (k: string) => string;
 }) {
@@ -515,10 +541,12 @@ function SuccessState({
       <ScrollView contentContainerStyle={styles.bodyPad}>
         <Animated.View style={[styles.successCard, aStyle]}>
           <View style={styles.successHeaderBar}>
-            <Text style={styles.successHeaderText}>BIB · 5 KM</Text>
+            <Text style={styles.successHeaderText}>
+              {`BIB${distance ? ` · ${distance.toUpperCase()}` : ''}`}
+            </Text>
           </View>
           <Text style={styles.successBig}>{bib}</Text>
-          <Text style={styles.successRace}>Saigon Marathon 2026</Text>
+          <Text style={styles.successRace}>{raceName || '—'}</Text>
           <View style={styles.successFooterBar} />
         </Animated.View>
         <Text style={styles.successConfirmation}>
@@ -535,14 +563,44 @@ function SuccessState({
 }
 
 // ---------------------------------------------------------------------------
-// Mock API (TODO: @5bib/sdk)
+// Rolling-BIB response parser
 // ---------------------------------------------------------------------------
 
-async function mockRollingBibApi(ticketId: string | undefined) {
-  await new Promise((r) => setTimeout(r, 1200));
-  const bib = String(Math.floor(1000 + Math.random() * 9000));
-  const validUntil = new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString();
-  return { ticketId, bib, validUntil };
+interface RollingResult {
+  bib: string;
+  validUntilEpoch: number;
+}
+
+/**
+ * The backend response for `PUT /athlete/rolling-bib` is loose (camel + snake mix);
+ * normalize into a stable {bib, validUntilEpoch} pair so the screen doesn't
+ * depend on backend shape. Fallback validUntil to "now + 5h" if backend omits.
+ */
+function parseRollingResponse(raw: unknown): RollingResult {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const bibRaw =
+    r.bib ??
+    r.new_bib ??
+    r.newBib ??
+    r.bib_number ??
+    r.bibNumber ??
+    '';
+  const validUntilRaw =
+    r.rolling_bib_valid_until ??
+    r.rollingBibValidUntil ??
+    r.valid_until ??
+    r.validUntil ??
+    null;
+  const validUntilEpoch =
+    typeof validUntilRaw === 'string'
+      ? Date.parse(validUntilRaw)
+      : Date.now() + 5 * 60 * 60 * 1000;
+  return {
+    bib: String(bibRaw || ''),
+    validUntilEpoch: Number.isFinite(validUntilEpoch)
+      ? validUntilEpoch
+      : Date.now() + 5 * 60 * 60 * 1000,
+  };
 }
 
 // ---------------------------------------------------------------------------

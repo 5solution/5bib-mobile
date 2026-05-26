@@ -2,12 +2,17 @@
  * apps/mobile/app/(tabs)/tickets.tsx — S-TICKETS-01
  *
  * States: Loading | Filled | Empty (per tab) | Error | Offline.
+ * Real SDK wiring: sdk.ticket.listMyTickets()
+ *
+ * NOTE: backend `code_statuses` filter is sent server-side (default ACTIVE);
+ * the 3 mobile tabs are derived client-side from athleteStatus + race date
+ * since backend doesn't expose a single canonical filter for our grouping.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -15,86 +20,115 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
 import { SegmentedTabs } from '../../src/components/domain/SegmentedTabs';
 import { TicketCard } from '../../src/components/domain/TicketCard';
+import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
+import { ticket as ticketSdk } from '../../src/sdk/services/ticket';
+import { FetcherError } from '../../src/sdk/core';
 import type { Ticket } from '../../src/sdk/models';
 
 type TabId = 'upcoming' | 'checkedIn' | 'transferred';
 
-const MOCK_TICKETS: Ticket[] = [
-  {
-    id: 't1',
-    value: 'TKT-VALUE-A1234',
-    status: 'ACTIVE',
-    athleteStatus: 'ACTIVE',
-    bib: 'A1234',
-    availableToChangeCourse: true,
-    race: {
-      id: '1',
-      slug: 'saigon-marathon-2026',
-      title: 'Saigon Marathon 2026',
-      coverImageUrl: null,
-      startDate: '2026-03-15T06:00:00Z',
-      location: 'TP.HCM',
-      isHighlight: false,
-      bibSetUp: true,
-      status: 'OPEN_FOR_SALE',
-    },
-    basicInfo: {
-      value: 'TKT-VALUE-A1234',
-      courseId: 'c1',
-      courseName: '5km',
-      raceName: 'Saigon Marathon 2026',
-      courseDistance: '5km',
-      bib: 'A1234',
-    },
-  },
-];
+/**
+ * Group ticket → 3 tabs per BR-TICKETS-01 (mobile MVP simplification):
+ *   - upcoming    = status ACTIVE + athleteStatus NOT in (CHECKED_IN, RACEKIT_RECEIVED, RACEKIT_NOT_RECEIVED)
+ *   - checkedIn   = athleteStatus in (CHECKED_IN, RACEKIT_RECEIVED, RACEKIT_NOT_RECEIVED)
+ *   - transferred = status TRANSFERRED or CANCELLED
+ *
+ * Compare via string to tolerate the 8-status backend enum even though
+ * the TS union currently lists only 3 values.
+ */
+function classifyTicket(t: Ticket): TabId {
+  const tStatus = String(t.status);
+  if (tStatus === 'TRANSFERRED' || tStatus === 'CANCELLED') return 'transferred';
+  const aStatus = String(t.athleteStatus);
+  if (
+    aStatus === 'CHECKED_IN' ||
+    aStatus === 'RACEKIT_RECEIVED' ||
+    aStatus === 'RACEKIT_NOT_RECEIVED'
+  ) {
+    return 'checkedIn';
+  }
+  return 'upcoming';
+}
 
 export default function TicketsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const online = useOnline();
+  const toast = useToast();
 
   const [tab, setTab] = useState<TabId>('upcoming');
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [allTickets, setAllTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [counts, setCounts] = useState<{ upcoming: number; checkedIn: number; transferred: number }>({
-    upcoming: 0,
-    checkedIn: 0,
-    transferred: 0,
-  });
+  const [errored, setErrored] = useState(false);
 
-  const load = useCallback(async (which: TabId) => {
-    setLoading(true);
-    // const r = await sdk.ticket.fetchByUser({ codeStatuses: 'ACTIVE', ... });
-    await new Promise((r) => setTimeout(r, 500));
-    if (which === 'upcoming') {
-      setTickets(MOCK_TICKETS);
-      setCounts({ upcoming: MOCK_TICKETS.length, checkedIn: 5, transferred: 2 });
-    } else {
-      setTickets([]);
+  const load = useCallback(async () => {
+    setErrored(false);
+    try {
+      // Fetch with broad code_statuses so we can client-classify all 3 tabs.
+      // Backend default is ACTIVE only — explicitly include cancelled/transferred.
+      const r = await ticketSdk.listMyTickets({
+        athleteStatus: 'ALL',
+        codeStatuses: 'ACTIVE,TRANSFERRED,CANCELLED',
+      });
+      setAllTickets(r.items);
+    } catch (e) {
+      setErrored(true);
+      if (e instanceof FetcherError && e.status === 401) return; // global handler
+      toast.show({ variant: 'error', message: t('tickets.loadFailed') });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-  }, []);
+  }, [t, toast]);
+
+  // Initial + on-focus refresh (so transfer / register flows update list on return).
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        if (cancelled) return;
+        await load();
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [load]),
+  );
 
   useEffect(() => {
-    load(tab);
-  }, [tab, load]);
+    // Initial mount loading state — show skeletons first paint.
+    setLoading(true);
+  }, []);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setRefreshing(true);
-    await load(tab);
-    setRefreshing(false);
-  };
+    await load();
+  }, [load]);
+
+  const { upcoming, checkedIn, transferred } = useMemo(() => {
+    const u: Ticket[] = [];
+    const c: Ticket[] = [];
+    const x: Ticket[] = [];
+    for (const it of allTickets) {
+      const g = classifyTicket(it);
+      if (g === 'upcoming') u.push(it);
+      else if (g === 'checkedIn') c.push(it);
+      else x.push(it);
+    }
+    return { upcoming: u, checkedIn: c, transferred: x };
+  }, [allTickets]);
+
+  const visible = tab === 'upcoming' ? upcoming : tab === 'checkedIn' ? checkedIn : transferred;
 
   const emptyTitle =
     tab === 'upcoming'
       ? t('tickets.emptyUpcoming')
       : tab === 'checkedIn'
-      ? t('tickets.emptyCheckedIn')
-      : t('tickets.emptyTransferred');
+        ? t('tickets.emptyCheckedIn')
+        : t('tickets.emptyTransferred');
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
@@ -104,9 +138,9 @@ export default function TicketsScreen() {
       <SegmentedTabs
         scroll
         options={[
-          { id: 'upcoming', label: t('tickets.tabUpcoming'), count: counts.upcoming },
-          { id: 'checkedIn', label: t('tickets.tabCheckedIn'), count: counts.checkedIn },
-          { id: 'transferred', label: t('tickets.tabTransferred'), count: counts.transferred },
+          { id: 'upcoming', label: t('tickets.tabUpcoming'), count: upcoming.length },
+          { id: 'checkedIn', label: t('tickets.tabCheckedIn'), count: checkedIn.length },
+          { id: 'transferred', label: t('tickets.tabTransferred'), count: transferred.length },
         ]}
         value={tab}
         onChange={(v) => setTab(v as TabId)}
@@ -137,17 +171,29 @@ export default function TicketsScreen() {
             </View>
           ))}
         </View>
-      ) : tickets.length === 0 ? (
+      ) : visible.length === 0 ? (
         <EmptyState
-          icon={<View style={{ width: 32, height: 32 }}><View /></View>}
-          title={emptyTitle}
-          ctaLabel={tab === 'upcoming' ? t('tickets.emptyUpcomingCta') : undefined}
-          onPress={tab === 'upcoming' ? () => router.push('/events') : undefined}
+          icon={
+            <View style={{ width: 32, height: 32 }}>
+              <View />
+            </View>
+          }
+          title={errored ? t('tickets.loadFailed') : emptyTitle}
+          ctaLabel={
+            errored
+              ? t('common.retry')
+              : tab === 'upcoming'
+                ? t('tickets.emptyUpcomingCta')
+                : undefined
+          }
+          onPress={
+            errored ? refresh : tab === 'upcoming' ? () => router.push('/events') : undefined
+          }
         />
       ) : (
         <FlatList
-          data={tickets}
-          keyExtractor={(t) => t.id}
+          data={visible}
+          keyExtractor={(it) => it.id}
           contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[3] }}
           refreshControl={
             <RefreshControl
