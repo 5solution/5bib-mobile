@@ -20,7 +20,12 @@ import { TamaguiProvider } from 'tamagui';
 
 import tamaguiConfig from '../src/theme/tamagui.config';
 import { ToastProvider } from '../src/components';
+import { initSentry } from '../src/adapters/sentry';
 import '../src/i18n';
+
+// Init Sentry BEFORE component render — captures errors from app boot.
+// DSN switched per APP_ENV via app.config.js extra.sentryDsn.
+initSentry();
 
 export default function RootLayout() {
   return (
