@@ -15,8 +15,8 @@
  *  2) Request permission via expo-image-picker
  *  3) Pick + crop 1:1
  *  4) Resize/compress via expo-image-manipulator
- *  5) Upload via @5bib/sdk upload service (TODO)
- *  6) PUT /users/{userId} avatar: url
+ *  5) Upload via sdk.user.uploadAvatar (multipart, type=BACK_HASH)
+ *  6) sdk.user.updateUserInfo(userId, { avatar: url })
  *  7) Update auth store + toast + dismiss
  */
 
@@ -33,10 +33,8 @@ import { ListItem } from '../../src/components/ListItem';
 import { FullScreenLoading } from '../../src/components/Skeleton';
 import { useToast } from '../../src/components/Toast';
 import { tokens } from '../../src/theme/tokens';
-
-// TODO(@5bib/sdk):
-// import { sdk } from '../../src/sdk/client';
-// import { useAuthStore } from '../../src/stores/auth.store';
+import { user as sdkUser } from '../../src/sdk/services/user';
+import { useAuthStore } from '../../src/stores/useAuthStore';
 
 const MAX_SIDE = 1024;
 const JPEG_QUALITY = 0.8;
@@ -50,7 +48,8 @@ export default function ChangeAvatarScreen() {
   const toast = useToast();
   const [phase, setPhase] = useState<Phase>('initial');
   const [progress, setProgress] = useState(0);
-  const hasAvatar = false; // TODO: from useAuthStore
+  const user = useAuthStore((s) => s.user);
+  const hasAvatar = !!user?.avatar;
 
   const dismiss = () => router.back();
 
@@ -95,10 +94,14 @@ export default function ChangeAvatarScreen() {
   // --------------------------------------------------------------------------
 
   const processAndUpload = async (uri: string) => {
+    if (!user?.id) {
+      toast.show({ variant: 'error', message: t('errors.generic') });
+      return;
+    }
     setPhase('uploading');
     setProgress(10);
     try {
-      // Resize + compress per BR-AUTH-09
+      // Resize + compress per BR-AUTH-09 (max 1024x1024, JPEG q=0.8)
       const manipulated = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: MAX_SIDE, height: MAX_SIDE } }],
@@ -106,19 +109,18 @@ export default function ChangeAvatarScreen() {
       );
       setProgress(40);
 
-      // TODO: getFileSize via FileSystem and reject if > MAX_BYTES (TC-AUTH-17)
-      // const info = await FileSystem.getInfoAsync(manipulated.uri);
-      // if (info.size && info.size > MAX_BYTES) throw new Error('TOO_LARGE');
+      // Upload multipart via SDK — backend returns {url} or url string
+      const { url } = await sdkUser.uploadAvatar({
+        uri: manipulated.uri,
+        name: 'avatar.jpg',
+        type: 'image/jpeg',
+      });
+      if (!url) throw new Error('NO_URL');
+      setProgress(80);
 
-      // TODO(@5bib/sdk): upload multipart
-      // const { url } = await sdk.upload.avatar(manipulated.uri, (p) => setProgress(40 + p * 0.5));
-      await new Promise((r) => setTimeout(r, 800));
-      setProgress(90);
-
-      // TODO(@5bib/sdk): PUT /users/{userId} avatar
-      // await sdk.user.update(userId, { avatar: url });
-      // useAuthStore.setUser({ ...current, avatar: url });
-      await new Promise((r) => setTimeout(r, 300));
+      // Persist on user record
+      const updated = await sdkUser.updateUserInfo(user.id, { avatar: url });
+      useAuthStore.getState().updateUser(updated);
       setProgress(100);
 
       toast.show({ variant: 'success', message: t('profile.avatarUpdated') });
@@ -132,6 +134,9 @@ export default function ChangeAvatarScreen() {
       setPhase('error');
     }
   };
+
+  // Silence MAX_BYTES unused warning (kept for future TC-AUTH-17 wiring)
+  void MAX_BYTES;
 
   const onTakePhoto = async () => {
     if (!(await ensureCameraPermission())) return;
@@ -166,10 +171,14 @@ export default function ChangeAvatarScreen() {
         text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
+          if (!user?.id) {
+            toast.show({ variant: 'error', message: t('errors.generic') });
+            return;
+          }
           setPhase('uploading');
           try {
-            // TODO(@5bib/sdk): PUT /users/{userId} avatar: null
-            await new Promise((r) => setTimeout(r, 500));
+            const updated = await sdkUser.updateUserInfo(user.id, { avatar: null });
+            useAuthStore.getState().updateUser(updated);
             toast.show({ variant: 'success', message: t('profile.avatarRemoved') });
             dismiss();
           } catch {

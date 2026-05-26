@@ -54,8 +54,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       },
 
       hydrate: async () => {
-        // persist middleware auto-rehydrates; this just flips the flag once done.
-        // TODO(coder): if `persist.rehydrate()` returns a promise, await it.
+        // persist middleware auto-rehydrates on store creation. The
+        // onRehydrateStorage callback below flips isHydrating to false once
+        // the async SecureStore read completes. We poll here as a safety net
+        // in case the callback already fired before this is awaited.
+        if (!get().isHydrating) return;
+        // Give zustand persist's async rehydration a chance to complete.
+        for (let i = 0; i < 20; i++) {
+          if (!get().isHydrating) return;
+          await new Promise((r) => setTimeout(r, 25));
+        }
         set({ isHydrating: false });
       },
     }),

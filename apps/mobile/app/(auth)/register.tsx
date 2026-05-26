@@ -18,6 +18,10 @@ import { Banner } from '../../src/components/ErrorState';
 import { useToast } from '../../src/components/Toast';
 import { useOnline, passwordStrength } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
+import { user as sdkUser } from '../../src/sdk/services/user';
+import { secureSet } from '../../src/adapters/secure-storage';
+import { TOKEN_KEY } from '../../src/adapters/sdk-init';
+import { useAuthStore } from '../../src/stores/useAuthStore';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HAS_DIGIT_LETTER = /^(?=.*[a-zA-Z])(?=.*[0-9]).{8,}$/;
@@ -46,6 +50,7 @@ export default function RegisterScreen() {
   });
   const [err, setErr] = useState<Partial<Record<keyof Form, string>>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [emailExistsBanner, setEmailExistsBanner] = useState<string | null>(null);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -80,20 +85,23 @@ export default function RegisterScreen() {
 
   const submit = async () => {
     if (!validate()) return;
+    setEmailExistsBanner(null);
     setSubmitting(true);
     try {
-      // BR-AUTH-18: do NOT send agreeTerms to backend
-      // await sdk.user.register({
-      //   fullName: form.fullName.trim(),
-      //   email: form.email.trim(),
-      //   password: form.password,
-      //   confirmPassword: form.confirmPassword,
-      // });
-      await new Promise((r) => setTimeout(r, 1000));
+      // BR-AUTH-18: agreeTerms is FRONTEND-ONLY — NEVER sent to backend.
+      const result = await sdkUser.register({
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+      });
+      await secureSet(TOKEN_KEY, result.token);
+      useAuthStore.getState().login(result.token, result.user);
       toast.show({ variant: 'success', message: t('auth.registerSuccess') });
       router.replace('/(tabs)/home');
     } catch (e: any) {
       if (e?.status === 409) {
+        setEmailExistsBanner(form.email.trim());
         toast.show({ variant: 'error', message: t('auth.emailExists') });
       } else {
         toast.show({ variant: 'error', message: t('errors.generic') });
@@ -103,6 +111,15 @@ export default function RegisterScreen() {
     }
   };
 
+  const goLoginWithEmail = () => {
+    const existing = emailExistsBanner;
+    if (!existing) {
+      router.replace('/(auth)/login');
+      return;
+    }
+    router.replace({ pathname: '/(auth)/login', params: { email: existing } });
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -110,6 +127,14 @@ export default function RegisterScreen() {
     >
       <Header title={t('auth.register')} leading="back" onLeadingPress={() => router.back()} />
       {!online && <Banner variant="warning" message={t('errors.network')} />}
+      {emailExistsBanner && (
+        <Banner
+          variant="error"
+          message={t('auth.emailExists')}
+          actionLabel={t('auth.loginLink')}
+          onAction={goLoginWithEmail}
+        />
+      )}
       <ScrollView
         contentContainerStyle={{
           padding: tokens.space[4],

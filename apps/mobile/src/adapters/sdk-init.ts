@@ -1,20 +1,18 @@
 /**
  * SDK Initializer
- * Boots `@5bib/sdk` with platform adapters:
+ * Boots `@5bib/sdk` Fetcher with platform adapters:
  *  - storage   → SecureStore for JWT (BR-AUTH-15)
  *  - onUnauthorized → eventBus.emit('AUTH_EXPIRED') (BR-AUTH-04)
  *  - baseURL   → EXPO_PUBLIC_API_URL
  *
- * Called ONCE at app entry (e.g. inside RootProvider).
- *
- * TODO(coder): finalize once @5bib/sdk public init API stabilizes.
- *              Current shape is a placeholder — adjust to real SDK contract.
+ * Called ONCE at app entry (app/_layout.tsx) BEFORE any screen renders.
  */
 
-import { secureGet, secureSet, secureRemove } from './secure-storage';
+import { initFetcher } from '../sdk/core';
+import { secureGet, secureRemove } from './secure-storage';
 import { eventBus } from './event-bus';
 
-const TOKEN_KEY = 'auth.token';
+export const TOKEN_KEY = 'auth.token';
 
 export interface SdkInitOptions {
   baseURL?: string;
@@ -22,34 +20,27 @@ export interface SdkInitOptions {
 }
 
 export async function initSdk(opts: SdkInitOptions = {}): Promise<void> {
-  const baseURL = opts.baseURL ?? process.env.EXPO_PUBLIC_API_URL;
-  const resultURL = opts.resultURL ?? process.env.EXPO_PUBLIC_RESULT_URL;
+  const baseURL =
+    opts.baseURL ?? process.env.EXPO_PUBLIC_API_URL ?? 'https://dapi.5bib.com';
 
-  if (!baseURL) {
+  if (!process.env.EXPO_PUBLIC_API_URL && !opts.baseURL) {
     // eslint-disable-next-line no-console
-    console.warn('[sdk-init] EXPO_PUBLIC_API_URL not set — SDK requests will fail.');
+    console.warn(
+      '[sdk-init] EXPO_PUBLIC_API_URL not set — falling back to dapi.5bib.com',
+    );
   }
 
-  // TODO(coder): replace with actual @5bib/sdk configure() call.
-  // Example shape (adjust to real SDK):
-  //
-  // import { configureSdk } from '@5bib/sdk';
-  // await configureSdk({
-  //   baseURL,
-  //   resultURL,
-  //   storage: {
-  //     getToken: () => secureGet<string>(TOKEN_KEY),
-  //     setToken: (t) => secureSet(TOKEN_KEY, t),
-  //     clearToken: () => secureRemove(TOKEN_KEY),
-  //   },
-  //   onUnauthorized: () => eventBus.emit('AUTH_EXPIRED', { reason: '401' }),
-  // });
-
-  void baseURL;
-  void resultURL;
-  void secureGet;
-  void secureSet;
-  void secureRemove;
-  void eventBus;
-  void TOKEN_KEY;
+  initFetcher({
+    baseURL,
+    getToken: async () => {
+      const t = await secureGet<string>(TOKEN_KEY);
+      return t ?? undefined;
+    },
+    onUnauthorized: async () => {
+      // BR-AUTH-04: 401 → clear token + notify app to force logout/redirect.
+      await secureRemove(TOKEN_KEY);
+      eventBus.emit('AUTH_EXPIRED', { reason: '401' });
+    },
+    timeoutMs: 15000,
+  });
 }

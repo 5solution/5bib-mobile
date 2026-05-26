@@ -17,31 +17,39 @@ import { Button } from '../../src/components/Button';
 import { Skeleton } from '../../src/components/Skeleton';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
-import type { User } from '../../src/sdk/models';
-
-const MOCK_USER: User = {
-  id: 'u1',
-  email: 'a@example.com',
-  fullName: 'Nguyễn Văn A',
-  role: 'ROLE_NORMAL_USER',
-  avatar: null,
-  locale: 'vi',
-  phone: '+84 912 345 678',
-};
+import { user as sdkUser } from '../../src/sdk/services/user';
+import { useAuthStore } from '../../src/stores/useAuthStore';
+import { secureRemove } from '../../src/adapters/secure-storage';
+import { TOKEN_KEY } from '../../src/adapters/sdk-init';
+import { signOutGoogle } from '../../src/adapters/google-signin';
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const online = useOnline();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user = useAuthStore((s) => s.user);
+  const [loading, setLoading] = useState(!user);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
-      await new Promise((r) => setTimeout(r, 400));
-      setUser(MOCK_USER);
-      setLoading(false);
+      if (!useAuthStore.getState().isAuthenticated) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const fresh = await sdkUser.getUserInfo();
+        if (!mounted) return;
+        useAuthStore.getState().updateUser(fresh);
+      } catch {
+        // Use cached value silently — Banner shows offline state separately
+      } finally {
+        if (mounted) setLoading(false);
+      }
     })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const initials = user
@@ -53,6 +61,23 @@ export default function ProfileScreen() {
         .toUpperCase()
     : '';
 
+  const performLogout = async () => {
+    // BR-AUTH-12: server logout best-effort, never block on it.
+    try {
+      await sdkUser.logout();
+    } catch {
+      // ignore — token cleared locally regardless
+    }
+    try {
+      await signOutGoogle();
+    } catch {
+      // ignore — Google sign-out not critical
+    }
+    await secureRemove(TOKEN_KEY);
+    useAuthStore.getState().logout();
+    router.replace('/(auth)/login');
+  };
+
   const onLogout = () =>
     Alert.alert(t('auth.logoutTitle'), t('auth.logoutMsg'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -60,8 +85,7 @@ export default function ProfileScreen() {
         text: t('auth.logout'),
         style: 'destructive',
         onPress: () => {
-          // SecureStore.deleteItemAsync('jwt_token'); authStore.clear();
-          router.replace('/(auth)/login');
+          void performLogout();
         },
       },
     ]);
@@ -206,6 +230,14 @@ export default function ProfileScreen() {
             leading={<Text style={{ fontSize: 20 }}>⭐</Text>}
             title={t('profile.rateApp')}
             onPress={() => {}}
+          />
+          {/* S-PROFILE-05: Apple Guideline 5.1.1(v) — delete account in-app */}
+          <ListItem
+            leading={<Text style={{ fontSize: 20 }}>🗑️</Text>}
+            title={t('profile.deleteAccount.menuTitle')}
+            onPress={() => router.push('/profile/delete-account')}
+            destructive
+            accessibilityLabel={t('profile.deleteAccount.menuTitle')}
           />
         </View>
 

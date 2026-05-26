@@ -22,7 +22,18 @@
     "goHome": "Zur Startseite",
     "optional": "optional",
     "required": "erforderlich",
-    "currencyVnd": "₫"
+    "currencyVnd": "₫",
+    "yes": "Ja",
+    "no": "Nein",
+    "discardTitle": "Änderungen verwerfen?",
+    "discardMsg": "Nicht gespeicherte Änderungen gehen verloren."
+  },
+  "permissions": {
+    "cameraTitle": "Kamerazugriff erforderlich",
+    "cameraMsg": "5BIB benötigt Kamerazugriff für das Avatar-Foto. Einstellungen öffnen?",
+    "libraryTitle": "Foto-Zugriff erforderlich",
+    "libraryMsg": "5BIB benötigt Foto-Zugriff zur Avatar-Auswahl. Einstellungen öffnen?",
+    "openSettings": "Einstellungen öffnen"
   },
   "errors": {
     "network": "Keine Verbindung. Bitte prüfen Sie Ihr Netzwerk",
@@ -95,10 +106,15 @@
     "accountLocked": "Konto gesperrt. Erneut in {{minutes}} Minuten",
     "emailExists": "E-Mail existiert bereits. Anmelden?",
     "loginGoogleFailed": "Google-Anmeldung fehlgeschlagen",
+    "googleFailed": "Google-Anmeldung fehlgeschlagen",
+    "appleFailed": "Apple-Anmeldung fehlgeschlagen",
     "registerSuccess": "Registriert! Anmeldung läuft...",
     "logoutTitle": "Bei 5BIB abmelden?",
     "logoutMsg": "Sie müssen sich erneut anmelden, um Tickets zu sehen",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "otpSent": "OTP an Ihre E-Mail gesendet",
+    "passwordReset": "Passwort erfolgreich zurückgesetzt",
+    "sessionExpired": "Sitzung abgelaufen"
   },
   "onboarding": {
     "slide1Title": "Rennen finden",
@@ -130,9 +146,53 @@
     "changeAvatar": "Avatar ändern",
     "takePhoto": "Foto aufnehmen",
     "chooseFromLibrary": "Aus Galerie wählen",
+    "pickFromLibrary": "Aus Galerie wählen",
     "removeAvatar": "Aktuelles Foto entfernen",
+    "removeAvatarTitle": "Avatar entfernen?",
+    "removeAvatarMsg": "Ihr aktueller Avatar wird dauerhaft entfernt.",
     "saveChanges": "Änderungen speichern",
-    "saveSuccess": "Aktualisiert"
+    "saveSuccess": "Aktualisiert",
+    "saved": "Gespeichert",
+    "editTitle": "Profil bearbeiten",
+    "fullName": "Vollständiger Name",
+    "emailSection": "E-Mail",
+    "contactSection": "Kontakt",
+    "medicalSection": "Gesundheit",
+    "medicalNote": "Gesundheitsnotizen",
+    "avatarUpdated": "Avatar aktualisiert",
+    "avatarRemoved": "Avatar entfernt",
+    "avatarFailed": "Upload fehlgeschlagen, erneut versuchen",
+    "avatarTooLarge": "Bild überschreitet 5MB, bitte kleineres wählen",
+    "uploading": "Lädt hoch... {{progress}}%",
+    "errors": {
+      "fullName.min": "Bitte vollständigen Namen eingeben (min. 2 Zeichen)",
+      "fullName.max": "Maximal 100 Zeichen",
+      "phone.invalid": "Ungültige Telefonnummer"
+    },
+    "deleteAccount": {
+      "menuTitle": "Konto löschen",
+      "title": "Konto löschen",
+      "warningHeading": "Warnung: Diese Aktion kann nicht rückgängig gemacht werden",
+      "warningIntro": "Das Löschen Ihres Kontos entfernt DAUERHAFT:",
+      "bulletProfile": "Persönliches Profil + Avatar",
+      "bulletAthletes": "Alle Athletenprofile",
+      "bulletOrders": "Bestellverlauf",
+      "bulletTickets": "Alle Tickets + BIBs",
+      "bulletResults": "Ihre Rennergebnisse",
+      "bulletStrava": "Strava-Verbindung (falls vorhanden)",
+      "cannotUndo": "Diese Aktion kann NICHT RÜCKGÄNGIG gemacht werden. 5BIB kann Daten nach dem Löschen nicht wiederherstellen.",
+      "typeToConfirm": "Zur Bestätigung geben Sie den Satz genau ein:",
+      "confirmInputLabel": "XÓA TÀI KHOẢN zur Bestätigung eingeben",
+      "confirmInputHint": "Groß-/Kleinschreibung beachten",
+      "passwordLabel": "Aktuelles Passwort",
+      "submit": "DAUERHAFT LÖSCHEN",
+      "submitting": "Wird gelöscht...",
+      "finalConfirmTitle": "Endgültige Bestätigung",
+      "finalConfirmMsg": "Sind Sie sicher, dass Sie Ihr Konto löschen möchten? Dies kann nicht rückgängig gemacht werden.",
+      "success": "Konto gelöscht",
+      "failed": "Konto löschen fehlgeschlagen, bitte erneut versuchen",
+      "wrongPassword": "Falsches Passwort"
+    }
   },
   "browse": {
     "homeGreeting": "Hallo, {{name}}",

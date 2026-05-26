@@ -10,6 +10,7 @@ import { View, Text, ScrollView, Platform, KeyboardAvoidingView } from 'react-na
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
@@ -17,6 +18,12 @@ import { Banner } from '../../src/components/ErrorState';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
+import { user as sdkUser } from '../../src/sdk/services/user';
+import { secureSet } from '../../src/adapters/secure-storage';
+import { TOKEN_KEY } from '../../src/adapters/sdk-init';
+import { useAuthStore } from '../../src/stores/useAuthStore';
+import { signInWithGoogle } from '../../src/adapters/google-signin';
+import { addBreadcrumb, captureError } from '../../src/adapters/sentry';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -54,10 +61,9 @@ export default function LoginScreen() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      // const result = await sdk.user.login({ email: email.trim(), password });
-      // await SecureStore.setItemAsync('jwt_token', result.token);
-      // authStore.setUser(result.user);
-      await new Promise((r) => setTimeout(r, 800));
+      const result = await sdkUser.login({ email: email.trim(), password });
+      await secureSet(TOKEN_KEY, result.token);
+      useAuthStore.getState().login(result.token, result.user);
       router.replace('/(tabs)/home');
     } catch (e: any) {
       if (e?.status === 401) {
@@ -70,6 +76,65 @@ export default function LoginScreen() {
       } else {
         toast.show({ variant: 'error', message: t('errors.generic') });
       }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    addBreadcrumb({ category: 'auth', message: 'google-login tap', level: 'info' });
+    const r = await signInWithGoogle();
+    if (!r.success) {
+      if (r.reason === 'cancelled' || r.reason === 'in_progress') return;
+      toast.show({ variant: 'error', message: t('auth.loginGoogleFailed') });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const result = await sdkUser.googleLogin({ idToken: r.idToken });
+      await secureSet(TOKEN_KEY, result.token);
+      useAuthStore.getState().login(result.token, result.user);
+      router.replace('/(tabs)/home');
+    } catch (e) {
+      captureError(e, { tag: 'google-login-backend' });
+      toast.show({ variant: 'error', message: t('errors.generic') });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApple = async () => {
+    addBreadcrumb({ category: 'auth', message: 'apple-login tap', level: 'info' });
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) {
+        toast.show({ variant: 'error', message: t('errors.generic') });
+        return;
+      }
+      setSubmitting(true);
+      const result = await sdkUser.appleLogin({
+        identityToken: credential.identityToken,
+        authorizationCode: credential.authorizationCode ?? undefined,
+        fullName: credential.fullName
+          ? {
+              givenName: credential.fullName.givenName ?? undefined,
+              familyName: credential.fullName.familyName ?? undefined,
+            }
+          : undefined,
+        email: credential.email ?? undefined,
+      });
+      await secureSet(TOKEN_KEY, result.token);
+      useAuthStore.getState().login(result.token, result.user);
+      router.replace('/(tabs)/home');
+    } catch (e: any) {
+      if (e?.code === 'ERR_REQUEST_CANCELED') return;
+      captureError(e, { tag: 'apple-login' });
+      toast.show({ variant: 'error', message: t('errors.generic') });
     } finally {
       setSubmitting(false);
     }
@@ -200,11 +265,25 @@ export default function LoginScreen() {
             <View style={{ flex: 1, height: 1, backgroundColor: tokens.color.neutral200 }} />
           </View>
 
-          <Button variant="outline" size="lg" fullWidth leftIcon={<Text style={{ fontSize: 18 }}>G</Text>}>
+          <Button
+            variant="outline"
+            size="lg"
+            fullWidth
+            disabled={submitting || !online}
+            leftIcon={<Text style={{ fontSize: 18 }}>G</Text>}
+            onPress={handleGoogle}
+          >
             {t('auth.loginWithGoogle')}
           </Button>
           {Platform.OS === 'ios' && (
-            <Button variant="outline" size="lg" fullWidth leftIcon={<Text style={{ fontSize: 18 }}></Text>}>
+            <Button
+              variant="outline"
+              size="lg"
+              fullWidth
+              disabled={submitting || !online}
+              leftIcon={<Text style={{ fontSize: 18 }}></Text>}
+              onPress={handleApple}
+            >
               {t('auth.loginWithApple')}
             </Button>
           )}

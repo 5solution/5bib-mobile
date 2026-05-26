@@ -15,6 +15,7 @@ import { FormLayout } from '../../src/components/FormLayout';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
+import { user as sdkUser } from '../../src/sdk/services/user';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,8 +38,7 @@ export default function ForgotPasswordScreen() {
     }
     setSubmitting(true);
     try {
-      // await sdk.user.forgot({ email: email.trim() });
-      await new Promise((r) => setTimeout(r, 800));
+      await sdkUser.forgot({ email: email.trim() });
       toast.show({
         variant: 'success',
         message: t('auth.otpSentTo', { email: email.trim() }),

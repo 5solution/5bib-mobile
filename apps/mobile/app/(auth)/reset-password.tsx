@@ -19,6 +19,7 @@ import { FormLayout, FormSection, SectionDivider } from '../../src/components/Fo
 import { useToast } from '../../src/components/Toast';
 import { useCountdown, passwordStrength, useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
+import { user as sdkUser } from '../../src/sdk/services/user';
 
 const HAS_DIGIT_LETTER = /^(?=.*[a-zA-Z])(?=.*[0-9]).{8,}$/;
 
@@ -65,11 +66,19 @@ export default function ResetPasswordScreen() {
       setConfirmErr(t('validation.passwordMismatch'));
       return;
     }
+    if (!email) {
+      toast.show({ variant: 'error', message: t('errors.generic') });
+      return;
+    }
     setSubmitting(true);
     try {
-      // await sdk.user.reset({ otp, email, newPassword: newPwd, newPasswordConfirm: confirmPwd });
-      await new Promise((r) => setTimeout(r, 800));
-      toast.show({ variant: 'success', message: t('common.save') });
+      await sdkUser.reset({
+        otp,
+        email,
+        newPassword: newPwd,
+        newPasswordConfirm: confirmPwd,
+      });
+      toast.show({ variant: 'success', message: t('auth.passwordReset') });
       router.replace({ pathname: '/(auth)/login', params: { email } });
     } catch (e: any) {
       if (e?.status === 400) {
@@ -86,12 +95,16 @@ export default function ResetPasswordScreen() {
   };
 
   const resend = async () => {
-    if (cd.running) return;
-    // await sdk.user.forgot({ email });
-    cd.restart(60);
-    setOtp('');
-    setOtpErr(null);
-    toast.show({ variant: 'success', message: t('auth.otpSentTo', { email }) });
+    if (cd.running || !email) return;
+    try {
+      await sdkUser.forgot({ email });
+      cd.restart(60);
+      setOtp('');
+      setOtpErr(null);
+      toast.show({ variant: 'success', message: t('auth.otpSentTo', { email }) });
+    } catch {
+      toast.show({ variant: 'error', message: t('errors.generic') });
+    }
   };
 
   return (

@@ -22,7 +22,18 @@
     "goHome": "Về trang chủ",
     "optional": "tuỳ chọn",
     "required": "bắt buộc",
-    "currencyVnd": "đ"
+    "currencyVnd": "đ",
+    "yes": "Có",
+    "no": "Không",
+    "discardTitle": "Bỏ thay đổi?",
+    "discardMsg": "Các chỉnh sửa chưa lưu sẽ bị mất."
+  },
+  "permissions": {
+    "cameraTitle": "Cần quyền camera",
+    "cameraMsg": "5BIB cần quyền camera để chụp ảnh đại diện. Mở cài đặt để cấp quyền?",
+    "libraryTitle": "Cần quyền thư viện ảnh",
+    "libraryMsg": "5BIB cần quyền truy cập ảnh để chọn ảnh đại diện. Mở cài đặt để cấp quyền?",
+    "openSettings": "Mở cài đặt"
   },
   "errors": {
     "network": "Không kết nối được, vui lòng kiểm tra mạng",
@@ -99,10 +110,15 @@
     "accountLocked": "Tài khoản tạm khóa, thử lại sau {{minutes}} phút",
     "emailExists": "Email đã tồn tại, đăng nhập?",
     "loginGoogleFailed": "Đăng nhập Google thất bại, thử lại",
+    "googleFailed": "Đăng nhập Google thất bại, thử lại",
+    "appleFailed": "Đăng nhập Apple thất bại, thử lại",
     "registerSuccess": "Đăng ký thành công! Đang đăng nhập...",
     "logoutTitle": "Đăng xuất khỏi 5BIB?",
     "logoutMsg": "Bạn sẽ cần đăng nhập lại để xem ticket và đặt giải mới",
-    "logout": "Đăng xuất"
+    "logout": "Đăng xuất",
+    "otpSent": "Đã gửi mã OTP đến email của bạn",
+    "passwordReset": "Đặt lại mật khẩu thành công",
+    "sessionExpired": "Phiên đăng nhập hết hạn"
   },
   "onboarding": {
     "slide1Title": "Tìm giải đấu",
@@ -134,9 +150,53 @@
     "changeAvatar": "Đổi ảnh đại diện",
     "takePhoto": "Chụp ảnh mới",
     "chooseFromLibrary": "Chọn từ thư viện",
+    "pickFromLibrary": "Chọn từ thư viện",
     "removeAvatar": "Xoá ảnh hiện tại",
+    "removeAvatarTitle": "Xoá ảnh đại diện?",
+    "removeAvatarMsg": "Ảnh đại diện hiện tại sẽ bị xoá vĩnh viễn.",
     "saveChanges": "Lưu thay đổi",
-    "saveSuccess": "Cập nhật thành công"
+    "saveSuccess": "Cập nhật thành công",
+    "saved": "Đã lưu",
+    "editTitle": "Chỉnh sửa hồ sơ",
+    "fullName": "Họ và tên",
+    "emailSection": "Email",
+    "contactSection": "Liên hệ",
+    "medicalSection": "Sức khoẻ",
+    "medicalNote": "Tình trạng sức khoẻ",
+    "avatarUpdated": "Đã cập nhật ảnh đại diện",
+    "avatarRemoved": "Đã xoá ảnh đại diện",
+    "avatarFailed": "Tải ảnh thất bại, thử lại",
+    "avatarTooLarge": "Ảnh vượt quá 5MB, vui lòng chọn ảnh nhỏ hơn",
+    "uploading": "Đang tải lên... {{progress}}%",
+    "errors": {
+      "fullName.min": "Vui lòng nhập họ tên (tối thiểu 2 ký tự)",
+      "fullName.max": "Họ tên tối đa 100 ký tự",
+      "phone.invalid": "Số điện thoại không hợp lệ"
+    },
+    "deleteAccount": {
+      "menuTitle": "Xóa tài khoản",
+      "title": "Xóa tài khoản",
+      "warningHeading": "Cảnh báo: Hành động không thể hoàn tác",
+      "warningIntro": "Xóa tài khoản sẽ XÓA VĨNH VIỄN:",
+      "bulletProfile": "Profile cá nhân + avatar",
+      "bulletAthletes": "Toàn bộ athlete profile của bạn",
+      "bulletOrders": "Lịch sử đơn hàng",
+      "bulletTickets": "Tất cả ticket + BIB",
+      "bulletResults": "Kết quả thi đấu của bạn",
+      "bulletStrava": "Strava connection (nếu có)",
+      "cannotUndo": "Hành động này KHÔNG THỂ HOÀN TÁC. 5BIB không thể khôi phục dữ liệu sau khi xóa.",
+      "typeToConfirm": "Để xác nhận, hãy gõ chính xác cụm sau:",
+      "confirmInputLabel": "Gõ XÓA TÀI KHOẢN để xác nhận",
+      "confirmInputHint": "Phân biệt chữ hoa chữ thường",
+      "passwordLabel": "Mật khẩu hiện tại",
+      "submit": "XÓA VĨNH VIỄN",
+      "submitting": "Đang xóa...",
+      "finalConfirmTitle": "Xác nhận lần cuối",
+      "finalConfirmMsg": "Bạn chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác.",
+      "success": "Tài khoản đã được xóa",
+      "failed": "Xóa tài khoản thất bại, vui lòng thử lại",
+      "wrongPassword": "Mật khẩu không đúng"
+    }
   },
   "browse": {
     "homeGreeting": "Chào, {{name}}",

@@ -11,7 +11,6 @@
  *  - TC-AUTH-15: IDOR — server enforced; mobile sends only own userId
  *
  * Form pattern: reuses S-CHECKOUT-02 (FormLayout + FormSection + Input).
- * Stack: react-hook-form + zod resolver (TODO: install @hookform/resolvers + zod).
  */
 
 import React, { useState } from 'react';
@@ -27,11 +26,8 @@ import { Input } from '../../src/components/Input';
 import { FormLayout, FormSection } from '../../src/components/FormLayout';
 import { useToast } from '../../src/components/Toast';
 import { tokens } from '../../src/theme/tokens';
-import type { User } from '../../src/sdk/models';
-
-// TODO(@5bib/sdk): wire real client + user store
-// import { sdk } from '../../src/sdk/client';
-// import { useAuthStore } from '../../src/stores/auth.store';
+import { user as sdkUser } from '../../src/sdk/services/user';
+import { useAuthStore } from '../../src/stores/useAuthStore';
 
 // ---------------------------------------------------------------------------
 // Schema (zod) — BR-AUTH-10/11
@@ -47,13 +43,12 @@ const profileSchema = z.object({
   gender: z.enum(['male', 'female', 'other']).optional(),
   nationality: z.string().max(100).optional(),
   address: z.string().max(500).optional(),
-  bloodType: z.string().max(5).optional(),
-  medicalInformation: z.string().max(1000).optional(),
+  bloodGroup: z.string().max(5).optional(),
+  medicalInfo: z.string().max(1000).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
-// TODO: prefer @hookform/resolvers/zod — manual resolver kept inline for now
 function zodResolver(schema: typeof profileSchema) {
   return async (values: ProfileFormValues) => {
     const parsed = schema.safeParse(values);
@@ -66,23 +61,16 @@ function zodResolver(schema: typeof profileSchema) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Mock prefill — TODO: pull from useAuthStore
-// ---------------------------------------------------------------------------
-
-const MOCK_USER: User = {
-  id: 'u1',
-  email: 'a@example.com',
-  fullName: 'Nguyễn Văn A',
-  role: 'ROLE_NORMAL_USER',
-  avatar: null,
-  locale: 'vi',
-  phone: '0912345678',
-  dob: '1990-01-01',
-  gender: 'male',
-  nationality: 'VN',
-  address: '',
-};
+// Normalize backend gender variants to RHF schema (lowercase only)
+function normalizeGender(
+  g: string | undefined,
+): 'male' | 'female' | 'other' | undefined {
+  if (!g) return undefined;
+  const lower = g.toLowerCase();
+  if (lower === 'male' || lower === 'female' || lower === 'other') return lower;
+  if (lower === 'unknown') return 'other';
+  return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -94,6 +82,8 @@ export default function EditProfileScreen() {
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
 
+  const user = useAuthStore((s) => s.user);
+
   const {
     control,
     handleSubmit,
@@ -101,12 +91,14 @@ export default function EditProfileScreen() {
   } = useForm<ProfileFormValues>({
     mode: 'onBlur',
     defaultValues: {
-      fullName: MOCK_USER.fullName,
-      phone: MOCK_USER.phone ?? '',
-      dob: MOCK_USER.dob ?? '',
-      gender: MOCK_USER.gender,
-      nationality: MOCK_USER.nationality ?? '',
-      address: MOCK_USER.address ?? '',
+      fullName: user?.fullName ?? '',
+      phone: user?.phone ?? '',
+      dob: user?.dob ?? '',
+      gender: normalizeGender(user?.gender),
+      nationality: user?.nationality ?? '',
+      address: user?.address ?? '',
+      bloodGroup: user?.bloodGroup ?? '',
+      medicalInfo: user?.medicalInfo ?? '',
     },
     resolver: zodResolver(profileSchema) as any,
   });
@@ -123,12 +115,23 @@ export default function EditProfileScreen() {
   };
 
   const onSubmit = handleSubmit(async (values) => {
+    if (!user?.id) {
+      toast.show({ variant: 'error', message: t('errors.generic') });
+      return;
+    }
     setSubmitting(true);
     try {
-      // TODO(@5bib/sdk): PUT /users/{userId}
-      // await sdk.user.update(userId, values);
-      // useAuthStore.setUser(updated);
-      await new Promise((r) => setTimeout(r, 700));
+      const updated = await sdkUser.updateUserInfo(user.id, {
+        fullName: values.fullName,
+        phone: values.phone || undefined,
+        dob: values.dob || undefined,
+        gender: values.gender,
+        nationality: values.nationality || undefined,
+        address: values.address || undefined,
+        bloodGroup: values.bloodGroup || undefined,
+        medicalInfo: values.medicalInfo || undefined,
+      });
+      useAuthStore.getState().updateUser(updated);
       toast.show({ variant: 'success', message: t('profile.saveSuccess') });
       router.back();
     } catch (err) {
@@ -139,6 +142,15 @@ export default function EditProfileScreen() {
   });
 
   const saveEnabled = isDirty && isValid && !submitting;
+
+  const initials = user
+    ? user.fullName
+        .split(' ')
+        .map((s) => s[0])
+        .slice(-2)
+        .join('')
+        .toUpperCase()
+    : '';
 
   return (
     <>
@@ -193,7 +205,9 @@ export default function EditProfileScreen() {
               ...tokens.elevation[1],
             }}
           >
-            <Text style={{ fontSize: 32, color: tokens.color.brandPrimary }}>NA</Text>
+            <Text style={{ fontSize: 32, color: tokens.color.brandPrimary }}>
+              {initials || 'NA'}
+            </Text>
           </View>
           <Text style={{ color: tokens.color.brandPrimary, fontWeight: tokens.fontWeight.semibold }}>
             ✏ {t('profile.changeAvatar')}
@@ -201,7 +215,11 @@ export default function EditProfileScreen() {
         </Pressable>
 
         <FormSection title={t('profile.emailSection')}>
-          <Input label={t('profile.emailReadOnly')} value={MOCK_USER.email} readOnly />
+          <Input
+            label={t('profile.emailReadOnly')}
+            value={user?.email ?? ''}
+            readOnly
+          />
         </FormSection>
 
         <FormSection title={t('checkout.personalInfo')}>
@@ -312,7 +330,7 @@ export default function EditProfileScreen() {
         <FormSection title={t('profile.medicalSection')}>
           <Controller
             control={control}
-            name="bloodType"
+            name="bloodGroup"
             render={({ field: { onChange, value } }) => (
               <Input
                 label={t('profile.bloodType')}
@@ -324,7 +342,7 @@ export default function EditProfileScreen() {
           />
           <Controller
             control={control}
-            name="medicalInformation"
+            name="medicalInfo"
             render={({ field: { onChange, value } }) => (
               <Input
                 label={t('profile.medicalNote')}

@@ -22,7 +22,18 @@
     "goHome": "Go to home",
     "optional": "optional",
     "required": "required",
-    "currencyVnd": "₫"
+    "currencyVnd": "₫",
+    "yes": "Yes",
+    "no": "No",
+    "discardTitle": "Discard changes?",
+    "discardMsg": "Unsaved changes will be lost."
+  },
+  "permissions": {
+    "cameraTitle": "Camera permission required",
+    "cameraMsg": "5BIB needs camera access to take an avatar photo. Open settings to grant permission?",
+    "libraryTitle": "Photo library permission required",
+    "libraryMsg": "5BIB needs photo access to pick an avatar. Open settings to grant permission?",
+    "openSettings": "Open settings"
   },
   "errors": {
     "network": "No connection. Please check your network",
@@ -95,10 +106,15 @@
     "accountLocked": "Account locked. Try again in {{minutes}} minutes",
     "emailExists": "Email already exists. Sign in?",
     "loginGoogleFailed": "Google sign-in failed. Try again",
+    "googleFailed": "Google sign-in failed. Try again",
+    "appleFailed": "Apple sign-in failed. Try again",
     "registerSuccess": "Registered! Signing you in...",
     "logoutTitle": "Sign out of 5BIB?",
     "logoutMsg": "You'll need to sign in again to view tickets and register",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "otpSent": "OTP sent to your email",
+    "passwordReset": "Password reset successfully",
+    "sessionExpired": "Session expired"
   },
   "onboarding": {
     "slide1Title": "Find races",
@@ -130,9 +146,53 @@
     "changeAvatar": "Change avatar",
     "takePhoto": "Take a photo",
     "chooseFromLibrary": "Choose from library",
+    "pickFromLibrary": "Choose from library",
     "removeAvatar": "Remove current photo",
+    "removeAvatarTitle": "Remove avatar?",
+    "removeAvatarMsg": "Your current avatar will be permanently removed.",
     "saveChanges": "Save changes",
-    "saveSuccess": "Updated successfully"
+    "saveSuccess": "Updated successfully",
+    "saved": "Saved",
+    "editTitle": "Edit profile",
+    "fullName": "Full name",
+    "emailSection": "Email",
+    "contactSection": "Contact",
+    "medicalSection": "Medical",
+    "medicalNote": "Medical notes",
+    "avatarUpdated": "Avatar updated",
+    "avatarRemoved": "Avatar removed",
+    "avatarFailed": "Upload failed, try again",
+    "avatarTooLarge": "Image exceeds 5MB, please pick a smaller one",
+    "uploading": "Uploading... {{progress}}%",
+    "errors": {
+      "fullName.min": "Please enter your full name (at least 2 characters)",
+      "fullName.max": "Max 100 characters",
+      "phone.invalid": "Invalid phone number"
+    },
+    "deleteAccount": {
+      "menuTitle": "Delete account",
+      "title": "Delete account",
+      "warningHeading": "Warning: This action cannot be undone",
+      "warningIntro": "Deleting your account will PERMANENTLY remove:",
+      "bulletProfile": "Personal profile + avatar",
+      "bulletAthletes": "All your athlete profiles",
+      "bulletOrders": "Order history",
+      "bulletTickets": "All tickets + BIBs",
+      "bulletResults": "Your race results",
+      "bulletStrava": "Strava connection (if any)",
+      "cannotUndo": "This action CANNOT BE UNDONE. 5BIB cannot recover data after deletion.",
+      "typeToConfirm": "To confirm, type the phrase exactly:",
+      "confirmInputLabel": "Type XÓA TÀI KHOẢN to confirm",
+      "confirmInputHint": "Case-sensitive",
+      "passwordLabel": "Current password",
+      "submit": "DELETE FOREVER",
+      "submitting": "Deleting...",
+      "finalConfirmTitle": "Final confirmation",
+      "finalConfirmMsg": "Are you sure you want to delete your account? This cannot be undone.",
+      "success": "Account deleted",
+      "failed": "Failed to delete account, please try again",
+      "wrongPassword": "Wrong password"
+    }
   },
   "browse": {
     "homeGreeting": "Hi, {{name}}",
