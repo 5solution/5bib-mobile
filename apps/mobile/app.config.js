@@ -20,23 +20,29 @@
 const APP_ENV = process.env.APP_ENV ?? 'production';
 const IS_DEV = APP_ENV === 'development';
 
-// TODO(Danny): replace với bundle ID THẬT của app cũ trên store (verify trong Firebase Console)
-// Same bundle cho cả dev + prod (theo decision Danny 2026-05-25)
-const BUNDLE_ID = 'com.fivebib.mobile';
+// REAL bundle ID / package từ Firebase configs team cũ (confirmed Danny 2026-05-26)
+// ⚠️ iOS và Android KHÁC nhau — KHÔNG share string vì legacy app convention
+const IOS_BUNDLE_ID = 'vn.5bib.app';
+const ANDROID_PACKAGE = 'com.mobile_5bib';
+
+// App Store ID (lấy từ google-services.prod.json) — cho EAS submit + universal link
+const APPLE_APP_STORE_ID = '6447956538';
 
 // App display name — distinguishable trên device để dev team biết đang test env nào
 const appName = IS_DEV ? '5BIB Dev' : '5BIB';
 
 // Firebase config files — different project per env
+// Prod: project `bib-60bff` (đang chạy live, 69 DAU)
+// Dev:  project `bib-dev-b4d19`
 const googleServiceIos = IS_DEV
-  ? './firebase-configs/GoogleService-Info.dev.plist'  // ← từ Firebase project `5bib-dev`
-  : './firebase-configs/GoogleService-Info.prod.plist'; // ← từ Firebase project `5bib`
+  ? './firebase-configs/GoogleService-Info.dev.plist'   // → Firebase project `bib-dev-b4d19`
+  : './firebase-configs/GoogleService-Info.prod.plist'; // → Firebase project `bib-60bff`
 
 const googleServiceAndroid = IS_DEV
-  ? './firebase-configs/google-services.dev.json'  // ← từ Firebase project `5bib-dev`
-  : './firebase-configs/google-services.prod.json'; // ← từ Firebase project `5bib`
+  ? './firebase-configs/google-services.dev.json'   // → Firebase project `bib-dev-b4d19`
+  : './firebase-configs/google-services.prod.json'; // → Firebase project `bib-60bff`
 
-const firebaseProjectId = IS_DEV ? '5bib-dev' : '5bib';
+const firebaseProjectId = IS_DEV ? 'bib-dev-b4d19' : 'bib-60bff';
 
 module.exports = {
   expo: {
@@ -55,7 +61,8 @@ module.exports = {
     },
     assetBundlePatterns: ['**/*'],
     ios: {
-      bundleIdentifier: BUNDLE_ID, // Same bundle for dev+prod (Danny 2026-05-25)
+      bundleIdentifier: IOS_BUNDLE_ID,
+      appStoreUrl: `https://apps.apple.com/app/id${APPLE_APP_STORE_ID}`,
       supportsTablet: false,
       associatedDomains: ['applinks:5bib.com', 'applinks:www.5bib.com'],
       googleServicesFile: googleServiceIos, // ← Firebase iOS config
@@ -72,7 +79,7 @@ module.exports = {
       },
     },
     android: {
-      package: BUNDLE_ID, // Same package for dev+prod (Danny 2026-05-25)
+      package: ANDROID_PACKAGE,
       googleServicesFile: googleServiceAndroid, // ← Firebase Android config
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
