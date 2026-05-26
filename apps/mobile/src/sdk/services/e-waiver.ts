@@ -2,9 +2,13 @@
  * apps/mobile/src/sdk/services/e-waiver.ts
  *
  * E-Waiver / disclaimer signing service.
- * 3-step flow: race dropdown → request OTP → verify OTP → fetch ticket list.
+ * Flow: race dropdown → request OTP → verify OTP → fetch waiver HTML → sign.
  *
- * Source: 01-ba-prd-epic-6-ewaiver.md
+ * Source: docs/API_REFERENCE.md "EPIC-6 E-Waiver".
+ *         01-ba-prd-epic-6-ewaiver.md
+ *
+ * ⚠️ Typo "aggree" in endpoint path — INTENTIONAL backend, KHÔNG fix.
+ * ⚠️ Sign endpoint body is `text/html`, NOT JSON.
  */
 import { network } from '../core';
 import type { SigningRace, SigningTicket } from '../models';
@@ -64,48 +68,57 @@ function normalizeSigningTicket(t: LegacySigningTicket): SigningTicket {
 
 export const eWaiver = {
   /**
-   * POST /pub/signing-race-dropdown — list races available for signing.
+   * POST /pub/signing-race-dropdown — list races eligible for waiver signing.
+   * Body shape TBD per API_REFERENCE — Postman shows email/password (likely wrong).
+   * Mobile must probe live. Current impl sends `{ email }` body — adapt if needed.
    */
-  async fetchSigningRaces(input: {
+  async getSigningRaces(input: {
+    email: string;
     pageNo?: number;
     pageSize?: number;
-  } = {}): Promise<SigningRace[]> {
-    const { pageNo = 1, pageSize = 100 } = input;
+  }): Promise<SigningRace[]> {
+    const { email, pageNo = 1, pageSize = 100 } = input;
     const raw = await network().post<{
-      data?: { content?: LegacySigningRace[] };
+      data?: { content?: LegacySigningRace[] } | LegacySigningRace[];
       success?: boolean;
-    }>('/pub/signing-race-dropdown', undefined, {
-      params: { pageNo, pageSize },
-    });
+    }>(
+      '/pub/signing-race-dropdown',
+      { email: email.trim().toLowerCase() },
+      { params: { pageNo, pageSize }, noRetry: true },
+    );
     if (raw.success === false) {
       throw new Error('Failed to load signing races');
     }
-    return (raw.data?.content ?? []).map(normalizeSigningRace);
+    const data = raw.data;
+    if (!data) return [];
+    const list = Array.isArray(data) ? data : (data.content ?? []);
+    return list.map(normalizeSigningRace);
   },
 
   /**
-   * POST /pub/signing-request — request OTP for race signing.
+   * POST /pub/signing-request — send 6-digit OTP to email.
+   * Body: snake_case race_id.
    */
-  async requestSigningOtp(input: {
-    raceId: string;
+  async sendSigningOtp(input: {
     email: string;
+    raceId: string;
   }): Promise<void> {
     await network().post(
       '/pub/signing-request',
       {
-        race_id: Number(input.raceId),
         email: input.email.trim().toLowerCase(),
+        race_id: Number(input.raceId),
       },
       { noRetry: true },
     );
   },
 
   /**
-   * POST /pub/signing-request-result — verify OTP, get signable tickets.
+   * POST /pub/signing-request-result — verify OTP, return signable tickets.
    */
   async verifySigningOtp(input: {
-    raceId: string;
     email: string;
+    raceId: string;
     otp: string;
   }): Promise<SigningTicket[]> {
     const raw = await network().post<{
@@ -114,8 +127,8 @@ export const eWaiver = {
     }>(
       '/pub/signing-request-result',
       {
-        race_id: Number(input.raceId),
         email: input.email.trim().toLowerCase(),
+        race_id: Number(input.raceId),
         otp: input.otp,
       },
       { noRetry: true },
@@ -127,33 +140,57 @@ export const eWaiver = {
   },
 
   /**
-   * POST /pub/aggree-skip-liability/:code — submit signed HTML disclaimer.
-   * Optional delegator block for adult-signing-for-minor flow.
-   * Note: backend expects raw HTML body, NOT JSON.
-   * TODO: confirm content-type override path with adapter.
+   * GET /pub/race-skip-all-liability-html?race_id=X — waiver HTML template.
+   * Returns full legal HTML for WebView display before user signs.
    */
-  async submitSignedDisclaimer(input: {
-    codeValue: string;
-    signedHtml: string;
-    delegator?: {
-      name: string;
-      email: string;
-      phone: string;
-      cccd: string;
-    };
-  }): Promise<void> {
-    const params = input.delegator
+  async getWaiverTemplate(raceId: string): Promise<string> {
+    const raw = await network().get<{ data: string } | string>(
+      '/pub/race-skip-all-liability-html',
+      { params: { race_id: raceId } },
+    );
+    if (typeof raw === 'string') return raw;
+    return raw.data ?? '';
+  },
+
+  /**
+   * GET /pub/ticket-by-code/{secretCode} — lookup ticket by secret share link.
+   * Used when user opens shared waiver link from email.
+   */
+  async getTicketBySecretCode(secretCode: string): Promise<unknown> {
+    const raw = await network().get<{ data: unknown }>(
+      `/pub/ticket-by-code/${secretCode}`,
+    );
+    return raw.data;
+  },
+
+  /**
+   * POST /pub/aggree-skip-liability/{secretCode} 🔥 SIGN WAIVER.
+   *
+   * ⚠️ Body Content-Type is `text/html`, NOT JSON.
+   * ⚠️ "aggree" typo INTENTIONAL — backend endpoint, do not fix.
+   * ⚠️ Delegator params in QUERY (URL-encoded), not body.
+   *
+   * @param secretCode  Path param: `{athlete_id}-{long_hash}` format
+   * @param htmlBody    Filled HTML waiver content
+   * @param delegator   Optional adult-signing-for-minor delegator metadata
+   */
+  async signWaiver(
+    secretCode: string,
+    htmlBody: string,
+    delegator?: { name: string; email: string; cccd: string; phone?: string },
+  ): Promise<void> {
+    const params = delegator
       ? {
-          delegator_name: input.delegator.name,
-          delegator_email: input.delegator.email,
-          delegator_phone: input.delegator.phone,
-          delegator_cccd: input.delegator.cccd,
+          delegator_name: delegator.name,
+          delegator_email: delegator.email.trim().toLowerCase(),
+          delegator_cccd: delegator.cccd,
+          ...(delegator.phone && { delegator_phone: delegator.phone }),
         }
       : undefined;
 
     await network().post(
-      `/pub/aggree-skip-liability/${input.codeValue}`,
-      input.signedHtml,
+      `/pub/aggree-skip-liability/${secretCode}`,
+      htmlBody,
       {
         headers: { 'Content-Type': 'text/html' },
         params,

@@ -79,7 +79,9 @@ export function normalizeTicket(raw: unknown): Ticket {
         }
       : undefined,
     // TODO: normalize athlete_basic_info subtree (athlete_represent, athlete_sub_info)
-    athleteBasicInfo: r.athlete_basic_info ?? r.athleteBasicInfo,
+    athleteBasicInfo: (r.athlete_basic_info ?? r.athleteBasicInfo) as
+      | Record<string, unknown>
+      | undefined,
     disclaimerStatus: r.disclaimer_status as boolean | undefined,
   };
 }

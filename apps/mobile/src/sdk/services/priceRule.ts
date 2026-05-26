@@ -1,74 +1,100 @@
 /**
  * apps/mobile/src/sdk/services/priceRule.ts
  *
- * Price rule / discount code service.
- * Wraps backend discount validation + early-bird pricing windows.
+ * Price rule / discount code service. Wraps backend `/price_rule/*` endpoints.
  *
- * Source: 01-ba-prd-epic-3-checkout.md (discount code + price rules)
- * TODO: confirm exact backend endpoints with team — web does not have a
- * standalone price-rule module today (logic is embedded in order create).
+ * Source: docs/API_REFERENCE.md "EPIC-3 Checkout" (price_rule sub-endpoints).
+ *
+ * NOTE: The order service (services/order.ts) also exposes `getDiscountByCode`
+ * + `listDiscounts` for convenience inside checkout flow. This service is the
+ * lower-level wrapper for standalone discount lookup.
  */
 import { network } from '../core';
-import type { DiscountCheckResponse } from '../models';
 
 export interface PriceRule {
   id: string;
-  courseId: string;
-  price: number;
-  currency: 'VND';
-  startDate: string;
-  endDate: string;
-  label?: string; // e.g. "Early Bird", "Regular", "Late Reg"
+  raceId?: string;
+  title: string;
+  /** Discount amount (positive number) — meaning depends on `type`. */
+  value?: number;
+  /** Discount type: percentage / fixed amount. */
+  type?: 'percentage' | 'fixed';
+  startDate?: string;
+  endDate?: string;
+  usageLimit?: number;
+  usedCount?: number;
+}
+
+function normalizePriceRule(raw: unknown): PriceRule {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    id: String(r.id ?? r.price_rule_id ?? ''),
+    raceId: r.race_id != null ? String(r.race_id) : undefined,
+    title: String(r.title ?? r.code ?? ''),
+    value: (r.value as number | undefined) ?? (r.amount as number | undefined),
+    type: r.type as PriceRule['type'],
+    startDate: (r.start_date as string | undefined) ?? (r.startDate as string | undefined),
+    endDate: (r.end_date as string | undefined) ?? (r.endDate as string | undefined),
+    usageLimit: r.usage_limit as number | undefined,
+    usedCount: r.used_count as number | undefined,
+  };
 }
 
 export const priceRule = {
   /**
-   * GET /price-rule?course_id=... — list pricing windows for a course.
-   * TODO: confirm endpoint path with backend.
+   * GET /price_rule/detail?title=X — lookup a single discount by code/title.
+   * Returns null if not found (backend may 200 + success:false OR 404 — both
+   * map to null).
    */
-  async listPriceRulesByCourse(courseId: string): Promise<PriceRule[]> {
-    const raw = await network().get<{ data: unknown[] }>('/price-rule', {
-      params: { course_id: courseId },
-    });
-    // TODO: normalize snake_case → camelCase
-    return (raw.data as PriceRule[]) ?? [];
+  async getByCode(code: string): Promise<PriceRule | null> {
+    try {
+      const raw = await network().get<{ data: unknown; success?: boolean }>(
+        '/price_rule/detail',
+        { params: { title: code }, noRetry: true },
+      );
+      if (raw.success === false || !raw.data) return null;
+      return normalizePriceRule(raw.data);
+    } catch {
+      return null;
+    }
   },
 
   /**
-   * Validate discount code against a given order context.
-   * TODO: confirm endpoint — may be wrapped inside `/order/create`.
+   * GET /price_rule/list?race_id=X&pageNo=1&pageSize=10 — paginated list.
    */
-  async validateDiscountCode(input: {
-    code: string;
-    raceId: string;
-    courseId: string;
-  }): Promise<DiscountCheckResponse> {
-    try {
-      const raw = await network().get<{
-        data: {
-          valid: boolean;
-          discount_amount?: number;
-          discount_percent?: number;
-          error_code?: string;
-        };
-      }>('/discount/check', {
-        params: {
-          code: input.code,
-          race_id: input.raceId,
-          course_id: input.courseId,
-        },
-        noRetry: true,
-      });
+  async listByRace(
+    raceId: string,
+    pageNo: number = 1,
+    pageSize: number = 10,
+  ): Promise<PriceRule[]> {
+    const raw = await network().get<{
+      data: unknown[] | { list?: unknown[] };
+    }>('/price_rule/list', {
+      params: { race_id: raceId, pageNo, pageSize },
+    });
+    const list = Array.isArray(raw.data) ? raw.data : (raw.data?.list ?? []);
+    return list.map(normalizePriceRule);
+  },
 
-      return {
-        valid: raw.data.valid,
-        discountAmount: raw.data.discount_amount,
-        discountPercent: raw.data.discount_percent,
-        errorCode: raw.data.error_code as DiscountCheckResponse['errorCode'],
-      };
-    } catch (err) {
-      // TODO: map error responses to DiscountCheckResponse.errorCode enum.
-      return { valid: false, errorCode: 'NOT_FOUND' };
+  /**
+   * GET /price_rule/find-one?text=X&race_id=Y — legacy lookup (web parity).
+   * Preferred call is `getByCode` — this is kept for parity with selling-web.
+   */
+  async findOne(text: string, raceId?: string): Promise<PriceRule | null> {
+    try {
+      const raw = await network().get<{ data: unknown }>(
+        '/price_rule/find-one',
+        {
+          params: {
+            text,
+            ...(raceId !== undefined && { race_id: raceId }),
+          },
+          noRetry: true,
+        },
+      );
+      return raw.data ? normalizePriceRule(raw.data) : null;
+    } catch {
+      return null;
     }
   },
 };

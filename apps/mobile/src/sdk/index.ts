@@ -55,6 +55,12 @@ export type {
 export { athlete } from './services/athlete';
 export type { ListResultsResponse } from './services/athlete';
 
+export { profile } from './services/profile';
+export type {
+  CreateProfileInput,
+  UpdateProfileInput,
+} from './services/profile';
+
 export { eWaiver } from './services/e-waiver';
 
 export { upload, initUploadClient } from './services/upload';
@@ -63,8 +69,22 @@ export type { UploadFile } from './services/upload';
 export { priceRule } from './services/priceRule';
 export type { PriceRule } from './services/priceRule';
 
+export { payment } from './services/payment';
+
+export { property } from './services/property';
+export type { PropertyResponse } from './services/property';
+
+export { province } from './services/province';
+
+export { result } from './services/result';
+export type { ListMyResultsParams } from './services/result';
+
+export { request } from './services/request';
+export type { ReportDnfInput, RequestType } from './services/request';
+
 // --- Normalizers (exported for tests + advanced consumers) ---
 export { normalizeLoginResponse, normalizeUser } from './normalize/auth';
+export type { LegacyLoginResponse } from './normalize/auth';
 export { normalizeOrder } from './normalize/order';
 export { normalizeTicket } from './normalize/ticket';
 

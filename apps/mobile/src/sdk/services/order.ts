@@ -1,10 +1,14 @@
 /**
  * apps/mobile/src/sdk/services/order.ts
  *
- * Order / checkout service. Includes payment gateway URL building.
+ * Order / checkout service.
  *
- * Source: 01-ba-prd-epic-3-checkout.md
- * Backend typo: `finalcial_status` — normalizer fixes to `financialStatus`.
+ * Source: docs/API_REFERENCE.md "EPIC-3 Checkout (Order + Payment)".
+ *         01-ba-prd-epic-3-checkout.md
+ *
+ * ⚠️ Backend typo: `finalcial_status` — normalizer fixes to `financialStatus`.
+ * ⚠️ POST /order/create uses BOTH query param (`race_id`) AND body (`{order: {...}}`).
+ * ⚠️ NO idempotency-key — mobile MUST debounce double-tap on submit.
  */
 import { network } from '../core';
 import type {
@@ -12,9 +16,7 @@ import type {
   OrderCreateInput,
   OrderCreateResponse,
   Pagination,
-  DiscountCheckResponse,
 } from '../models';
-import { PaymentMethod } from '../constants/payment';
 import { normalizeOrder } from '../normalize/order';
 
 export interface ListMyOrdersParams {
@@ -31,10 +33,102 @@ export interface ListMyOrdersResponse {
   pagination: Pagination;
 }
 
+/** Backend gender enum (uppercase). */
+type BackendGender = 'MALE' | 'FEMALE' | 'UNKNOWN';
+
+function toBackendGender(g: string): BackendGender {
+  const v = g.toUpperCase();
+  if (v === 'MALE' || v === 'FEMALE' || v === 'UNKNOWN') return v;
+  if (v === 'OTHER') return 'UNKNOWN';
+  return 'UNKNOWN';
+}
+
+/**
+ * Map clean AthleteCreatePayload → backend `athlete_sub_info` entry.
+ * Mixed snake/camel per docs/API_REFERENCE.md EPIC-3.
+ */
+function mapAthleteToSubInfo(
+  a: OrderCreateInput['athlete'],
+): Record<string, unknown> {
+  return {
+    email: a.email.trim().toLowerCase(),
+    name: `${a.firstName} ${a.lastName}`.trim(),
+    first_name: a.firstName,
+    last_name: a.lastName,
+    contact_phone: a.phone,
+    id_number: a.idNumber,
+    nationality: a.nationality,
+    gender: toBackendGender(a.gender),
+    dob: a.dob,
+    tshirt_size: a.tshirtSize,
+    racekit: a.racekit,
+    address: a.address ?? '',
+    name_on_bib: a.nameOnBib,
+    // Web format: "<phone>-<name>" — keep parity until backend confirms otherwise
+    sosPhone: `${a.emergencyContactPhone}-${a.emergencyContactName}`,
+    sos_phone: `${a.emergencyContactPhone}-${a.emergencyContactName}`,
+    blood_type: a.bloodType ?? '',
+    medical_info: a.medicalInformation ?? '',
+    current_medication: a.currentMedication ?? '',
+    club: a.club ?? '',
+    achievements: a.achievements ?? '',
+  };
+}
+
 export const order = {
   /**
-   * GET /order — current user's orders.
-   * Note: backend field `finalcial_status` (typo) maps to clean `financialStatus`.
+   * POST /order/create?race_id=X — create a new order.
+   * Body: `{ order: { ...rich schema } }`. See API_REFERENCE EPIC-3.
+   * ⚠️ noRetry — order creation is NOT idempotent.
+   */
+  async createOrder(input: OrderCreateInput): Promise<OrderCreateResponse> {
+    const subInfo = mapAthleteToSubInfo(input.athlete);
+
+    const body = {
+      order: {
+        email: input.athlete.email.trim().toLowerCase(),
+        included_insurance: false,
+        financial_status: 'pending',
+        send_receipt: true,
+        send_fulfillment_receipt: true,
+        currency: 'VND',
+        tags: '',
+        status: 'open',
+        discount_codes: input.discountCode
+          ? [{ code: input.discountCode }]
+          : [],
+        line_items: [
+          {
+            quantity: 1,
+            // Backend uses `variant_id` (legacy product variant); courseId
+            // serves dual purpose for our SDK. TODO: split into variantId
+            // + ticketTypeId once mobile flow uses /pub/ticket-type/by-variant.
+            variant_id: Number(input.courseId),
+            ticket_type_id: undefined,
+            athlete_sub_info: [subInfo],
+          },
+        ],
+      },
+    };
+
+    const raw = await network().post<{
+      data: { order_id: string | number; total?: number; total_amount?: number };
+    }>('/order/create', body, {
+      params: { race_id: input.raceId },
+      noRetry: true,
+    });
+
+    return {
+      orderId: String(raw.data.order_id),
+      totalAmount: Number(raw.data.total ?? raw.data.total_amount ?? 0),
+      status: 'pending',
+    };
+  },
+
+  /**
+   * GET /order — list current user's orders.
+   * Filter `internal_status`: COMPLETE / PENDING / CANCELLED (others TBD).
+   * Backend typo preserved on wire: `finalcial_status` (sic).
    */
   async listMyOrders(
     params: ListMyOrdersParams = {},
@@ -71,34 +165,7 @@ export const order = {
   },
 
   /**
-   * POST /order/create?race_id=... — create a new order.
-   * TODO: map clean OrderCreateInput → legacy backend payload
-   * (athlete fields snake_case, sosPhone format, name composition).
-   */
-  async createOrder(input: OrderCreateInput): Promise<OrderCreateResponse> {
-    // TODO: extract athlete mapper (similar to web `mapFormDataToPayload`)
-    const legacyPayload = {
-      race_course_id: input.courseId,
-      // ... athlete fields snake_case
-      discount_code: input.discountCode,
-    };
-
-    const raw = await network().post<{
-      data: { order_id: string | number; total_amount: number };
-    }>('/order/create', legacyPayload, {
-      params: { race_id: input.raceId },
-      noRetry: true, // idempotency-sensitive
-    });
-
-    return {
-      orderId: String(raw.data.order_id),
-      totalAmount: raw.data.total_amount,
-      status: 'pending',
-    };
-  },
-
-  /**
-   * GET /order/by-id?order_id=... — order detail.
+   * GET /order/by-id?order_id=X — order detail.
    */
   async getOrderById(orderId: string): Promise<Order> {
     const raw = await network().get<{ data: unknown }>('/order/by-id', {
@@ -108,69 +175,75 @@ export const order = {
   },
 
   /**
-   * Build payment gateway URL.
-   * Web routes to different endpoints per method:
-   *   - VNPay family (VN_BANK, INT_CARD, VNPAY_QR) → `/vnpay/payment`
-   *   - PayX (PAYX_DOMESTIC_CARD, PAYX_QR)        → `/payx/payment`
-   *   - PAYOO                                      → `/payoo/payment`
-   *   - Others (Momo, Zalo, OnePay, ...)           → `/{method}/payment`
+   * PUT /order/update?order_id=X — update order line items / email.
    */
-  async getCheckoutUrl(input: {
-    orderId: string;
-    method: PaymentMethod;
-    returnUrl: string;
-  }): Promise<string> {
-    const { orderId, method, returnUrl } = input;
+  async updateOrder(
+    orderId: string,
+    input: { email?: string; lineItems?: unknown[] },
+  ): Promise<void> {
+    const body: Record<string, unknown> = {};
+    if (input.email !== undefined) body.email = input.email;
+    if (input.lineItems !== undefined) body.line_items = input.lineItems;
+    await network().put('/order/update', body, {
+      params: { order_id: orderId },
+      noRetry: true,
+    });
+  },
 
-    const endpoint = isVNPayFamily(method)
-      ? '/vnpay/payment'
-      : isPayX(method)
-        ? '/payx/payment'
-        : method === PaymentMethod.PAYOO
-          ? '/payoo/payment'
-          : `/${method}/payment`;
+  /**
+   * DELETE /order/delete?order_id=X — cancel order.
+   */
+  async cancelOrder(orderId: string): Promise<void> {
+    await network().delete('/order/delete', undefined, {
+      params: { order_id: orderId },
+      noRetry: true,
+    });
+  },
 
-    const params: Record<string, unknown> = isVNPayFamily(method)
-      ? { order_id: orderId, returnUrl, vnp_BankCode: method }
-      : isPayX(method)
-        ? { order_id: orderId, return_url: returnUrl, payment_method: method }
-        : { order_id: orderId, returnUrl };
+  /**
+   * POST /order/fake-payment — DEV ONLY mark order as paid.
+   * 🚨 DO NOT SHIP TO PROD. Used by mobile dev for testing WebView flow
+   * without going through real gateway.
+   */
+  async fakePayment(
+    orderId: string,
+    amount: number,
+    email: string,
+  ): Promise<void> {
+    await network().post('/order/fake-payment', null, {
+      params: {
+        order_id: orderId,
+        amount,
+        email: email.trim().toLowerCase(),
+      },
+      noRetry: true,
+    });
+  },
 
-    const raw = await network().get<{ data: string }>(endpoint, { params });
+  /**
+   * GET /price_rule/detail?title=X — lookup discount code by title.
+   */
+  async getDiscountByCode(code: string): Promise<unknown> {
+    const raw = await network().get<{ data: unknown }>('/price_rule/detail', {
+      params: { title: code },
+    });
     return raw.data;
   },
 
   /**
-   * Check discount code validity.
-   * TODO: confirm exact endpoint with backend — web does not expose this
-   * as a separate call; check if `/discount/check` exists or if it's
-   * computed during `createOrder`.
+   * GET /price_rule/list?race_id=X&pageNo=1&pageSize=10 — list discounts for a race.
    */
-  async checkDiscountCode(input: {
-    code: string;
-    raceId: string;
-    courseId: string;
-  }): Promise<DiscountCheckResponse> {
-    // TODO: implement once backend endpoint confirmed
-    const raw = await network().get<{ data: unknown }>('/discount/check', {
-      params: {
-        code: input.code,
-        race_id: input.raceId,
-        course_id: input.courseId,
-      },
+  async listDiscounts(
+    raceId: string,
+    pageNo: number = 1,
+    pageSize: number = 10,
+  ): Promise<unknown[]> {
+    const raw = await network().get<{
+      data: unknown[] | { list?: unknown[] };
+    }>('/price_rule/list', {
+      params: { race_id: raceId, pageNo, pageSize },
     });
-    return raw.data as DiscountCheckResponse;
+    if (Array.isArray(raw.data)) return raw.data;
+    return raw.data?.list ?? [];
   },
 };
-
-function isVNPayFamily(m: PaymentMethod): boolean {
-  return (
-    m === PaymentMethod.VN_BANK ||
-    m === PaymentMethod.INT_CARD ||
-    m === PaymentMethod.VNPAY_QR
-  );
-}
-
-function isPayX(m: PaymentMethod): boolean {
-  return m === PaymentMethod.PAYX_DOMESTIC_CARD || m === PaymentMethod.PAYX_QR;
-}

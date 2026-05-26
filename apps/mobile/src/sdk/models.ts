@@ -16,21 +16,73 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  /** Defaults to `'ROLE_NORMAL_USER'` when backend omits role. */
   role: string;
   avatar: string | null;
   locale: 'vi' | 'en' | 'de';
+  // Profile fields (BaseUserDTO from EPIC-1) — all optional, may be absent on initial login
+  firstName?: string;
+  lastName?: string;
   phone?: string;
+  countryCode?: string;
   dob?: string;
-  gender?: 'male' | 'female' | 'other';
+  gender?: 'male' | 'female' | 'other' | 'MALE' | 'FEMALE' | 'UNKNOWN';
   nationality?: string;
   address?: string;
+  cityProvince?: string;
+  idNumber?: string;
+  racekit?: string;
+  achievements?: string;
+  club?: string;
+  height?: string;
+  weight?: string;
+  bloodGroup?: string;
+  sosPhone?: string;
+  sosPhoneCountryCode?: string;
+  medicalInfo?: string;
+  currentMedication?: string;
+  stravaId?: number | null;
 }
 
 export interface LoginResponse {
   token: string;
-  refreshToken?: string;
   user: User;
 }
+
+/**
+ * Apple Sign-In input shape. Mobile native SDK gives `identityToken` directly;
+ * backend uses OAuth `authorizationCode` flow as fallback. SDK adapter tries
+ * 3 variants — see services/user.ts `appleLogin`.
+ */
+export interface AppleSignInInput {
+  identityToken: string;
+  authorizationCode?: string;
+  fullName?: { givenName?: string; familyName?: string };
+  email?: string;
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
+/**
+ * Confirmation payload for `deleteAccount`. Mobile UI BẮT BUỘC double-confirm
+ * (type phrase + re-enter password). See BR-AUTH-19/20/21/22.
+ */
+export interface DeleteAccountConfirm {
+  /** User must re-type the phrase shown in UI (e.g. "XOA TAI KHOAN"). */
+  confirmPhrase: string;
+  /** User's current password for re-authentication. */
+  password: string;
+}
+
+/**
+ * Payment gateway IDs (lowercase canonical form used by backend URL path).
+ * Distinct from `PaymentMethod` enum (which carries UI option granularity).
+ */
+export type PaymentGateway = 'vnpay' | 'payx' | 'payoo' | 'onepay';
 
 // ---------------------------------------------------------------------------
 // Race / Browsing (EPIC-2)
@@ -208,7 +260,7 @@ export interface Ticket {
     rollingBibValidUntil?: string;
     availableToRoll?: boolean;
   };
-  athleteBasicInfo?: any;
+  athleteBasicInfo?: Record<string, unknown>;
   disclaimerStatus?: boolean;
 }
 
@@ -236,6 +288,31 @@ export interface MyResultItem {
   medal?: 'gold' | 'silver' | 'bronze' | null;
 }
 
+/** Clean result row from `GET /athlete/result`. */
+export interface RaceResultRow {
+  id: string;
+  athleteId?: string;
+  raceId?: string;
+  courseId?: string;
+  bib?: string;
+  finishTime?: string;
+  rank?: number;
+  rankAgeGroup?: number;
+  status?: string;
+  certificateUrl?: string;
+  raceName?: string;
+  courseName?: string;
+  raceDate?: string;
+}
+
+export interface MedalItem {
+  id: string;
+  raceId?: string;
+  imageUrl: string;
+  earnedAt?: string;
+  raceName?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Waiver (EPIC-6)
 // ---------------------------------------------------------------------------
@@ -243,6 +320,70 @@ export interface MyResultItem {
 export interface SigningRace {
   raceId: string;
   title: string;
+}
+
+// ---------------------------------------------------------------------------
+// Profile (saved personas for quick-fill, EPIC-4)
+// ---------------------------------------------------------------------------
+
+export interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  /** Backend stores extra fields as stringified JSON. */
+  detail?: Record<string, unknown> | string;
+}
+
+// ---------------------------------------------------------------------------
+// Province (VN address, EPIC-3 + EPIC-4)
+// ---------------------------------------------------------------------------
+
+export interface Province {
+  /** Province name (canonical key for downstream district/ward queries). */
+  name: string;
+  /** Numeric or string code (varies by env). */
+  code?: string;
+}
+
+export interface District {
+  name: string;
+  code?: string;
+  province?: string;
+}
+
+export interface Ward {
+  name: string;
+  code?: string;
+  district?: string;
+  province?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Athlete (clean) — used by /athlete/by-ticket-code etc.
+// ---------------------------------------------------------------------------
+
+export interface Athlete {
+  id: string;
+  email?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  contactPhone?: string;
+  idNumber?: string;
+  nationality?: string;
+  cityProvince?: string;
+  gender?: 'MALE' | 'FEMALE' | 'UNKNOWN';
+  dob?: string;
+  racekit?: string;
+  sosPhone?: string;
+  club?: string;
+  nameOnBib?: string;
+  medicalInfo?: string;
+  currentMedication?: string;
+  isRepresent?: boolean;
+  bib?: string;
+  disclaimerStatus?: boolean;
 }
 
 export interface SigningTicket {

@@ -2,11 +2,21 @@
  * apps/mobile/src/sdk/services/upload.ts
  *
  * File upload service (multipart/form-data).
- * Mobile passes RN file blob: `{ uri, name, type }` — different from web `File`.
+ * Mobile passes RN file blob: `{ uri, name, type }` (NOT browser `File`).
  *
- * TODO: confirm multipart payload format for RN with expo-image-picker output.
+ * Source: docs/API_REFERENCE.md "EPIC-7 Metadata + Config" (upload sub-endpoints).
+ *
+ * NOTE: `uploadAvatar` lives on `user` service (services/user.ts) per P0
+ * scope — because it carries the `type=BACK_HASH` form field + the
+ * post-upload `updateUserInfo` chain.
+ *
+ * Two clients here:
+ *   - `network()` (core Fetcher) for endpoints that need bearer auth
+ *   - `initUploadClient(...)` (separate axios) preserved for legacy callers
+ *     who want a longer 30s timeout + different defaults
  */
 import axios, { AxiosInstance } from 'axios';
+import { network } from '../core';
 
 /** File descriptor accepted from RN (expo-image-picker / expo-document-picker). */
 export interface UploadFile {
@@ -18,8 +28,9 @@ export interface UploadFile {
 let uploadClient: AxiosInstance | null = null;
 
 /**
- * Initialize the multipart client. Called from `sdk-init.ts`.
- * Separate from core Fetcher because content-type and timeout differ.
+ * Initialize the multipart client. Optional — only needed if caller wants the
+ * legacy 30s-timeout axios path. Most callers should use `upload.*` methods
+ * which go through the core Fetcher.
  */
 export function initUploadClient(baseURL: string): AxiosInstance {
   uploadClient = axios.create({
@@ -30,43 +41,82 @@ export function initUploadClient(baseURL: string): AxiosInstance {
   return uploadClient;
 }
 
-function client(): AxiosInstance {
-  if (!uploadClient) {
-    throw new Error(
-      '[@5bib/sdk] Upload client not initialized. Call initUploadClient() at startup.',
-    );
+/** Build a FormData for RN multipart upload. */
+function buildForm(file: UploadFile, extraFields?: Record<string, string>): FormData {
+  const form = new FormData();
+  // RN FormData accepts the `{ uri, name, type }` object directly
+  form.append('file', file as unknown as Blob);
+  if (extraFields) {
+    for (const [k, v] of Object.entries(extraFields)) {
+      form.append(k, v);
+    }
   }
-  return uploadClient;
+  return form;
+}
+
+/** Pluck URL from the various response envelopes backend returns. */
+function pickUrl(data: { url?: string } | string | undefined): string {
+  if (typeof data === 'string') return data;
+  return data?.url ?? '';
 }
 
 export const upload = {
   /**
-   * POST /upload/avatar — authenticated avatar upload.
+   * POST /upload/free — anonymous upload (e.g. waiver signature).
    * Returns the uploaded file URL.
    */
-  async uploadAvatar(input: {
-    file: UploadFile;
-    token: string;
-  }): Promise<string> {
-    const form = new FormData();
-    // RN FormData accepts the `{ uri, name, type }` object directly
-    form.append('file', input.file as unknown as Blob);
-    const res = await client().post<{ data: string }>('/upload/avatar', form, {
-      headers: {
-        Authorization: `Bearer ${input.token}`,
-        'Content-Type': 'multipart/form-data',
+  async uploadFree(file: UploadFile): Promise<{ url: string }> {
+    const raw = await network().post<{ data: { url?: string } | string }>(
+      '/upload/free',
+      buildForm(file),
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        noRetry: true,
       },
-    });
-    return res.data.data;
+    );
+    return { url: pickUrl(raw.data) };
   },
 
   /**
-   * POST /upload/free — anonymous upload (e.g. signature image).
+   * POST /upload/image — generic image upload (with backend processing).
    */
-  async uploadFree(file: UploadFile): Promise<string> {
-    const form = new FormData();
-    form.append('file', file as unknown as Blob);
-    const res = await client().post<{ data: string }>('/upload/free', form);
-    return res.data.data;
+  async uploadImage(file: UploadFile): Promise<{ url: string }> {
+    const raw = await network().post<{ data: { url?: string } | string }>(
+      '/upload/image',
+      buildForm(file),
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        noRetry: true,
+      },
+    );
+    return { url: pickUrl(raw.data) };
+  },
+
+  /**
+   * POST /upload/image/url-decode — upload an image from base64 string.
+   * Payload: `{ image: "<base64>" }` (assumed — probe live to confirm field name).
+   */
+  async uploadImageBase64(base64: string): Promise<{ url: string }> {
+    const raw = await network().post<{ data: { url?: string } | string }>(
+      '/upload/image/url-decode',
+      { image: base64 },
+      { noRetry: true },
+    );
+    return { url: pickUrl(raw.data) };
+  },
+
+  /**
+   * POST /upload/id_card_image — KYC ID document upload.
+   */
+  async uploadIdCard(file: UploadFile): Promise<{ url: string }> {
+    const raw = await network().post<{ data: { url?: string } | string }>(
+      '/upload/id_card_image',
+      buildForm(file),
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        noRetry: true,
+      },
+    );
+    return { url: pickUrl(raw.data) };
   },
 };

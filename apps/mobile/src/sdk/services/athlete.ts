@@ -1,67 +1,164 @@
 /**
  * apps/mobile/src/sdk/services/athlete.ts
  *
- * Athlete service — registration, check-in, profile by ticket, results.
+ * Athlete service — registration, check-in, profile by ticket, BIB image,
+ * medals, transfer, rolling-BIB.
  *
- * Source: 01-ba-prd-epic-3-checkout.md, 01-ba-prd-epic-4-tickets.md,
- * 01-ba-prd-epic-5-result.md
+ * Source: docs/API_REFERENCE.md "EPIC-4 Tickets / BIB / Athlete".
+ *         01-ba-prd-epic-3-checkout.md, 01-ba-prd-epic-4-tickets.md,
+ *         01-ba-prd-epic-5-result.md
  */
 import { network } from '../core';
-import type { AthleteCreatePayload, MyResultItem, Pagination } from '../models';
+import type {
+  Athlete,
+  AthleteCreatePayload,
+  MedalItem,
+  MyResultItem,
+  Pagination,
+} from '../models';
 
 export interface ListResultsResponse {
   items: MyResultItem[];
   pagination: Pagination;
 }
 
+type BackendGender = 'MALE' | 'FEMALE' | 'UNKNOWN';
+
+function toBackendGender(g: string): BackendGender {
+  const v = g.toUpperCase();
+  if (v === 'MALE' || v === 'FEMALE' || v === 'UNKNOWN') return v;
+  if (v === 'OTHER') return 'UNKNOWN';
+  return 'UNKNOWN';
+}
+
+/**
+ * Clean AthleteCreatePayload → backend `/athlete/register` body.
+ * Send BOTH `sosPhone` (camel) AND `sos_phone` (snake) for safety —
+ * matches the EPIC-4 register schema in API_REFERENCE.
+ */
+function mapAthleteToLegacy(
+  a: AthleteCreatePayload,
+  isRepresent: boolean = false,
+): Record<string, unknown> {
+  const fullName = `${a.firstName} ${a.lastName}`.trim();
+  return {
+    email: a.email.trim().toLowerCase(),
+    name: fullName,
+    first_name: a.firstName,
+    last_name: a.lastName,
+    contact_phone: a.phone,
+    id_number: a.idNumber,
+    idpp: a.idNumber, // backend accepts ID passport (or CCCD again)
+    nationality: a.nationality,
+    gender: toBackendGender(a.gender),
+    dob: a.dob,
+    address: a.address ?? '',
+    racekit: a.racekit,
+    sosPhone: `${a.emergencyContactPhone}-${a.emergencyContactName}`,
+    sos_phone: `${a.emergencyContactPhone}-${a.emergencyContactName}`,
+    club: a.club ?? '',
+    name_on_bib: a.nameOnBib,
+    medical_info: a.medicalInformation ?? '',
+    current_medication: a.currentMedication ?? '',
+    blood_type: a.bloodType ?? '',
+    achievements: a.achievements ?? '',
+    athlete_represent: {},
+    disclaimer_status: false,
+    is_represent: isRepresent,
+    customize_fields: null,
+  };
+}
+
+function normalizeAthlete(raw: unknown): Athlete {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    id: String(r.id ?? r.athlete_id ?? ''),
+    email: r.email as string | undefined,
+    name: r.name as string | undefined,
+    firstName: (r.first_name as string | undefined) ?? (r.firstName as string | undefined),
+    lastName: (r.last_name as string | undefined) ?? (r.lastName as string | undefined),
+    contactPhone: (r.contact_phone as string | undefined) ?? (r.contactPhone as string | undefined),
+    idNumber: (r.id_number as string | undefined) ?? (r.idNumber as string | undefined),
+    nationality: r.nationality as string | undefined,
+    cityProvince: (r.city_province as string | undefined) ?? (r.cityProvince as string | undefined),
+    gender: r.gender as Athlete['gender'],
+    dob: r.dob as string | undefined,
+    racekit: r.racekit as string | undefined,
+    sosPhone: (r.sosPhone as string | undefined) ?? (r.sos_phone as string | undefined),
+    club: r.club as string | undefined,
+    nameOnBib: (r.name_on_bib as string | undefined) ?? (r.nameOnBib as string | undefined),
+    medicalInfo: (r.medical_info as string | undefined) ?? (r.medicalInfo as string | undefined),
+    currentMedication:
+      (r.current_medication as string | undefined) ?? (r.currentMedication as string | undefined),
+    isRepresent: Boolean(r.is_represent ?? r.isRepresent ?? false),
+    bib: r.bib as string | undefined,
+    disclaimerStatus: r.disclaimer_status as boolean | undefined,
+  };
+}
+
 export const athlete = {
   /**
-   * GET /athlete/by-ticket-code?code_value=...
+   * POST /athlete/register?code_value=X — claim a ticket by registering
+   * athlete info. EPIC-4 main flow.
    */
-  async getAthleteByTicketCode(ticketCode: string): Promise<unknown> {
-    const raw = await network().get<{ data: unknown }>(
-      '/athlete/by-ticket-code',
-      { params: { code_value: ticketCode } },
+  async registerAthlete(
+    codeValue: string,
+    payload: AthleteCreatePayload,
+  ): Promise<void> {
+    await network().post(
+      '/athlete/register',
+      mapAthleteToLegacy(payload, false),
+      {
+        params: { code_value: codeValue },
+        noRetry: true,
+      },
     );
-    // TODO: implement athlete normalizer (snake_case → camelCase)
-    return raw.data;
   },
 
   /**
-   * POST /athlete/register?code_value=... — submit athlete info for a ticket.
-   * TODO: map clean AthleteCreatePayload → legacy backend shape
-   * (port web `mapFormDataToPayload`: sosPhone composition, name composition,
-   * nested guardian fields with `guardian_` prefix).
+   * POST /athlete/register/represent?code_value=X — register for someone else.
+   * Sets `is_represent=true` + populates `athlete_represent`.
    */
-  async registerAthlete(input: {
-    codeValue: string;
-    athlete: AthleteCreatePayload;
-  }): Promise<void> {
-    // TODO: extract `mapAthleteToLegacy` shared util
-    await network().post('/athlete/register', mapAthleteToLegacy(input.athlete), {
-      params: { code_value: input.codeValue },
-      noRetry: true,
-    });
+  async registerRepresent(
+    codeValue: string,
+    payload: AthleteCreatePayload,
+  ): Promise<void> {
+    await network().post(
+      '/athlete/register/represent',
+      mapAthleteToLegacy(payload, true),
+      {
+        params: { code_value: codeValue },
+        noRetry: true,
+      },
+    );
   },
 
   /**
-   * POST /athlete/register/represent — register as delegator.
+   * POST /athlete/transfer?code_value=X&receipt_email=Y — transfer ticket.
+   * BR-TICKETS-20: 8 possible error codes (mapped in transfer-error-codes.ts).
    */
-  async registerRepresent(input: {
-    codeValue: string;
-    payload: Record<string, unknown>;
-  }): Promise<void> {
-    // TODO: map clean payload → legacy
-    await network().post('/athlete/register/represent', input.payload, {
-      params: { code_value: input.codeValue },
-      noRetry: true,
-    });
+  async transferTicket(
+    codeValue: string,
+    receiptEmail: string,
+    message?: string,
+  ): Promise<void> {
+    await network().post(
+      '/athlete/transfer',
+      { message: message ?? '' },
+      {
+        params: {
+          code_value: codeValue,
+          receipt_email: receiptEmail.trim().toLowerCase(),
+        },
+        noRetry: true,
+      },
+    );
   },
 
   /**
-   * POST /athlete/checkin?code_value=... — staff check-in flow.
+   * POST /athlete/checkin?code_value=X — race-day check-in (no body).
    */
-  async checkIn(codeValue: string): Promise<void> {
+  async checkin(codeValue: string): Promise<void> {
     await network().post('/athlete/checkin', null, {
       params: { code_value: codeValue },
       noRetry: true,
@@ -69,38 +166,52 @@ export const athlete = {
   },
 
   /**
-   * GET /athlete/result — user's personal race results (paginated).
+   * PUT /athlete/rolling-bib?course_id=X&code=Y&confirmed=BOOL — rolling-BIB
+   * gamification: randomly assign BIB number.
+   *   - confirmed=false: preview (rolls but not commit)
+   *   - confirmed=true: commit assignment
    */
-  async getMyResults(input: {
-    sortDirection?: 'ASC' | 'DESC';
-    pageNo?: number;
-    pageSize?: number;
-  } = {}): Promise<ListResultsResponse> {
-    const { sortDirection = 'DESC', pageNo = 1, pageSize = 10 } = input;
-    const raw = await network().get<{
-      data: {
-        list: unknown[];
-        totalPages: number;
-        currentPage: number;
-        totalCount?: number;
-      };
-    }>('/athlete/result', {
-      params: { sortDirection, pageNo, pageSize },
-    });
-    // TODO: implement result normalizer
-    return {
-      items: (raw.data.list as MyResultItem[]) ?? [],
-      pagination: {
-        currentPage: raw.data.currentPage,
-        totalPages: raw.data.totalPages,
-        pageSize,
-        totalCount: raw.data.totalCount,
+  async rollingBib(
+    courseId: string,
+    code: string,
+    confirmed: boolean,
+  ): Promise<unknown> {
+    const raw = await network().put<{ data: unknown }>(
+      '/athlete/rolling-bib',
+      null,
+      {
+        params: { course_id: courseId, code, confirmed },
+        noRetry: true,
       },
-    };
+    );
+    return raw.data;
   },
 
   /**
-   * GET /athlete/story-image — share-card image for social.
+   * GET /athlete/by-ticket-code?code_value=X — lookup athlete info by ticket.
+   */
+  async getAthleteByTicketCode(codeValue: string): Promise<Athlete | null> {
+    const raw = await network().get<{ data: unknown }>(
+      '/athlete/by-ticket-code',
+      { params: { code_value: codeValue } },
+    );
+    return raw.data ? normalizeAthlete(raw.data) : null;
+  },
+
+  /**
+   * GET /athlete/bib-image?athlete_id=X&is_fb=BOOL — share-card BIB image.
+   * `is_fb=true` returns FB-optimized variant.
+   */
+  async getBibImage(athleteId: string, isFb: boolean = false): Promise<string> {
+    const raw = await network().get<{ data: { url?: string } | string }>(
+      '/athlete/bib-image',
+      { params: { athlete_id: athleteId, is_fb: isFb } },
+    );
+    return typeof raw.data === 'string' ? raw.data : (raw.data?.url ?? '');
+  },
+
+  /**
+   * GET /athlete/story-image?athlete_id=X&code=Y&is_fb=BOOL — share story image.
    */
   async getStoryImage(input: {
     athleteId: string;
@@ -117,76 +228,75 @@ export const athlete = {
         },
       },
     );
-    // TODO: confirm response shape — web returns whole envelope, mobile needs URL
-    return typeof raw.data === 'string'
-      ? raw.data
-      : (raw.data?.url ?? '');
+    return typeof raw.data === 'string' ? raw.data : (raw.data?.url ?? '');
   },
 
   /**
-   * GET /athlete/bib-image — share BIB image.
+   * GET /athlete/all-medals — user's medal collection across all races.
    */
-  async getBibImage(input: {
-    athleteId: string;
-    code: string;
-    isFb?: boolean;
-  }): Promise<string> {
-    const raw = await network().get<{ data: { url?: string } | string }>(
-      '/athlete/bib-image',
-      {
-        params: {
-          athlete_id: input.athleteId,
-          code: input.code,
-          is_fb: input.isFb ?? false,
-        },
+  async getMyMedals(): Promise<MedalItem[]> {
+    const raw = await network().get<{
+      data: unknown[] | { list?: unknown[] };
+    }>('/athlete/all-medals');
+    const list = Array.isArray(raw.data) ? raw.data : (raw.data?.list ?? []);
+    return list.map((m): MedalItem => {
+      const r = (m ?? {}) as Record<string, unknown>;
+      return {
+        id: String(r.id ?? ''),
+        raceId: r.race_id != null ? String(r.race_id) : undefined,
+        imageUrl: String(r.image_url ?? r.imageUrl ?? r.url ?? ''),
+        earnedAt:
+          (r.earned_at as string | undefined) ??
+          (r.earnedAt as string | undefined),
+        raceName: (r.race_name as string | undefined) ?? (r.raceName as string | undefined),
+      };
+    });
+  },
+
+  /**
+   * GET /athlete/result — user's personal race results (paginated).
+   */
+  async getMyResults(
+    input: {
+      sortDirection?: 'ASC' | 'DESC';
+      pageNo?: number;
+      pageSize?: number;
+    } = {},
+  ): Promise<ListResultsResponse> {
+    const { sortDirection = 'DESC', pageNo = 1, pageSize = 10 } = input;
+    const raw = await network().get<{
+      data: {
+        list: unknown[];
+        totalPages: number;
+        currentPage: number;
+        totalCount?: number;
+      };
+    }>('/athlete/result', {
+      params: { sortDirection, pageNo, pageSize },
+    });
+    // TODO: implement result normalizer in normalize/ when screens demand it
+    return {
+      items: (raw.data.list as MyResultItem[]) ?? [],
+      pagination: {
+        currentPage: raw.data.currentPage,
+        totalPages: raw.data.totalPages,
+        pageSize,
+        totalCount: raw.data.totalCount,
       },
-    );
-    return typeof raw.data === 'string'
-      ? raw.data
-      : (raw.data?.url ?? '');
+    };
   },
 
   /**
-   * PUT /athlete/simple-edit?athlete_id=... — partial profile update.
+   * PUT /athlete/simple-edit?athlete_id=X — partial profile update.
+   * ⚠️ TBD which is canonical vs `/athlete/update/{id}` — probe live.
    */
-  async simpleEditAthlete(input: {
+  async simpleEdit(input: {
     athleteId: string;
     payload: Record<string, unknown>;
   }): Promise<void> {
-    // TODO: normalize payload shape
     await network().put('/athlete/simple-edit', input.payload, {
       params: { athlete_id: input.athleteId },
+      noRetry: true,
     });
   },
 };
-
-/**
- * Internal: clean AthleteCreatePayload → legacy backend shape.
- * Port from web `services/athlete/index.ts` `mapFormDataToPayload`.
- * TODO: complete this mapper — emergency contact format,
- * guardian field prefixes, racekit value vs object.
- */
-function mapAthleteToLegacy(a: AthleteCreatePayload): Record<string, unknown> {
-  return {
-    first_name: a.firstName,
-    last_name: a.lastName,
-    name: `${a.firstName} ${a.lastName}`,
-    email: a.email.trim().toLowerCase(),
-    contact_phone: a.phone,
-    dob: a.dob,
-    gender: a.gender,
-    nationality: a.nationality,
-    id_number: a.idNumber,
-    tshirt_size: a.tshirtSize,
-    racekit: a.racekit,
-    name_on_bib: a.nameOnBib,
-    // Web format: "<phone>-<name>" — confirm backend still expects this.
-    sosPhone: `${a.emergencyContactPhone}-${a.emergencyContactName}`,
-    blood_type: a.bloodType ?? '',
-    medical_info: a.medicalInformation ?? '',
-    current_medication: a.currentMedication ?? '',
-    address: a.address ?? '',
-    club: a.club ?? '',
-    achievements: a.achievements ?? '',
-  };
-}
