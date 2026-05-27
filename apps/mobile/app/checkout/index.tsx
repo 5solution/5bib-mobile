@@ -199,6 +199,50 @@ export default function CheckoutScreen() {
   const selectedCourse: RaceCourse | undefined = courses?.find(
     (c) => c.id === selectedCourseId,
   );
+  const subtotalEarly = selectedCourse?.price ?? 0;
+
+  // applyDiscount declared HERE (before early-return guards) so React hook
+  // count stays consistent across renders. Was at line ~261 → "Rendered more
+  // hooks than during the previous render" crash when courses loaded.
+  const applyDiscountCb = useCallback(async () => {
+    const code = discountCode.trim();
+    if (!code) return;
+    setDiscountError(null);
+    setDiscountValidating(true);
+    try {
+      const rule = (await priceRule.getByCode(code)) as
+        | { endDate?: string; value?: number; type?: 'percentage' | 'fixed' }
+        | null;
+      if (!rule) {
+        setDiscountApplied(null);
+        setDiscountError(t('checkout.errors.discountInvalid'));
+        toast.show({ variant: 'error', message: t('checkout.discount.invalid') });
+        return;
+      }
+      if (rule.endDate && Date.parse(rule.endDate) < Date.now()) {
+        setDiscountApplied(null);
+        setDiscountError(t('checkout.discount.expired'));
+        toast.show({ variant: 'error', message: t('checkout.discount.expired') });
+        return;
+      }
+      const value = rule.value ?? 0;
+      const amount = rule.type === 'percentage'
+        ? Math.round((subtotalEarly * value) / 100)
+        : value;
+      const next = { amount, code };
+      setDiscountApplied(next);
+      checkoutStore.applyDiscount({ code, amount, valid: true });
+      toast.show({
+        variant: 'success',
+        message: t('checkout.discountAppliedFmt', { amount: amount.toLocaleString('vi-VN') }),
+      });
+    } catch {
+      setDiscountApplied(null);
+      setDiscountError(t('errors.generic'));
+    } finally {
+      setDiscountValidating(false);
+    }
+  }, [discountCode, subtotalEarly, checkoutStore, t, toast]);
 
   // Loading / empty-state guard — shows spinner until courses load.
   if (!courses) {
@@ -258,44 +302,8 @@ export default function CheckoutScreen() {
     return true;
   };
 
-  const applyDiscount = useCallback(async () => {
-    const code = discountCode.trim();
-    if (!code) return;
-    setDiscountError(null);
-    setDiscountValidating(true);
-    try {
-      const rule = await priceRule.getByCode(code);
-      if (!rule) {
-        setDiscountApplied(null);
-        setDiscountError(t('checkout.errors.discountInvalid'));
-        toast.show({ variant: 'error', message: t('checkout.discount.invalid') });
-        return;
-      }
-      // Expiry guard.
-      if (rule.endDate && Date.parse(rule.endDate) < Date.now()) {
-        setDiscountApplied(null);
-        setDiscountError(t('checkout.discount.expired'));
-        toast.show({ variant: 'error', message: t('checkout.discount.expired') });
-        return;
-      }
-      // Resolve amount: fixed = absolute VND; percentage = % of subtotal.
-      const value = rule.value ?? 0;
-      const amount =
-        rule.type === 'percentage' ? Math.round((subtotal * value) / 100) : value;
-      const next = { amount, code };
-      setDiscountApplied(next);
-      checkoutStore.applyDiscount({ code, amount, valid: true });
-      toast.show({
-        variant: 'success',
-        message: t('checkout.discountAppliedFmt', { amount: amount.toLocaleString('vi-VN') }),
-      });
-    } catch {
-      setDiscountApplied(null);
-      setDiscountError(t('errors.generic'));
-    } finally {
-      setDiscountValidating(false);
-    }
-  }, [discountCode, subtotal, t, toast, checkoutStore]);
+  // applyDiscount alias for hooks-above-return refactor (real impl: applyDiscountCb declared earlier).
+  const applyDiscount = applyDiscountCb;
 
   const buildOrderInput = (): OrderCreateInput => ({
     raceId,
@@ -512,7 +520,7 @@ export default function CheckoutScreen() {
                   color: tokens.color.neutral700,
                 }}
               >
-                {t('profile.gender')} *
+                {t('profile.gender.label')} *
               </Text>
               <View style={{ flexDirection: 'row', gap: tokens.space[2] }}>
                 {(['male', 'female', 'other'] as const).map((g) => {

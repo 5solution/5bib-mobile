@@ -397,7 +397,7 @@ export default function EditTicketScreen() {
             onChangeText={(v) => set('dob', v)}
           />
           <Input
-            label={t('profile.gender')}
+            label={t('profile.gender.label')}
             required
             placeholder="male | female | other"
             value={form.gender}
