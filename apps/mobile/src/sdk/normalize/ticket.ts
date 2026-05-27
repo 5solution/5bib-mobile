@@ -19,9 +19,15 @@ export function normalizeTicket(raw: unknown): Ticket {
     unknown
   >;
 
+  // Backend has TWO identifiers: numeric `id` (DB pk) + alphanumeric `value`
+  // (code, e.g. "TEKO23TEK-154-QLPC15PY"). The `/codes/get/{X}` endpoint
+  // expects the alphanumeric VALUE, not the numeric id. Mobile uses `id`
+  // for routing → align `id` field to the alphanumeric value so navigation
+  // `/tickets/{id}` resolves correctly. Numeric DB id preserved as `numericId`.
+  const codeValue = String(r.value ?? r.code_value ?? '');
   return {
-    id: String(r.id ?? ''),
-    value: String(r.value ?? r.code_value ?? ''),
+    id: codeValue || String(r.id ?? ''),
+    value: codeValue,
     status: normalizeStatus(r.status),
     athleteStatus: normalizeAthleteStatus(
       r.athlete_status ?? r.athleteStatus,

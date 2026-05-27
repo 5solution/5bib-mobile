@@ -102,7 +102,11 @@
     "confirmNewPassword": "Neues Passwort bestätigen",
     "resetPassword": "Passwort zurücksetzen",
     "resetting": "Setze zurück...",
-    "passwordStrength": { "weak": "Schwach", "medium": "Mittel", "strong": "Stark" },
+    "passwordStrength": {
+      "weak": "Schwach",
+      "medium": "Mittel",
+      "strong": "Stark"
+    },
     "loginError401": "E-Mail oder Passwort falsch",
     "accountLocked": "Konto gesperrt. Erneut in {{minutes}} Minuten",
     "emailExists": "E-Mail existiert bereits. Anmelden?",
@@ -136,7 +140,12 @@
     "about": "Über 5BIB",
     "rateApp": "App bewerten",
     "dob": "Geburtsdatum",
-    "gender": "Geschlecht",
+    "gender": {
+      "label": "Geschlecht",
+      "male": "Männlich",
+      "female": "Weiblich",
+      "other": "Andere"
+    },
     "male": "Männlich",
     "female": "Weiblich",
     "other": "Andere",
@@ -193,7 +202,8 @@
       "success": "Konto gelöscht",
       "failed": "Konto löschen fehlgeschlagen, bitte erneut versuchen",
       "wrongPassword": "Falsches Passwort"
-    }
+    },
+    "genderLabel": "Geschlecht"
   },
   "browse": {
     "homeGreeting": "Hallo, {{name}}",
@@ -294,7 +304,12 @@
     "discountWrongRace": "Code gilt nicht für dieses Rennen",
     "paymentDetails": "Zahlungsdetails",
     "subtotal": "Zwischensumme",
-    "discount": "Rabatt",
+    "discount": {
+      "validating": "Prüft...",
+      "valid": "Code gültig",
+      "invalid": "Ungültiger Code",
+      "expired": "Code abgelaufen"
+    },
     "total": "Gesamt",
     "selectPaymentMethod": "Zahlungsmethode wählen",
     "paymentRecommended": "Empfohlen",
@@ -323,12 +338,6 @@
       "discount": "Rabattcode",
       "insurance": "Versicherung",
       "summary": "Überprüfen"
-    },
-    "discount": {
-      "validating": "Prüft...",
-      "valid": "Code gültig",
-      "invalid": "Ungültiger Code",
-      "expired": "Code abgelaufen"
     },
     "insurance": {
       "title": "Athletenversicherung",
@@ -375,7 +384,31 @@
     "viewRaceDetail": "Rennendetails ansehen",
     "actionsSection": "Aktionen",
     "changeCourse": "Strecke ändern",
-    "rollingBib": "BIB neu zuordnen",
+    "rollingBib": {
+      "title": "BIB neu auslosen",
+      "randomBib": "Zufalls-BIB",
+      "tagline": "Eine zufällige BIB-Nummer auslosen",
+      "onceWarning": "Nur eine Neuauslosung erlaubt",
+      "tryNowCta": "Jetzt versuchen",
+      "spinning": "BIB wird ausgelost...",
+      "choosing": "Glücksnummer wird gewählt...",
+      "newBibTitle": "Deine neue BIB",
+      "luckyBib": "GLÜCKS-BIB!",
+      "contextLine": "Diese BIB ist für dein aktuelles Ticket",
+      "timeLeft": "Verbleibend",
+      "rerollCta": "Erneut",
+      "confirmCta": "BIB bestätigen",
+      "successTitle": "Deine BIB",
+      "viewTicketCta": "Ticket ansehen",
+      "confirmedToast": "BIB bestätigt!",
+      "cancelTitle": "Auslosung abbrechen?",
+      "cancelMsg": "Deine aktuelle BIB bleibt unverändert",
+      "rerollTitle": "Erneut auslosen?",
+      "rerollMsg": "Die aktuelle Auslosung wird verworfen",
+      "expired": "Zeit zum Bestätigen abgelaufen",
+      "unavailable": "Neuauslosung ist für dieses Ticket nicht verfügbar",
+      "missingCourse": "Kursinfo für BIB-Auslosung fehlt"
+    },
     "transferBib": "BIB übertragen",
     "signEwaiver": "E-Waiver unterzeichnen",
     "downloadInvoice": "Rechnung herunterladen",
@@ -409,31 +442,6 @@
     "loadFailed": "Ticket konnte nicht geladen werden",
     "shareBib": "BIB teilen",
     "shareBibFailed": "BIB-Bild konnte nicht erzeugt werden",
-    "rollingBib": {
-      "title": "BIB neu auslosen",
-      "randomBib": "Zufalls-BIB",
-      "tagline": "Eine zufällige BIB-Nummer auslosen",
-      "onceWarning": "Nur eine Neuauslosung erlaubt",
-      "tryNowCta": "Jetzt versuchen",
-      "spinning": "BIB wird ausgelost...",
-      "choosing": "Glücksnummer wird gewählt...",
-      "newBibTitle": "Deine neue BIB",
-      "luckyBib": "GLÜCKS-BIB!",
-      "contextLine": "Diese BIB ist für dein aktuelles Ticket",
-      "timeLeft": "Verbleibend",
-      "rerollCta": "Erneut",
-      "confirmCta": "BIB bestätigen",
-      "successTitle": "Deine BIB",
-      "viewTicketCta": "Ticket ansehen",
-      "confirmedToast": "BIB bestätigt!",
-      "cancelTitle": "Auslosung abbrechen?",
-      "cancelMsg": "Deine aktuelle BIB bleibt unverändert",
-      "rerollTitle": "Erneut auslosen?",
-      "rerollMsg": "Die aktuelle Auslosung wird verworfen",
-      "expired": "Zeit zum Bestätigen abgelaufen",
-      "unavailable": "Neuauslosung ist für dieses Ticket nicht verfügbar",
-      "missingCourse": "Kursinfo für BIB-Auslosung fehlt"
-    },
     "athleteRegister": {
       "title": "Athlet registrieren",
       "subtitle": "Info für dieses BIB vervollständigen",

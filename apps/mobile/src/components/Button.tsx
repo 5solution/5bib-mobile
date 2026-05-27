@@ -93,7 +93,17 @@ export function Button({
   accessibilityHint,
   testID,
 }: ButtonProps) {
-  const v = VARIANT_STYLES[variant];
+  // Defensive: caller may pass aliased variant ('tertiary' / 'danger' from
+  // StatusActionButtons). Fall back to primary if unknown.
+  const variantAliases: Record<string, Variant> = {
+    tertiary: 'ghost',
+    danger: 'destructive',
+  };
+  const resolvedVariant: Variant =
+    VARIANT_STYLES[variant as Variant] != null
+      ? (variant as Variant)
+      : (variantAliases[variant as string] ?? 'primary');
+  const v = VARIANT_STYLES[resolvedVariant] ?? VARIANT_STYLES.primary;
   const s = SIZE_MAP[size];
   const isDisabled = disabled || loading;
 

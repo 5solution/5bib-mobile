@@ -74,11 +74,12 @@ export default function TicketsScreen() {
   const load = useCallback(async () => {
     setErrored(false);
     try {
-      // Fetch with broad code_statuses so we can client-classify all 3 tabs.
-      // Backend default is ACTIVE only — explicitly include cancelled/transferred.
+      // Backend `/codes/fetch-by-user` rejects comma-separated code_statuses
+      // (verified 2026-05-27 → 400 "Mismatch request param"). Fetch ACTIVE
+      // only, classify all 3 tabs client-side from athlete status.
       const r = await ticketSdk.listMyTickets({
         athleteStatus: 'ALL',
-        codeStatuses: 'ACTIVE,TRANSFERRED,CANCELLED',
+        codeStatuses: 'ACTIVE',
       });
       setAllTickets(r.items);
     } catch (e) {

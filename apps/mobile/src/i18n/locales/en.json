@@ -102,7 +102,11 @@
     "confirmNewPassword": "Confirm new password",
     "resetPassword": "Reset password",
     "resetting": "Resetting...",
-    "passwordStrength": { "weak": "Weak", "medium": "Medium", "strong": "Strong" },
+    "passwordStrength": {
+      "weak": "Weak",
+      "medium": "Medium",
+      "strong": "Strong"
+    },
     "loginError401": "Wrong email or password",
     "accountLocked": "Account locked. Try again in {{minutes}} minutes",
     "emailExists": "Email already exists. Sign in?",
@@ -136,7 +140,12 @@
     "about": "About 5BIB",
     "rateApp": "Rate the app",
     "dob": "Date of birth",
-    "gender": "Gender",
+    "gender": {
+      "label": "Gender",
+      "male": "Male",
+      "female": "Female",
+      "other": "Other"
+    },
     "male": "Male",
     "female": "Female",
     "other": "Other",
@@ -193,7 +202,8 @@
       "success": "Account deleted",
       "failed": "Failed to delete account, please try again",
       "wrongPassword": "Wrong password"
-    }
+    },
+    "genderLabel": "Gender"
   },
   "browse": {
     "homeGreeting": "Hi, {{name}}",
@@ -294,7 +304,12 @@
     "discountWrongRace": "Code not valid for this race",
     "paymentDetails": "Payment details",
     "subtotal": "Subtotal",
-    "discount": "Discount",
+    "discount": {
+      "validating": "Validating...",
+      "valid": "Code valid",
+      "invalid": "Invalid code",
+      "expired": "Code expired"
+    },
     "total": "Total",
     "selectPaymentMethod": "Select payment method",
     "paymentRecommended": "Recommended",
@@ -323,12 +338,6 @@
       "discount": "Discount code",
       "insurance": "Insurance",
       "summary": "Review"
-    },
-    "discount": {
-      "validating": "Validating...",
-      "valid": "Code valid",
-      "invalid": "Invalid code",
-      "expired": "Code expired"
     },
     "insurance": {
       "title": "Athlete insurance",
@@ -375,7 +384,31 @@
     "viewRaceDetail": "View race detail",
     "actionsSection": "Actions",
     "changeCourse": "Change course",
-    "rollingBib": "Reroll BIB",
+    "rollingBib": {
+      "title": "Reroll BIB",
+      "randomBib": "Random BIB",
+      "tagline": "Roll a random BIB number",
+      "onceWarning": "Only one reroll allowed",
+      "tryNowCta": "Try now",
+      "spinning": "Rolling BIB...",
+      "choosing": "Picking your lucky number...",
+      "newBibTitle": "Your new BIB",
+      "luckyBib": "LUCKY BIB!",
+      "contextLine": "This BIB is for your current ticket",
+      "timeLeft": "Time left",
+      "rerollCta": "Reroll",
+      "confirmCta": "Confirm BIB",
+      "successTitle": "Your BIB",
+      "viewTicketCta": "View ticket",
+      "confirmedToast": "BIB confirmed!",
+      "cancelTitle": "Cancel roll?",
+      "cancelMsg": "Your current BIB will stay the same",
+      "rerollTitle": "Roll again?",
+      "rerollMsg": "The current roll will be discarded",
+      "expired": "Time expired to confirm BIB",
+      "unavailable": "Reroll is not available for this ticket",
+      "missingCourse": "Course info missing for rolling BIB"
+    },
     "transferBib": "Transfer BIB",
     "signEwaiver": "Sign E-Waiver",
     "downloadInvoice": "Download invoice",
@@ -409,31 +442,6 @@
     "loadFailed": "Could not load ticket data",
     "shareBib": "Share BIB",
     "shareBibFailed": "Could not generate BIB image",
-    "rollingBib": {
-      "title": "Reroll BIB",
-      "randomBib": "Random BIB",
-      "tagline": "Roll a random BIB number",
-      "onceWarning": "Only one reroll allowed",
-      "tryNowCta": "Try now",
-      "spinning": "Rolling BIB...",
-      "choosing": "Picking your lucky number...",
-      "newBibTitle": "Your new BIB",
-      "luckyBib": "LUCKY BIB!",
-      "contextLine": "This BIB is for your current ticket",
-      "timeLeft": "Time left",
-      "rerollCta": "Reroll",
-      "confirmCta": "Confirm BIB",
-      "successTitle": "Your BIB",
-      "viewTicketCta": "View ticket",
-      "confirmedToast": "BIB confirmed!",
-      "cancelTitle": "Cancel roll?",
-      "cancelMsg": "Your current BIB will stay the same",
-      "rerollTitle": "Roll again?",
-      "rerollMsg": "The current roll will be discarded",
-      "expired": "Time expired to confirm BIB",
-      "unavailable": "Reroll is not available for this ticket",
-      "missingCourse": "Course info missing for rolling BIB"
-    },
     "athleteRegister": {
       "title": "Register athlete",
       "subtitle": "Complete info for this BIB",

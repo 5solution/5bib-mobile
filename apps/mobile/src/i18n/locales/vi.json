@@ -140,7 +140,13 @@
     "about": "Về 5BIB",
     "rateApp": "Đánh giá ứng dụng",
     "dob": "Ngày sinh",
-    "gender": "Giới tính",
+    "gender": {
+      "label": "Giới tính",
+      "male": "Nam",
+      "female": "Nữ",
+      "other": "Khác"
+    },
+    "genderLabel": "Giới tính",
     "male": "Nam",
     "female": "Nữ",
     "other": "Khác",
