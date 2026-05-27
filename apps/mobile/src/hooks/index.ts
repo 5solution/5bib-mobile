@@ -8,12 +8,21 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** Online/offline detection — BR-GLOBAL-02 + BR-BROWSE-14 + BR-WAIVER-13. */
+/** Online/offline detection — BR-GLOBAL-02 + BR-BROWSE-14 + BR-WAIVER-13.
+ *
+ * iOS Simulator + some platform configs return `isConnected = null` and
+ * `isInternetReachable = null` on first event. Treat null as "unknown" =
+ * online (assume connected until proven offline). Only flip to offline when
+ * NetInfo *explicitly* says false. This avoids the false "Offline — cached
+ * data" banner that appeared on every screen during QC.
+ */
 export function useOnline() {
   const [online, setOnline] = useState(true);
   useEffect(() => {
     const unsub = NetInfo.addEventListener((state) => {
-      setOnline(!!state.isConnected && (state.isInternetReachable ?? true));
+      const connected = state.isConnected !== false; // null/undefined → true
+      const reachable = state.isInternetReachable !== false; // null/undefined → true
+      setOnline(connected && reachable);
     });
     return () => unsub();
   }, []);

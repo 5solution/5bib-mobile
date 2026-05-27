@@ -57,9 +57,21 @@ function toLegacyListParams(p: ListRacesParams): Record<string, unknown> {
  */
 function normalizeRace(raw: unknown): Race {
   const r = (raw ?? {}) as Record<string, unknown>;
+  // Real backend shape (verified 2026-05-27 via /pub/by-slug):
+  //   - Cover image: top-level `images` (string URL) OR `logo_url` OR
+  //     nested `race_extenstion.banner`. NEVER `banner_url`/`cover_image_url`
+  //     (those are mobile-fiction).
+  //   - Start date: `event_start_date` (snake), NOT `race_date`/`start_date`.
+  //   - `is_highlight` lives under nested `race_extenstion` (sic — backend typo),
+  //     not at top level.
+  //   - Courses are NEVER embedded — must fetch via `/pub/race-course?race_id=X`.
+  const ext = (r.race_extenstion ?? r.race_extension ?? {}) as Record<
+    string,
+    unknown
+  >;
   return {
     id: String(r.id ?? r.race_id ?? ''),
-    slug: String(r.slug ?? ''),
+    slug: String(r.slug ?? ext.slug ?? ''),
     title: String(r.title ?? r.name ?? ''),
     description: r.description as string | undefined,
     coverImageUrl:
@@ -67,12 +79,27 @@ function normalizeRace(raw: unknown): Race {
       (r.bannerUrl as string | null | undefined) ??
       (r.cover_image_url as string | null | undefined) ??
       (r.coverImageUrl as string | null | undefined) ??
+      (r.images as string | null | undefined) ??
+      (ext.banner as string | null | undefined) ??
+      (r.logo_url as string | null | undefined) ??
       null,
-    startDate: String(r.race_date ?? r.raceDate ?? r.start_date ?? r.startDate ?? ''),
-    endDate: (r.end_date as string | undefined) ?? (r.endDate as string | undefined),
+    startDate: String(
+      r.event_start_date ??
+        r.race_date ??
+        r.raceDate ??
+        r.start_date ??
+        r.startDate ??
+        '',
+    ),
+    endDate:
+      (r.event_end_date as string | undefined) ??
+      (r.end_date as string | undefined) ??
+      (r.endDate as string | undefined),
     location: r.location as string | undefined,
     city: r.city as string | undefined,
-    isHighlight: Boolean(r.is_highlight ?? r.isHighlight ?? false),
+    isHighlight: Boolean(
+      r.is_highlight ?? r.isHighlight ?? ext.is_highlight ?? false,
+    ),
     bibSetUp: Boolean(r.bib_set_up ?? r.bibSetUp ?? false),
     status: (r.status as Race['status']) ?? 'COMING_SOON',
     raceType: (r.race_type as string | undefined) ?? (r.raceType as string | undefined),

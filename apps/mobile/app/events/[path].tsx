@@ -184,7 +184,11 @@ export default function EventDetailScreen() {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   };
 
-  const isClosed = race.status === 'CLOSED' || race.status === 'FINISHED';
+  // Backend uses `COMPLETE` (not `FINISHED`/`CLOSED`). Verified 2026-05-27 —
+  // ALL 190 races on DEV currently have status `COMPLETE`. Also accept the
+  // historical FINISHED/CLOSED in case backend evolves.
+  const closedStatuses = new Set(['CLOSED', 'FINISHED', 'COMPLETE', 'CANCELLED']);
+  const isClosed = closedStatuses.has(String(race.status));
   const ctaDisabled = !race.bibSetUp && !isClosed;
 
   return (
