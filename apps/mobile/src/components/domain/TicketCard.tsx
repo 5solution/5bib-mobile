@@ -15,9 +15,15 @@ export interface TicketCardProps {
 }
 
 function ticketStatusBadge(t: Ticket): { variant: 'success' | 'info' | 'default' | 'warning'; label: string } {
-  if (t.status === 'TRANSFERRED') return { variant: 'default', label: 'Đã chuyển' };
-  if (t.status === 'CANCELLED') return { variant: 'default', label: 'Đã huỷ' };
-  if (t.athleteStatus === 'CHECKED_IN') return { variant: 'info', label: 'Đã check-in' };
+  const status = String(t.status ?? '');
+  const aStatus = String(t.athleteStatus ?? '');
+  if (status === 'TRANSFERRED') return { variant: 'default', label: 'Đã chuyển' };
+  if (status === 'CANCELLED') return { variant: 'default', label: 'Đã huỷ' };
+  if (aStatus === 'CHECKED_IN' || aStatus === 'CHECK_IN') return { variant: 'info', label: 'Đã check-in' };
+  if (aStatus === 'FINISH') return { variant: 'success', label: 'Hoàn thành' };
+  if (aStatus === 'DNF' || aStatus === 'DNS' || aStatus === 'DSQ') {
+    return { variant: 'default', label: aStatus };
+  }
   return { variant: 'success', label: 'Sẵn sàng' };
 }
 
@@ -25,15 +31,17 @@ function fmtDate(iso?: string) {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   } catch {
-    return iso;
+    return '—';
   }
 }
 
 export function TicketCard({ ticket, onPress }: TicketCardProps) {
   const sb = ticketStatusBadge(ticket);
-  const bib = ticket.bib ?? ticket.basicInfo?.bib ?? '—';
+  const bibRaw = ticket.bib ?? ticket.basicInfo?.bib;
+  const bib = bibRaw != null && bibRaw !== '' ? String(bibRaw) : '—';
   const raceName = ticket.race?.title ?? ticket.basicInfo?.raceName ?? '—';
   const distance = ticket.basicInfo?.courseDistance ?? ticket.raceCourseDistance ?? '';
   const startDate = fmtDate(ticket.race?.startDate);

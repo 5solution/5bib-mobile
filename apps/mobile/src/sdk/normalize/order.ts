@@ -46,6 +46,9 @@ function normalizeFinancialStatus(s: unknown): Order['financialStatus'] {
   if (v === 'paid' || v === 'pending' || v === 'voided' || v === 'failed') {
     return v;
   }
+  // Backend variants seen in prod data:
+  if (v === 'authorized' || v === 'partially_paid') return 'pending';
+  if (v === 'refunded' || v === 'partially_refunded' || v === 'cancelled') return 'voided';
   // Default fallback
   return 'pending';
 }

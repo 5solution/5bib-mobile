@@ -268,17 +268,21 @@ function RadioRow({
   );
 }
 
-function statusLabel(value: RaceStatus | 'ALL', t: (k: string) => string): string {
-  switch (value) {
+function statusLabel(value: RaceStatus | 'ALL' | string, t: (k: string) => string): string {
+  switch (String(value)) {
     case 'ALL':
       return t('browse.filterAll');
     case 'OPEN_FOR_SALE':
+    case 'GENERATED_CODE':
       return t('browse.statusOpen');
     case 'COMING_SOON':
       return t('browse.statusComingSoon');
     case 'CLOSED':
       return t('browse.statusClosed');
     case 'FINISHED':
+    case 'COMPLETE':
       return t('browse.statusFinished');
+    default:
+      return String(value ?? '—');
   }
 }

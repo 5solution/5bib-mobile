@@ -15,7 +15,7 @@ export interface OrderCardProps {
 }
 
 function statusBadge(o: Order): { variant: 'success' | 'warning' | 'error' | 'default'; label: string } {
-  switch (o.financialStatus) {
+  switch (String(o.financialStatus)) {
     case 'paid':
       return { variant: 'success', label: 'Đã thanh toán' };
     case 'pending':
@@ -23,22 +23,26 @@ function statusBadge(o: Order): { variant: 'success' | 'warning' | 'error' | 'de
     case 'failed':
       return { variant: 'error', label: 'Thất bại' };
     case 'voided':
-    default:
       return { variant: 'default', label: 'Đã huỷ' };
+    default:
+      return { variant: 'default', label: '—' };
   }
 }
 
-function fmtDate(iso: string) {
+function fmtDate(iso?: string) {
+  if (!iso) return '—';
   try {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   } catch {
-    return iso;
+    return '—';
   }
 }
 
 function fmtVnd(n: number) {
-  return n.toLocaleString('vi-VN') + 'đ';
+  const v = Number.isFinite(n) ? n : 0;
+  return v.toLocaleString('vi-VN') + 'đ';
 }
 
 export function OrderCard({ order, onPress }: OrderCardProps) {
@@ -46,7 +50,7 @@ export function OrderCard({ order, onPress }: OrderCardProps) {
   return (
     <Card
       onPress={onPress}
-      accessibilityLabel={`Đơn ${order.orderNumber}, ${order.raceName}, ${fmtVnd(order.totalAmount)}, ${sb.label}`}
+      accessibilityLabel={`Đơn ${order.orderNumber ?? ''}, ${order.raceName ?? ''}, ${fmtVnd(order.totalAmount)}, ${sb.label}`}
     >
       <View style={{ gap: tokens.space[1] }}>
         <View
@@ -60,7 +64,7 @@ export function OrderCard({ order, onPress }: OrderCardProps) {
               fontFamily: 'Menlo',
             }}
           >
-            #{order.orderNumber}
+            #{order.orderNumber ?? order.id ?? '—'}
           </Text>
           <Badge variant={sb.variant}>{sb.label}</Badge>
         </View>
@@ -68,7 +72,7 @@ export function OrderCard({ order, onPress }: OrderCardProps) {
           {fmtDate(order.createdAt)}
         </Text>
         <Text style={{ fontSize: tokens.fontSize.bodyMd, color: tokens.color.neutral800 }}>
-          {order.raceName} · {order.courseName}
+          {order.raceName ?? '—'}{order.courseName ? ` · ${order.courseName}` : ''}
         </Text>
         <Text
           style={{

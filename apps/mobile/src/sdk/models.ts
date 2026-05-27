@@ -236,8 +236,15 @@ export interface DiscountCheckResponse {
 export interface Ticket {
   id: string;
   value: string;
-  status: 'ACTIVE' | 'TRANSFERRED' | 'CANCELLED';
-  athleteStatus: 'ACTIVE' | 'CHECKED_IN' | 'NOT_REGISTERED';
+  /** Widened to string — backend may return values outside the 3 documented ones. */
+  status: 'ACTIVE' | 'TRANSFERRED' | 'CANCELLED' | string;
+  /**
+   * Widened to string — backend returns 8 enum values per BR-TICKETS-01
+   * (NEW, REGISTER, REMIND_CHECK_IN, CHECK_IN/CHECKED_IN, FINISH, DNF, DNS, DSQ,
+   *  TRANSFERRING, RACEKIT_RECEIVED, RACEKIT_NOT_RECEIVED, CANCELLED).
+   * Screens must tolerate the wider set; classification is done via string compare.
+   */
+  athleteStatus: string;
   bib?: string;
   raceCourseDistance?: string;
   raceCourseName?: string;

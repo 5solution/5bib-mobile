@@ -357,15 +357,19 @@ function applyCityFilter(items: Race[], city: string | 'ALL'): Race[] {
   return items.filter((r) => r.city === city || r.location === city);
 }
 
-function statusChipLabel(s: RaceStatus, t: (k: string) => string): string {
-  switch (s) {
+function statusChipLabel(s: RaceStatus | string, t: (k: string) => string): string {
+  switch (String(s)) {
     case 'OPEN_FOR_SALE':
+    case 'GENERATED_CODE':
       return t('browse.statusOpen');
     case 'COMING_SOON':
       return t('browse.statusComingSoon');
     case 'CLOSED':
       return t('browse.statusClosed');
     case 'FINISHED':
+    case 'COMPLETE':
       return t('browse.statusFinished');
+    default:
+      return String(s ?? '—');
   }
 }

@@ -26,15 +26,21 @@ export interface BuyGroupDiscountBadgeProps {
 }
 
 function fmtVND(n: number): string {
-  return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + 'đ';
+  const v = Number.isFinite(n) ? n : 0;
+  return new Intl.NumberFormat('vi-VN').format(Math.round(v)) + 'đ';
 }
 
-/** Convert hex `#RRGGBB` to `rgba(r,g,b,a)` for tint surface. */
+/** Convert hex `#RRGGBB` to `rgba(r,g,b,a)` for tint surface. Defensive — falls back
+ *  to grey rgba if hex malformed (avoids NaN in rgba string crashing RN style parser). */
 function hexAlpha(hex: string, alpha: number): string {
-  const h = hex.replace('#', '');
+  const h = (hex ?? '').replace('#', '');
+  if (h.length < 6) return `rgba(0,0,0,${alpha})`;
   const r = parseInt(h.substring(0, 2), 16);
   const g = parseInt(h.substring(2, 4), 16);
   const b = parseInt(h.substring(4, 6), 16);
+  if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) {
+    return `rgba(0,0,0,${alpha})`;
+  }
   return `rgba(${r},${g},${b},${alpha})`;
 }
 

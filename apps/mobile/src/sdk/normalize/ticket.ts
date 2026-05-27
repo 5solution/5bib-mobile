@@ -26,7 +26,11 @@ export function normalizeTicket(raw: unknown): Ticket {
     athleteStatus: normalizeAthleteStatus(
       r.athlete_status ?? r.athleteStatus,
     ),
-    bib: r.bib as string | undefined,
+    // Bib may arrive as number, string, or null — coerce to string for UI safety.
+    bib:
+      r.bib != null && r.bib !== ''
+        ? String(r.bib)
+        : (r.bib as string | undefined),
     raceCourseDistance:
       (r.race_course_distance as string | undefined) ??
       (r.raceCourseDistance as string | undefined),
@@ -86,17 +90,23 @@ export function normalizeTicket(raw: unknown): Ticket {
   };
 }
 
+/**
+ * Status now widened to string in models.ts. Pass through whatever backend
+ * returns (normalized to UPPERCASE) so screens see the real enum value.
+ * Default to 'ACTIVE' only when missing — never collapse a valid value.
+ */
 function normalizeStatus(s: unknown): Ticket['status'] {
   const v = String(s ?? '').toUpperCase();
-  if (v === 'ACTIVE' || v === 'TRANSFERRED' || v === 'CANCELLED') return v;
-  return 'ACTIVE';
+  return v || 'ACTIVE';
 }
 
+/**
+ * Pass-through: backend returns 8 documented statuses (NEW, REGISTER,
+ * REMIND_CHECK_IN, CHECK_IN/CHECKED_IN, FINISH, DNF, DNS, DSQ, etc.).
+ * Previously we collapsed everything to NOT_REGISTERED — that broke action
+ * matrix rendering. Keep the raw uppercase value; consumers handle unknowns.
+ */
 function normalizeAthleteStatus(s: unknown): Ticket['athleteStatus'] {
   const v = String(s ?? '').toUpperCase();
-  // TODO: expand union in models.ts to cover all 8 BR-TICKETS-01 statuses
-  // (NEW, TRANSFERRING, REGISTER, REMIND_CHECK_IN, CHECKED_IN,
-  //  RACEKIT_RECEIVED, RACEKIT_NOT_RECEIVED, CANCELLED).
-  if (v === 'ACTIVE' || v === 'CHECKED_IN' || v === 'NOT_REGISTERED') return v;
-  return 'NOT_REGISTERED';
+  return v || 'NEW';
 }

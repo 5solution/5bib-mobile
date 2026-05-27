@@ -145,10 +145,11 @@ export const order = {
       };
     }>('/order', {
       params: {
-        pageNo: params.pageNo,
-        pageSize: params.pageSize,
-        sortField: params.sortField,
-        sortDirection: params.sortDirection,
+        // snake_case — backend rejects camelCase with 400.
+        page_no: params.pageNo,
+        page_size: params.pageSize,
+        sort_field: params.sortField,
+        sort_direction: params.sortDirection,
         internal_status: params.internalStatus,
         // typo preserved on wire — fixed in normalizer
         finalcial_status: params.financialStatus,
@@ -233,7 +234,7 @@ export const order = {
   },
 
   /**
-   * GET /price_rule/list?race_id=X&pageNo=1&pageSize=10 — list discounts for a race.
+   * GET /price_rule/list?race_id=X&page_no=1&page_size=10 — list discounts for a race.
    */
   async listDiscounts(
     raceId: string,
@@ -243,7 +244,7 @@ export const order = {
     const raw = await network().get<{
       data: unknown[] | { list?: unknown[] };
     }>('/price_rule/list', {
-      params: { race_id: raceId, pageNo, pageSize },
+      params: { race_id: raceId, page_no: pageNo, page_size: pageSize },
     });
     if (Array.isArray(raw.data)) return raw.data;
     return raw.data?.list ?? [];

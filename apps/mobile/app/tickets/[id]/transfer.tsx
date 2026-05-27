@@ -80,9 +80,10 @@ export default function TransferBibScreen() {
       return;
     }
 
+    const bibVal = ticket.bib ?? ticket.basicInfo?.bib;
     Alert.alert(
       t('tickets.transferConfirmTitle', {
-        bib: ticket.bib ?? ticket.basicInfo?.bib ?? '—',
+        bib: bibVal != null && bibVal !== '' ? String(bibVal) : '—',
         email: trimmed,
       }),
       t('tickets.transferConfirmMsg'),
@@ -162,7 +163,7 @@ export default function TransferBibScreen() {
               {ticket.basicInfo?.courseDistance}
             </Text>
             <Text style={{ color: tokens.color.neutral600 }}>
-              BIB {ticket.bib ?? ticket.basicInfo?.bib ?? '—'}
+              BIB {(() => { const b = ticket.bib ?? ticket.basicInfo?.bib; return b != null && b !== '' ? String(b) : '—'; })()}
             </Text>
           </Card>
         )}

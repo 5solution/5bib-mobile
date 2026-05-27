@@ -51,7 +51,10 @@ export const result = {
     const { pageNo = 1, pageSize = 10, sortDirection = 'DESC' } = params;
     const raw = await network().get<{
       data: { list?: unknown[] } | unknown[];
-    }>('/athlete/result', { params: { pageNo, pageSize, sortDirection } });
+    }>('/athlete/result', {
+      // snake_case per backend convention.
+      params: { page_no: pageNo, page_size: pageSize, sort_direction: sortDirection },
+    });
     const list = Array.isArray(raw.data) ? raw.data : (raw.data?.list ?? []);
     return list.map(normalizeResult);
   },

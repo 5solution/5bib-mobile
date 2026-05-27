@@ -87,7 +87,8 @@ export default function RaceHistoryScreen() {
   }, [load]);
 
   const grouped = items.reduce<Record<string, MyResultItem[]>>((acc, it) => {
-    const year = String(new Date(it.raceDate).getFullYear());
+    const d = new Date(it.raceDate ?? '');
+    const year = isNaN(d.getTime()) ? '—' : String(d.getFullYear());
     const bucket = acc[year] ?? (acc[year] = []);
     bucket.push(it);
     return acc;
@@ -168,7 +169,7 @@ export default function RaceHistoryScreen() {
                   {item.raceName}
                 </Text>
                 <Text style={{ color: tokens.color.neutral600 }}>
-                  {new Date(item.raceDate).toLocaleDateString('vi-VN')} · {item.distance} · {item.finishTime}
+                  {(() => { const d = new Date(item.raceDate ?? ''); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN'); })()} · {item.distance ?? ''} · {item.finishTime ?? ''}
                 </Text>
                 <Text style={{ color: tokens.color.neutral600 }}>
                   {t('result.rankLabel', { rank: item.overallRank, total: 250 })}

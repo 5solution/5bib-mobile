@@ -272,7 +272,8 @@ export const athlete = {
         totalCount?: number;
       };
     }>('/athlete/result', {
-      params: { sortDirection, pageNo, pageSize },
+      // snake_case per backend convention.
+      params: { sort_direction: sortDirection, page_no: pageNo, page_size: pageSize },
     });
     // TODO: implement result normalizer in normalize/ when screens demand it
     return {

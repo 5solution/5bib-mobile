@@ -46,9 +46,11 @@ export const ticket = {
       codeStatuses = 'ACTIVE',
     } = params;
 
+    // Backend (verified 2026-05-27): rejects camelCase pagination params with
+    // 400 "Mismatch request param". Use snake_case throughout.
     const queryParams: Record<string, unknown> = {
-      sortDirection: 'DESC',
-      pageNo,
+      sort_direction: 'DESC',
+      page_no: pageNo,
       code_statuses: codeStatuses,
     };
     if (athleteStatus !== 'ALL') {

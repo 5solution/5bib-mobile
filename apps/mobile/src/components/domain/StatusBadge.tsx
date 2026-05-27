@@ -30,7 +30,7 @@ interface VariantStyle {
   label: string;
 }
 
-const STATUS_VARIANT: Record<RaceStatus, VariantStyle> = {
+const STATUS_VARIANT: Record<string, VariantStyle> = {
   OPEN_FOR_SALE: {
     bg: tokens.color.successBg,
     fg: tokens.color.success,
@@ -51,17 +51,35 @@ const STATUS_VARIANT: Record<RaceStatus, VariantStyle> = {
     fg: tokens.color.neutral800,
     label: 'Đã kết thúc',
   },
+  // Backend also returns these values for race status:
+  COMPLETE: {
+    bg: tokens.color.neutral200,
+    fg: tokens.color.neutral800,
+    label: 'Đã kết thúc',
+  },
+  GENERATED_CODE: {
+    bg: tokens.color.successBg,
+    fg: tokens.color.success,
+    label: 'Đang mở bán',
+  },
+};
+
+const FALLBACK_VARIANT: VariantStyle = {
+  bg: tokens.color.neutral100,
+  fg: tokens.color.neutral600,
+  label: '—',
 };
 
 export interface StatusBadgeProps {
-  status: RaceStatus;
+  /** Widened to string — backend may return any of 6+ values per API_REFERENCE. */
+  status: RaceStatus | string;
   size?: StatusBadgeSize;
   /** Override the default VN label. */
   label?: string;
 }
 
 export function StatusBadge({ status, size = 'md', label }: StatusBadgeProps) {
-  const v = STATUS_VARIANT[status];
+  const v = STATUS_VARIANT[String(status ?? '')] ?? FALLBACK_VARIANT;
   const isSm = size === 'sm';
   const fontSize = isSm ? tokens.fontSize.labelSm : tokens.fontSize.labelMd;
   const padH = isSm ? tokens.space[2] : tokens.space[3];

@@ -30,7 +30,8 @@ export interface CourseCardProps {
 }
 
 function fmtVnd(n: number) {
-  return n.toLocaleString('vi-VN') + 'đ';
+  const v = Number.isFinite(n) ? n : 0;
+  return v.toLocaleString('vi-VN') + 'đ';
 }
 
 export function CourseCard({ course, selected, disabled, asRadio, onPress }: CourseCardProps) {

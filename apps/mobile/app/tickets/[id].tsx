@@ -43,9 +43,19 @@ function asAthleteStatus(s: string | undefined): AthleteStatus {
     case 'RACEKIT_NOT_RECEIVED':
     case 'CANCELLED':
       return v;
+    // Backend variants — fold into closest equivalent in our constants matrix.
+    case 'CHECK_IN':
+      return 'CHECKED_IN';
+    case 'FINISH':
+      return 'RACEKIT_RECEIVED'; // post-race: show share/view-result actions
+    case 'DNF':
+    case 'DNS':
+    case 'DSQ':
+      return 'RACEKIT_NOT_RECEIVED'; // post-race no result: show share + support
     case 'NOT_REGISTERED':
       return 'REGISTER';
     case 'ACTIVE':
+    case '':
     default:
       return 'REMIND_CHECK_IN';
   }
@@ -54,7 +64,12 @@ function asAthleteStatus(s: string | undefined): AthleteStatus {
 function fmtDate(iso?: string) {
   if (!iso) return '—';
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+function bibLabel(b: unknown): string {
+  return b != null && b !== '' ? String(b) : '—';
 }
 
 function fullName(a: Athlete | null): string | undefined {
@@ -126,7 +141,8 @@ export default function TicketDetailScreen() {
         }
       }
       const raceTitle = ticket.race?.title ?? ticket.basicInfo?.raceName ?? '';
-      const bib = ticket.bib ?? ticket.basicInfo?.bib ?? '';
+      const bibVal = ticket.bib ?? ticket.basicInfo?.bib;
+      const bib = bibVal != null && bibVal !== '' ? String(bibVal) : '';
       const msg =
         `${t('tickets.shareTitle')}: ${raceTitle}${bib ? ` · BIB ${bib}` : ''}` +
         (imageUrl ? `\n${imageUrl}` : '');
@@ -229,7 +245,7 @@ export default function TicketDetailScreen() {
       <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[5] }}>
         <QRDisplayCard
           value={ticket.value}
-          bib={ticket.bib ?? ticket.basicInfo?.bib ?? '—'}
+          bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib)}
           raceName={ticket.race?.title ?? ticket.basicInfo?.raceName ?? '—'}
           courseAndDate={`${ticket.basicInfo?.courseDistance ?? ''} · ${fmtDate(ticket.race?.startDate)}`}
           online={online}

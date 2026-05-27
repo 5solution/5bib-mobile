@@ -39,13 +39,20 @@ type TabId = 'upcoming' | 'checkedIn' | 'transferred';
  * the TS union currently lists only 3 values.
  */
 function classifyTicket(t: Ticket): TabId {
-  const tStatus = String(t.status);
+  const tStatus = String(t.status ?? '');
   if (tStatus === 'TRANSFERRED' || tStatus === 'CANCELLED') return 'transferred';
-  const aStatus = String(t.athleteStatus);
+  const aStatus = String(t.athleteStatus ?? '');
+  // Backend uses CHECK_IN (snake fragment) on some endpoints, CHECKED_IN on others.
+  // FINISH / DNF / DNS / DSQ also belong in the checked-in (post-race) bucket.
   if (
+    aStatus === 'CHECK_IN' ||
     aStatus === 'CHECKED_IN' ||
     aStatus === 'RACEKIT_RECEIVED' ||
-    aStatus === 'RACEKIT_NOT_RECEIVED'
+    aStatus === 'RACEKIT_NOT_RECEIVED' ||
+    aStatus === 'FINISH' ||
+    aStatus === 'DNF' ||
+    aStatus === 'DNS' ||
+    aStatus === 'DSQ'
   ) {
     return 'checkedIn';
   }
