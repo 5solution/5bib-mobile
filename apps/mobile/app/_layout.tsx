@@ -14,6 +14,7 @@
 
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
+import { LogBox } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,6 +29,16 @@ import { initSdk } from '../src/adapters/sdk-init';
 import { eventBus } from '../src/adapters/event-bus';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import '../src/i18n';
+
+// Dev-only noise suppression. These warnings are cosmetic and do not affect
+// runtime behavior; they obscure the bottom-sheet CTA in QC screenshots.
+//   - "Could not find image file:///..." — RCTLocalAssetImageLoader.mm emits
+//     this when a native module preloads an asset by absolute Mac path that
+//     no longer exists (stale Metro bundle reference). Production builds don't
+//     show LogBox toasts, so this is dev-only noise.
+if (__DEV__) {
+  LogBox.ignoreLogs([/Could not find image file:\/\//]);
+}
 
 // Init Sentry BEFORE component render — captures errors from app boot.
 initSentry();
