@@ -18,8 +18,14 @@ export interface RaceCardProps {
 }
 
 function statusBadge(status: Race['status'] | string | undefined): { variant: 'success' | 'info' | 'default' | 'warning'; label: string } {
+  // Backend race-status enum (verified 2026-05-27 via /pub/race?status=X):
+  //   GENERATED_CODE = open for sale (codes generated, ready to sell)
+  //   COMPLETE       = past race, results phase
+  //   CANCELLED      = race cancelled
+  // Mobile-facing canonical names (OPEN_FOR_SALE etc.) kept for forward-compat.
   switch (status) {
     case 'OPEN_FOR_SALE':
+    case 'GENERATED_CODE':
       return { variant: 'success', label: 'Đang mở đăng ký' };
     case 'COMING_SOON':
       return { variant: 'info', label: 'Sắp mở' };
@@ -28,6 +34,8 @@ function statusBadge(status: Race['status'] | string | undefined): { variant: 's
     case 'FINISHED':
     case 'COMPLETE': // backend uses COMPLETE
       return { variant: 'default', label: 'Đã kết thúc' };
+    case 'CANCELLED':
+      return { variant: 'warning', label: 'Đã huỷ' };
     default:
       return { variant: 'default', label: status ? String(status) : '-' };
   }

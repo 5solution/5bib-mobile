@@ -61,15 +61,20 @@ export default function HomeScreen() {
   const fetchPage = useCallback(
     async (pageNo: number): Promise<{ items: Race[]; totalPages: number } | null> => {
       try {
-        // Backend /pub/race rejects status/sort_field/sort_direction params
-        // (returns 400 "Mismatch request param"). Send only pagination.
-        // Filter status client-side after fetch.
-        // Show ALL races (backend DEV mostly has status=COMPLETE).
-        // Real PROD will likely have OPEN_FOR_SALE / COMING_SOON.
-        // TODO: re-add status filter when backend confirms enum values.
+        // Backend /pub/race quirks (verified 2026-05-27):
+        //   - `sort_field` / `sort_direction` → 400 "Mismatch request param"
+        //   - `page_no` → IGNORED. Backend always returns currentPage=0 +
+        //     same 10 items regardless of page. Pagination broken server-side.
+        //   - `page_size` → CAPPED at 10. Higher values ignored.
+        //   - `status` → ✅ honored. `GENERATED_CODE` = open for sale, only
+        //     6 races on DEV (incl. 5BIB Find Your New Experience id=305).
+        //     Without this filter the home shows only the first 10 COMPLETE
+        //     races — user can never find an active race to register for.
+        // Until backend fixes pagination we fetch ACTIVE races only.
         const res = await raceSdk.listRaces({
           pageNo,
           pageSize: PAGE_SIZE,
+          status: 'GENERATED_CODE',
         });
         return { items: res.items, totalPages: res.pagination.totalPages ?? 1 };
       } catch (err) {

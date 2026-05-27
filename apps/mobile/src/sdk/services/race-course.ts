@@ -13,9 +13,29 @@ import type { RaceCourse } from '../models';
 /**
  * Defensive normalize: backend race-course shape has many optional fields
  * (snake_case). Keep mapping minimal — extend as screens demand more.
+ *
+ * IMPORTANT — price + availability lookup hierarchy (verified 2026-05-27 via
+ * /pub/race-course?race_id=305):
+ *   course.price            → ALWAYS null at top level
+ *   course.ticket_types[0]  → real ticket; has `price`, `remained_ticket`,
+ *                              `sales_count`, `currency`. There can be
+ *                              multiple ticket_types per course (ELB/Standard/VIP);
+ *                              we use the first as the headline price + sum
+ *                              all remained_ticket for availability.
+ * Without this fallback every course renders "0d" on the detail screen.
  */
 function normalizeRaceCourse(raw: unknown): RaceCourse {
   const r = (raw ?? {}) as Record<string, unknown>;
+  const ticketTypes = Array.isArray(r.ticket_types)
+    ? (r.ticket_types as Array<Record<string, unknown>>)
+    : [];
+  const firstTicket = ticketTypes[0];
+  // Sum remained_ticket across ticket_types so a course shows availability
+  // even when ticket_types[0] is sold out but others have stock.
+  const totalRemained = ticketTypes.reduce(
+    (sum, tt) => sum + Number(tt?.remained_ticket ?? 0),
+    0,
+  );
   return {
     id: String(r.id ?? r.race_course_id ?? r.variant_id ?? ''),
     raceId:
@@ -26,12 +46,12 @@ function normalizeRaceCourse(raw: unknown): RaceCourse {
     distanceMeters:
       (r.distance_meters as number | undefined) ??
       (r.distanceMeters as number | undefined),
-    price: Number(r.price ?? r.amount ?? 0),
-    currency: 'VND',
+    price: Number(r.price ?? r.amount ?? firstTicket?.price ?? 0),
+    currency: String(firstTicket?.currency ?? 'VND'),
     availableSlots:
       (r.available_slots as number | null | undefined) ??
       (r.availableSlots as number | null | undefined) ??
-      null,
+      (ticketTypes.length > 0 ? totalRemained : null),
     totalSlots:
       (r.total_slots as number | undefined) ??
       (r.totalSlots as number | undefined),

@@ -185,11 +185,22 @@ export default function EventDetailScreen() {
   };
 
   // Backend uses `COMPLETE` (not `FINISHED`/`CLOSED`). Verified 2026-05-27 —
-  // ALL 190 races on DEV currently have status `COMPLETE`. Also accept the
-  // historical FINISHED/CLOSED in case backend evolves.
+  // status enum: GENERATED_CODE = open for sale; COMPLETE = past race.
   const closedStatuses = new Set(['CLOSED', 'FINISHED', 'COMPLETE', 'CANCELLED']);
   const isClosed = closedStatuses.has(String(race.status));
-  const ctaDisabled = !race.bibSetUp && !isClosed;
+  // DO NOT gate on `race.bibSetUp` — verified 2026-05-27 across all 6 active
+  // races on DEV: every one has bib_set_up=false even when sales are LIVE
+  // (race 305 has remained_ticket=3 + sales_count=7). The flag is an admin
+  // toggle that's never set. Source of truth for availability = courses[].
+  // CTA enabled when: race is open AND user picked a course AND that course
+  // has stock. (Stock 0 fallback to disabled with different label below.)
+  const selected = courses.find((c) => c.id === selectedCourseId);
+  const selectedHasStock =
+    selected?.availableSlots == null /* unknown → trust */ ||
+    selected.availableSlots > 0;
+  const ctaDisabled = isClosed
+    ? false
+    : !selectedCourseId || !selectedHasStock;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
@@ -426,13 +437,13 @@ export default function EventDetailScreen() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={ctaDisabled || !selectedCourseId}
+            disabled={ctaDisabled}
             onPress={onRegister}
           >
-            {ctaDisabled
-              ? t('browse.raceClosedRegister')
-              : !selectedCourseId
+            {!selectedCourseId
               ? t('browse.selectCourseToRegister')
+              : !selectedHasStock
+              ? t('browse.soldOut')
               : t('browse.register')}
           </Button>
         )}

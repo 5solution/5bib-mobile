@@ -80,7 +80,13 @@ function normalizeRace(raw: unknown): Race {
       (r.cover_image_url as string | null | undefined) ??
       (r.coverImageUrl as string | null | undefined) ??
       (r.images as string | null | undefined) ??
-      (ext.banner as string | null | undefined) ??
+      // ext.banner is sometimes a STRING URL (race 305) and sometimes a
+      // structured object (race 257: { banner_header_event: { img_url } }).
+      // Handle both.
+      (typeof ext.banner === 'string' ? (ext.banner as string) : null) ??
+      ((ext.banner as { banner_header_event?: { img_url?: string } } | null)
+        ?.banner_header_event?.img_url ?? null) ??
+      (ext.detail_img as string | null | undefined) ??
       (r.logo_url as string | null | undefined) ??
       null,
     startDate: String(
