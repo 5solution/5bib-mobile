@@ -96,7 +96,7 @@ export default function TransferBibScreen() {
             try {
               await athleteSdk.transferTicket(ticket.value, trimmed, message.trim() || undefined);
               toast.show({ variant: 'success', message: t('tickets.transferSuccess') });
-              router.replace('/(tabs)/tickets');
+              router.replace('/tickets');
             } catch (e) {
               // Map BR-TICKETS-20 error codes if backend returns one.
               const code = extractErrorCode(e);

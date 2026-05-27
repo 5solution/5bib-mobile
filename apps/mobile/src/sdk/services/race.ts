@@ -33,19 +33,20 @@ interface LegacyListRacesParams {
   bib_set_up?: boolean;
 }
 
-/** Convert clean param shape → legacy backend snake_case query params. */
-function toLegacyListParams(p: ListRacesParams): LegacyListRacesParams {
-  return {
-    pageNo: p.pageNo,
-    pageSize: p.pageSize,
-    sortField: p.sortField,
-    sortDirection: p.sortDirection,
-    status: p.status,
-    title: p.title,
-    race_type: p.raceType,
-    is_highlight: p.isHighlight,
-    bib_set_up: p.bibSetUp,
-  };
+/** Convert clean param shape → legacy backend SNAKE_CASE query params.
+ * Backend verified 2026-05-27: returns 400 "Mismatch request param" for camelCase. */
+function toLegacyListParams(p: ListRacesParams): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (p.pageNo !== undefined) out.page_no = p.pageNo;
+  if (p.pageSize !== undefined) out.page_size = p.pageSize;
+  if (p.sortField !== undefined) out.sort_field = p.sortField;
+  if (p.sortDirection !== undefined) out.sort_direction = p.sortDirection;
+  if (p.status !== undefined) out.status = p.status;
+  if (p.title !== undefined) out.title = p.title;
+  if (p.raceType !== undefined) out.race_type = p.raceType;
+  if (p.isHighlight !== undefined) out.is_highlight = p.isHighlight;
+  if (p.bibSetUp !== undefined) out.bib_set_up = p.bibSetUp;
+  return out;
 }
 
 /**

@@ -116,7 +116,7 @@ export default function EventDetailScreen() {
         message: t('browse.needLoginToRegister'),
       });
       router.push({
-        pathname: '/(auth)/login',
+        pathname: '/login',
         params: { redirect: `/events/${race.slug}` },
       });
       return;

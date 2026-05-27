@@ -61,17 +61,31 @@ export default function HomeScreen() {
   const fetchPage = useCallback(
     async (pageNo: number): Promise<{ items: Race[]; totalPages: number } | null> => {
       try {
+        // Backend /pub/race rejects status/sort_field/sort_direction params
+        // (returns 400 "Mismatch request param"). Send only pagination.
+        // Filter status client-side after fetch.
+        // Show ALL races (backend DEV mostly has status=COMPLETE).
+        // Real PROD will likely have OPEN_FOR_SALE / COMING_SOON.
+        // TODO: re-add status filter when backend confirms enum values.
         const res = await raceSdk.listRaces({
           pageNo,
           pageSize: PAGE_SIZE,
-          status: 'OPEN_FOR_SALE',
-          sortField: 'start_date',
-          sortDirection: 'ASC',
         });
         return { items: res.items, totalPages: res.pagination.totalPages ?? 1 };
       } catch (err) {
-        const msg =
-          err instanceof FetcherError ? err.message : t('browse.fetchError');
+        let msg = err instanceof FetcherError ? err.message : t('browse.fetchError');
+        // Backend rate-limit (HTTP 429 OR body "Too many pub requests")
+        if (err instanceof FetcherError) {
+          if (err.status === 429) msg = 'Backend đang quá tải, thử lại sau ~30s';
+          else if (
+            typeof err.response === 'object' &&
+            err.response !== null &&
+            'message' in err.response &&
+            String((err.response as { message: unknown }).message).toLowerCase().includes('too many')
+          ) {
+            msg = 'Backend đang quá tải, thử lại sau ~30s';
+          }
+        }
         showToast({ variant: 'error', message: msg });
         return null;
       }
@@ -92,9 +106,11 @@ export default function HomeScreen() {
     setState(res.items.length ? 'loaded' : 'empty');
   }, [fetchPage]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Load ONCE on mount. `load` callback ref may change every render due to
+  // useTranslation `t` reference instability — eslint-disable to avoid infinite
+  // re-fetch loop that previously hammered backend rate limits.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const refresh = async () => {
     setRefreshing(true);

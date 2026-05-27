@@ -75,7 +75,7 @@ export default function ProfileScreen() {
     }
     await secureRemove(TOKEN_KEY);
     useAuthStore.getState().logout();
-    router.replace('/(auth)/login');
+    router.replace('/login');
   };
 
   const onLogout = () =>

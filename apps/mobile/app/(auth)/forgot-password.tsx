@@ -43,7 +43,7 @@ export default function ForgotPasswordScreen() {
         variant: 'success',
         message: t('auth.otpSentTo', { email: email.trim() }),
       });
-      router.push({ pathname: '/(auth)/reset-password', params: { email: email.trim() } });
+      router.push({ pathname: '/reset-password', params: { email: email.trim() } });
     } catch (e: any) {
       if (e?.status === 429) {
         toast.show({ variant: 'warning', message: t('errors.generic') });

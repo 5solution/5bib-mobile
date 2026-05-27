@@ -64,7 +64,7 @@ export default function LoginScreen() {
       const result = await sdkUser.login({ email: email.trim(), password });
       await secureSet(TOKEN_KEY, result.token);
       useAuthStore.getState().login(result.token, result.user);
-      router.replace('/(tabs)/home');
+      router.replace('/home');
     } catch (e: any) {
       if (e?.status === 401) {
         toast.show({ variant: 'error', message: t('auth.loginError401') });
@@ -74,7 +74,18 @@ export default function LoginScreen() {
         setLockSeconds(e?.retryAfterSeconds ?? 900);
         toast.show({ variant: 'warning', message: t('auth.accountLocked', { minutes: mins }) });
       } else {
-        toast.show({ variant: 'error', message: t('errors.generic') });
+        // Try to surface backend error message (unwrap response wrapper).
+        // Backend shapes: { error: { code, message } } OR { error: { error: { code, message } } }
+        const resp = e?.response as { error?: { message?: string; error?: { code?: number; message?: string } } } | undefined;
+        const inner = resp?.error?.error ?? resp?.error;
+        const msg = inner?.message;
+        let userMsg = t('errors.generic');
+        if (msg === 'handleBaseException') {
+          userMsg = 'Tài khoản chưa kích hoạt. Kiểm tra email để verify.';
+        } else if (typeof msg === 'string' && msg.length < 200) {
+          userMsg = msg;
+        }
+        toast.show({ variant: 'error', message: userMsg });
       }
     } finally {
       setSubmitting(false);
@@ -94,7 +105,7 @@ export default function LoginScreen() {
       const result = await sdkUser.googleLogin({ idToken: r.idToken });
       await secureSet(TOKEN_KEY, result.token);
       useAuthStore.getState().login(result.token, result.user);
-      router.replace('/(tabs)/home');
+      router.replace('/home');
     } catch (e) {
       captureError(e, { tag: 'google-login-backend' });
       toast.show({ variant: 'error', message: t('errors.generic') });
@@ -130,7 +141,7 @@ export default function LoginScreen() {
       });
       await secureSet(TOKEN_KEY, result.token);
       useAuthStore.getState().login(result.token, result.user);
-      router.replace('/(tabs)/home');
+      router.replace('/home');
     } catch (e: any) {
       if (e?.code === 'ERR_REQUEST_CANCELED') return;
       captureError(e, { tag: 'apple-login' });
@@ -225,7 +236,7 @@ export default function LoginScreen() {
             <Button
               variant="ghost"
               size="sm"
-              onPress={() => router.push('/(auth)/forgot-password')}
+              onPress={() => router.push('/forgot-password')}
             >
               {t('auth.forgotPassword')}
             </Button>
@@ -302,7 +313,7 @@ export default function LoginScreen() {
           <Text style={{ color: tokens.color.neutral600, fontSize: tokens.fontSize.bodyMd }}>
             {t('auth.noAccount')}
           </Text>
-          <Button variant="ghost" size="md" onPress={() => router.push('/(auth)/register')}>
+          <Button variant="ghost" size="md" onPress={() => router.push('/register')}>
             {t('auth.registerNow')}
           </Button>
         </View>

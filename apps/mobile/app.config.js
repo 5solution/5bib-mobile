@@ -148,7 +148,15 @@ module.exports = {
           photosPermission: '5BIB cần quyền truy cập ảnh để bạn chọn avatar.',
         },
       ],
-      'sentry-expo',
+      [
+        '@sentry/react-native/expo',
+        {
+          organization: '5bib',
+          project: IS_DEV ? '5bib-mobile-dev' : '5bib-mobile-prod',
+          // SENTRY_AUTH_TOKEN via EAS Secret or env var
+          url: 'https://sentry.io/',
+        },
+      ],
     ],
     extra: {
       // EAS project linkage — TODO(Danny): paste real projectId after `eas init`
@@ -167,20 +175,7 @@ module.exports = {
     runtimeVersion: {
       policy: 'appVersion',
     },
-    hooks: {
-      postPublish: [
-        {
-          file: 'sentry-expo/upload-sourcemaps',
-          config: {
-            organization: '5bib',
-            project: IS_DEV ? '5bib-mobile-dev' : '5bib-mobile-prod',
-            // SENTRY_AUTH_TOKEN must be set as EAS Secret (or env var locally for testing)
-            // Create at: https://sentry.io/settings/account/api/auth-tokens/
-            // Scopes required: project:read, project:releases, org:read
-            authToken: process.env.SENTRY_AUTH_TOKEN,
-          },
-        },
-      ],
-    },
+    // Sentry sourcemap upload handled by @sentry/react-native/expo plugin (above)
+    // sentry-expo postPublish hook deprecated in Expo SDK 50+
   },
 };

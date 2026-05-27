@@ -30,12 +30,12 @@ export default function WelcomeScreen() {
 
   const next = async () => {
     await AsyncStorage.setItem('first_launch_done', 'true');
-    router.replace('/(auth)/register');
+    router.replace('/register');
   };
 
   const goLogin = async () => {
     await AsyncStorage.setItem('first_launch_done', 'true');
-    router.replace('/(auth)/login');
+    router.replace('/login');
   };
 
   return (

@@ -160,7 +160,7 @@ export default function CheckoutResultScreen() {
                 variant: 'success',
                 message: t('payment.result.failed.cancelSuccess'),
               });
-              router.replace('/(tabs)/home');
+              router.replace('/home');
             } catch {
               toast.show({ variant: 'error', message: t('errors.generic') });
             } finally {
@@ -404,7 +404,7 @@ export default function CheckoutResultScreen() {
               variant="ghost"
               size="lg"
               fullWidth
-              onPress={() => router.replace('/(tabs)/home')}
+              onPress={() => router.replace('/home')}
             >
               {t('common.goHome')}
             </Button>
@@ -426,7 +426,7 @@ export default function CheckoutResultScreen() {
               variant="ghost"
               size="lg"
               fullWidth
-              onPress={() => router.replace('/(tabs)/home')}
+              onPress={() => router.replace('/home')}
             >
               {t('common.goHome')}
             </Button>

@@ -79,7 +79,7 @@ export default function ResetPasswordScreen() {
         newPasswordConfirm: confirmPwd,
       });
       toast.show({ variant: 'success', message: t('auth.passwordReset') });
-      router.replace({ pathname: '/(auth)/login', params: { email } });
+      router.replace({ pathname: '/login', params: { email } });
     } catch (e: any) {
       if (e?.status === 400) {
         setOtpErr(t('validation.otpWrong'));

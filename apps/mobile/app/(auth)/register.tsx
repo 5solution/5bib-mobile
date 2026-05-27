@@ -98,7 +98,7 @@ export default function RegisterScreen() {
       await secureSet(TOKEN_KEY, result.token);
       useAuthStore.getState().login(result.token, result.user);
       toast.show({ variant: 'success', message: t('auth.registerSuccess') });
-      router.replace('/(tabs)/home');
+      router.replace('/home');
     } catch (e: any) {
       if (e?.status === 409) {
         setEmailExistsBanner(form.email.trim());
@@ -114,10 +114,10 @@ export default function RegisterScreen() {
   const goLoginWithEmail = () => {
     const existing = emailExistsBanner;
     if (!existing) {
-      router.replace('/(auth)/login');
+      router.replace('/login');
       return;
     }
-    router.replace({ pathname: '/(auth)/login', params: { email: existing } });
+    router.replace({ pathname: '/login', params: { email: existing } });
   };
 
   return (
@@ -294,7 +294,7 @@ export default function RegisterScreen() {
           <Text style={{ color: tokens.color.neutral600, fontSize: tokens.fontSize.bodyMd }}>
             {t('auth.haveAccount')}
           </Text>
-          <Button variant="ghost" size="md" onPress={() => router.replace('/(auth)/login')}>
+          <Button variant="ghost" size="md" onPress={() => router.replace('/login')}>
             {t('auth.loginLink')}
           </Button>
         </View>

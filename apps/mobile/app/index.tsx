@@ -1,43 +1,43 @@
 /**
  * apps/mobile/app/index.tsx
  *
- * Splash + auth gate. Reads persisted Zustand auth state + first-launch flag:
- *  - hydrating → show splash
- *  - authenticated → redirect /(tabs)/home
- *  - not authenticated + first-launch → /(auth)/welcome
- *  - not authenticated + returning → /(auth)/login
+ * Splash + auth gate. Uses <Redirect> component (declarative) instead of
+ * imperative router.replace() — avoids "Attempted to navigate before mounting
+ * the Root Layout component" error from Expo Router.
  */
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Redirect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { FullScreenLoading } from '../src/components';
 import { useAuthStore } from '../src/stores/useAuthStore';
 
 export default function Index() {
-  const router = useRouter();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isHydrating = useAuthStore((s) => s.isHydrating);
   const hydrate = useAuthStore((s) => s.hydrate);
+
+  const [firstLaunchDone, setFirstLaunchDone] = useState<boolean | null>(null);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
   useEffect(() => {
-    if (isHydrating) return;
+    AsyncStorage.getItem('first_launch_done').then((v) => {
+      setFirstLaunchDone(v === 'true');
+    });
+  }, []);
 
-    if (isAuthenticated) {
-      router.replace('/(tabs)/home');
-      return;
-    }
+  // Wait until both auth + first-launch flag hydrated
+  if (isHydrating || firstLaunchDone === null) {
+    return <FullScreenLoading />;
+  }
 
-    void (async () => {
-      const done = await AsyncStorage.getItem('first_launch_done');
-      router.replace(done ? '/(auth)/login' : '/(auth)/welcome');
-    })();
-  }, [isHydrating, isAuthenticated, router]);
+  if (isAuthenticated) {
+    return <Redirect href="/home" />;
+  }
 
-  return <FullScreenLoading />;
+  return <Redirect href={firstLaunchDone ? '/login' : '/welcome'} />;
 }

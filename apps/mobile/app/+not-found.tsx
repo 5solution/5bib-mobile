@@ -12,7 +12,7 @@ export default function NotFound() {
     <FullScreenError
       title="Không tìm thấy trang"
       description="Đường dẫn này không tồn tại trong ứng dụng."
-      onGoHome={() => router.replace('/(tabs)/home')}
+      onGoHome={() => router.replace('/home')}
     />
   );
 }

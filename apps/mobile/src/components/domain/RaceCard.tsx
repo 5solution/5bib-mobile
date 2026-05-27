@@ -17,7 +17,7 @@ export interface RaceCardProps {
   onPress?: () => void;
 }
 
-function statusBadge(status: Race['status']): { variant: 'success' | 'info' | 'default' | 'warning'; label: string } {
+function statusBadge(status: Race['status'] | string | undefined): { variant: 'success' | 'info' | 'default' | 'warning'; label: string } {
   switch (status) {
     case 'OPEN_FOR_SALE':
       return { variant: 'success', label: 'Đang mở đăng ký' };
@@ -26,7 +26,10 @@ function statusBadge(status: Race['status']): { variant: 'success' | 'info' | 'd
     case 'CLOSED':
       return { variant: 'warning', label: 'Đã đóng' };
     case 'FINISHED':
+    case 'COMPLETE': // backend uses COMPLETE
       return { variant: 'default', label: 'Đã kết thúc' };
+    default:
+      return { variant: 'default', label: status ? String(status) : '-' };
   }
 }
 

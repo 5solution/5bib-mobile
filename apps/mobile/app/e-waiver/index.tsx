@@ -338,7 +338,7 @@ export default function WaiverScreen() {
               icon={<Text style={{ fontSize: 32 }}>🎉</Text>}
               title={t('waiver.allSigned')}
               ctaLabel={t('common.goHome')}
-              onPress={() => router.replace('/(tabs)/home')}
+              onPress={() => router.replace('/home')}
             />
           ) : (
             <View style={{ gap: tokens.space[3] }}>

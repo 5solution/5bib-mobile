@@ -27,4 +27,13 @@ config.resolver.nodeModulesPaths = [
 // Avoid duplicate React copies which would break hooks / context.
 config.resolver.disableHierarchicalLookup = true;
 
+// Workaround: source-map/lib/url.js imports Node 'url' module which doesn't exist
+// in React Native. Some transitive deps (Sentry, debug tools) pull source-map at
+// runtime. Stub `url` module to an empty object — RN doesn't need source-map for
+// production code.
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  url: require.resolve('react-native-url-polyfill/auto'),
+};
+
 module.exports = config;

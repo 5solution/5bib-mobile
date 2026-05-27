@@ -46,7 +46,7 @@ function AuthExpiredListener() {
     const unsub = eventBus.on('AUTH_EXPIRED', () => {
       logout();
       toast.show({ variant: 'warning', message: 'Phiên đăng nhập hết hạn' });
-      router.replace('/(auth)/login');
+      router.replace('/login');
     });
     return unsub;
   }, [router, toast, logout]);

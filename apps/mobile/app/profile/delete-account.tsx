@@ -111,7 +111,7 @@ export default function DeleteAccountScreen() {
         variant: 'success',
         message: t('profile.deleteAccount.success'),
       });
-      router.replace('/(auth)/welcome');
+      router.replace('/welcome');
     } catch (e) {
       captureError(e, { tag: 'account-deletion' });
       toast.show({ variant: 'error', message: t('profile.deleteAccount.failed') });
