@@ -30,13 +30,19 @@ import { order as orderSdk } from '../../src/sdk/services/order';
 import { FetcherError } from '../../src/sdk/core';
 import type { Order } from '../../src/sdk/models';
 
-type StatusTab = 'paid' | 'pending' | 'cancelled';
+/**
+ * 4 tabs matching dev.5bib.com `/vi/orders` ordering (verified 2026-05-28):
+ *   Đã đóng / Hoàn tất / Chờ thanh toán / Đang xử lý
+ * Backend `internal_status` enum spans more values; group them so users see
+ * the same buckets they see on web.
+ */
+type StatusTab = 'closed' | 'completed' | 'awaitingPayment' | 'processing';
 
-/** Backend internal_status mapping for the 3 mobile tabs. */
 const TAB_TO_STATUS: Record<StatusTab, string> = {
-  paid: 'COMPLETE',
-  pending: 'PENDING',
-  cancelled: 'CANCELLED',
+  closed: 'CLOSED',
+  completed: 'COMPLETE',
+  awaitingPayment: 'PENDING',
+  processing: 'PROCESSING',
 };
 
 export default function OrdersScreen() {
@@ -45,7 +51,7 @@ export default function OrdersScreen() {
   const online = useOnline();
   const toast = useToast();
 
-  const [tab, setTab] = useState<StatusTab>('paid');
+  const [tab, setTab] = useState<StatusTab>('awaitingPayment');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -104,10 +110,12 @@ export default function OrdersScreen() {
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
 
       <SegmentedTabs
+        scroll
         options={[
-          { id: 'paid', label: t('orders.tabPaid') },
-          { id: 'pending', label: t('orders.tabPending') },
-          { id: 'cancelled', label: t('orders.tabCancelled') },
+          { id: 'closed', label: t('orders.tabClosed') },
+          { id: 'completed', label: t('orders.tabCompleted') },
+          { id: 'awaitingPayment', label: t('orders.tabAwaitingPayment') },
+          { id: 'processing', label: t('orders.tabProcessing') },
         ]}
         value={tab}
         onChange={(v) => setTab(v as StatusTab)}

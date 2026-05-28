@@ -27,37 +27,43 @@ import { ticket as ticketSdk } from '../../src/sdk/services/ticket';
 import { FetcherError } from '../../src/sdk/core';
 import type { Ticket } from '../../src/sdk/models';
 
-type TabId = 'upcoming' | 'checkedIn' | 'transferred';
-
 /**
- * Group ticket → 3 tabs per BR-TICKETS-01 (mobile MVP simplification):
- *   - upcoming    = status ACTIVE + athleteStatus NOT in (CHECKED_IN, RACEKIT_RECEIVED, RACEKIT_NOT_RECEIVED)
- *   - checkedIn   = athleteStatus in (CHECKED_IN, RACEKIT_RECEIVED, RACEKIT_NOT_RECEIVED)
- *   - transferred = status TRANSFERRED or CANCELLED
+ * Filter pills match dev.5bib.com `/vi/tickets` exactly (verified 2026-05-28):
+ *   all / notRegistered / transferring / registered / awaitConfirm /
+ *   checkedIn / racekitReceived / racekitNot
  *
- * Compare via string to tolerate the 8-status backend enum even though
- * the TS union currently lists only 3 values.
+ * Each pill maps to a predicate over backend's 8-status enum
+ * (athlete_status + code_status). The previous 3-bucket "MVP simplification"
+ * hid registration status from users (e.g. a NEW ticket and a REGISTERED
+ * ticket looked identical because both fell under "upcoming"); web exposes
+ * the difference so we match.
  */
-function classifyTicket(t: Ticket): TabId {
-  const tStatus = String(t.status ?? '');
-  if (tStatus === 'TRANSFERRED' || tStatus === 'CANCELLED') return 'transferred';
-  const aStatus = String(t.athleteStatus ?? '');
-  // Backend uses CHECK_IN (snake fragment) on some endpoints, CHECKED_IN on others.
-  // FINISH / DNF / DNS / DSQ also belong in the checked-in (post-race) bucket.
-  if (
-    aStatus === 'CHECK_IN' ||
-    aStatus === 'CHECKED_IN' ||
-    aStatus === 'RACEKIT_RECEIVED' ||
-    aStatus === 'RACEKIT_NOT_RECEIVED' ||
-    aStatus === 'FINISH' ||
-    aStatus === 'DNF' ||
-    aStatus === 'DNS' ||
-    aStatus === 'DSQ'
-  ) {
-    return 'checkedIn';
-  }
-  return 'upcoming';
-}
+type TabId =
+  | 'all'
+  | 'notRegistered'
+  | 'transferring'
+  | 'registered'
+  | 'awaitConfirm'
+  | 'checkedIn'
+  | 'racekitReceived'
+  | 'racekitNot';
+
+const TAB_PREDICATES: Record<TabId, (t: Ticket) => boolean> = {
+  all: () => true,
+  notRegistered: (t) => {
+    const a = String(t.athleteStatus ?? '');
+    return a === 'NEW' || a === 'REGISTER';
+  },
+  transferring: (t) => String(t.status ?? '') === 'TRANSFERRING',
+  registered: (t) => String(t.athleteStatus ?? '') === 'REGISTERED',
+  awaitConfirm: (t) => String(t.athleteStatus ?? '') === 'REMIND_CHECK_IN',
+  checkedIn: (t) => {
+    const a = String(t.athleteStatus ?? '');
+    return a === 'CHECK_IN' || a === 'CHECKED_IN';
+  },
+  racekitReceived: (t) => String(t.athleteStatus ?? '') === 'RACEKIT_RECEIVED',
+  racekitNot: (t) => String(t.athleteStatus ?? '') === 'RACEKIT_NOT_RECEIVED',
+};
 
 export default function TicketsScreen() {
   const { t } = useTranslation();
@@ -65,7 +71,7 @@ export default function TicketsScreen() {
   const online = useOnline();
   const toast = useToast();
 
-  const [tab, setTab] = useState<TabId>('upcoming');
+  const [tab, setTab] = useState<TabId>('all');
   const [allTickets, setAllTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,27 +122,23 @@ export default function TicketsScreen() {
     await load();
   }, [load]);
 
-  const { upcoming, checkedIn, transferred } = useMemo(() => {
-    const u: Ticket[] = [];
-    const c: Ticket[] = [];
-    const x: Ticket[] = [];
-    for (const it of allTickets) {
-      const g = classifyTicket(it);
-      if (g === 'upcoming') u.push(it);
-      else if (g === 'checkedIn') c.push(it);
-      else x.push(it);
-    }
-    return { upcoming: u, checkedIn: c, transferred: x };
+  // Per-tab count for badge display + visible list.
+  const counts = useMemo(() => {
+    const out = {} as Record<TabId, number>;
+    (Object.keys(TAB_PREDICATES) as TabId[]).forEach((id) => {
+      out[id] = allTickets.filter(TAB_PREDICATES[id]).length;
+    });
+    return out;
   }, [allTickets]);
 
-  const visible = tab === 'upcoming' ? upcoming : tab === 'checkedIn' ? checkedIn : transferred;
+  const visible = useMemo(
+    () => allTickets.filter(TAB_PREDICATES[tab]),
+    [allTickets, tab],
+  );
 
-  const emptyTitle =
-    tab === 'upcoming'
-      ? t('tickets.emptyUpcoming')
-      : tab === 'checkedIn'
-        ? t('tickets.emptyCheckedIn')
-        : t('tickets.emptyTransferred');
+  const emptyTitle = t(`tickets.empty.${tab}` as const, {
+    defaultValue: t('tickets.empty.all'),
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
@@ -146,9 +148,14 @@ export default function TicketsScreen() {
       <SegmentedTabs
         scroll
         options={[
-          { id: 'upcoming', label: t('tickets.tabUpcoming'), count: upcoming.length },
-          { id: 'checkedIn', label: t('tickets.tabCheckedIn'), count: checkedIn.length },
-          { id: 'transferred', label: t('tickets.tabTransferred'), count: transferred.length },
+          { id: 'all', label: t('tickets.tab.all'), count: counts.all },
+          { id: 'notRegistered', label: t('tickets.tab.notRegistered'), count: counts.notRegistered },
+          { id: 'transferring', label: t('tickets.tab.transferring'), count: counts.transferring },
+          { id: 'registered', label: t('tickets.tab.registered'), count: counts.registered },
+          { id: 'awaitConfirm', label: t('tickets.tab.awaitConfirm'), count: counts.awaitConfirm },
+          { id: 'checkedIn', label: t('tickets.tab.checkedIn'), count: counts.checkedIn },
+          { id: 'racekitReceived', label: t('tickets.tab.racekitReceived'), count: counts.racekitReceived },
+          { id: 'racekitNot', label: t('tickets.tab.racekitNot'), count: counts.racekitNot },
         ]}
         value={tab}
         onChange={(v) => setTab(v as TabId)}
@@ -190,12 +197,16 @@ export default function TicketsScreen() {
           ctaLabel={
             errored
               ? t('common.retry')
-              : tab === 'upcoming'
+              : tab === 'all' || tab === 'notRegistered'
                 ? t('tickets.emptyUpcomingCta')
                 : undefined
           }
           onPress={
-            errored ? refresh : tab === 'upcoming' ? () => router.push('/events') : undefined
+            errored
+              ? refresh
+              : tab === 'all' || tab === 'notRegistered'
+                ? () => router.push('/events')
+                : undefined
           }
         />
       ) : (

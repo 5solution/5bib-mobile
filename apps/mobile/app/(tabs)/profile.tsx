@@ -164,6 +164,125 @@ export default function ProfileScreen() {
           }}
         />
 
+        {/* Basic info — matches web `/vi/profile` "THÔNG TIN CƠ BẢN" section */}
+        {!loading && user && (
+          <InfoSection title={t('profile.basicInfo')}>
+            <InfoRow label={t('profile.fullName.label')} value={user.fullName} />
+            <InfoRow label={t('profile.phone')} value={user.phone} />
+            <InfoRow label={t('profile.email')} value={user.email} />
+            <InfoRow
+              label={t('profile.tshirtSize')}
+              value={user.racekit}
+              onEdit={() => router.push('/profile/edit')}
+            />
+            <InfoRow
+              label={t('profile.achievements')}
+              value={user.achievements}
+              onEdit={() => router.push('/profile/edit')}
+            />
+            <InfoRow
+              label={t('profile.club')}
+              value={user.club}
+              onEdit={() => router.push('/profile/edit')}
+            />
+          </InfoSection>
+        )}
+
+        {/* Identity (KYC) — matches "THÔNG TIN ĐỊNH DANH". Status badge derived
+           from idNumber presence (real KYC integration deferred to Phase 2). */}
+        {!loading && user && (
+          <InfoSection
+            title={t('profile.identity.title')}
+            trailingAction={{
+              label: t('profile.identity.detail'),
+              onPress: () => router.push('/profile/edit'),
+            }}
+          >
+            <View
+              style={{
+                marginHorizontal: tokens.space[4],
+                paddingVertical: tokens.space[3],
+                gap: tokens.space[2],
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: tokens.fontSize.labelSm,
+                  color: tokens.color.neutral500,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+              >
+                {t('profile.identity.status')}
+              </Text>
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: tokens.space[3],
+                  paddingVertical: 6,
+                  borderRadius: tokens.radius.full,
+                  backgroundColor: user.idNumber ? '#DCFCE7' /* green-100 */ : '#FEE2E2' /* red-100 */,
+                }}
+              >
+                <Text
+                  style={{
+                    color: user.idNumber ? tokens.color.success : tokens.color.error,
+                    fontWeight: tokens.fontWeight.semibold,
+                    fontSize: tokens.fontSize.labelSm,
+                  }}
+                >
+                  {user.idNumber
+                    ? t('profile.identity.verified')
+                    : t('profile.identity.notVerified')}
+                </Text>
+              </View>
+              {!user.idNumber && (
+                <Text
+                  style={{
+                    color: tokens.color.neutral600,
+                    fontSize: tokens.fontSize.bodySm,
+                  }}
+                >
+                  {t('profile.identity.notVerifiedHint')}
+                </Text>
+              )}
+              <Text
+                style={{
+                  color: tokens.color.neutral500,
+                  fontSize: tokens.fontSize.bodySm,
+                  marginTop: tokens.space[2],
+                }}
+              >
+                🛡️ {t('profile.identity.secure')}
+              </Text>
+            </View>
+          </InfoSection>
+        )}
+
+        {/* Medical info — matches "THÔNG TIN Y TẾ". All fields editable from
+           the Edit Profile screen so we surface them here as read-only. */}
+        {!loading && user && (
+          <InfoSection title={t('profile.medical.title')}>
+            <InfoRow
+              label={t('profile.medical.sosPhone')}
+              value={user.sosPhone}
+              onEdit={() => router.push('/profile/edit')}
+            />
+            <InfoRow
+              label={t('profile.medical.info')}
+              value={user.medicalInfo}
+              onEdit={() => router.push('/profile/edit')}
+            />
+            <InfoRow
+              label={t('profile.medical.bloodGroup')}
+              value={user.bloodGroup}
+              onEdit={() => router.push('/profile/edit')}
+            />
+            <InfoRow label={t('profile.medical.height')} value={user.height} />
+            <InfoRow label={t('profile.medical.weight')} value={user.weight} />
+          </InfoSection>
+        )}
+
         <View style={{ paddingTop: tokens.space[3] }}>
           <Text
             style={{
@@ -261,6 +380,119 @@ export default function ProfileScreen() {
           </Text>
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+/**
+ * Section card matching web's profile blocks. Renders a section header
+ * (uppercase, neutral) + content + optional "Chi tiết"-style right action.
+ */
+function InfoSection({
+  title,
+  children,
+  trailingAction,
+}: {
+  title: string;
+  children: React.ReactNode;
+  trailingAction?: { label: string; onPress: () => void };
+}) {
+  return (
+    <View style={{ paddingTop: tokens.space[4] }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: tokens.space[4],
+          marginBottom: tokens.space[2],
+        }}
+      >
+        <Text
+          style={{
+            fontSize: tokens.fontSize.labelSm,
+            fontWeight: tokens.fontWeight.semibold,
+            color: tokens.color.neutral500,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
+          — {title}
+        </Text>
+        {trailingAction ? (
+          <Text
+            onPress={trailingAction.onPress}
+            style={{
+              color: tokens.color.brandPrimary,
+              fontWeight: tokens.fontWeight.semibold,
+              fontSize: tokens.fontSize.bodySm,
+            }}
+            accessibilityRole="link"
+          >
+            {trailingAction.label} ›
+          </Text>
+        ) : null}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/**
+ * Two-line row: label on top (uppercase neutral) + value below. Tap pencil
+ * icon (when `onEdit` provided) jumps to the edit screen. Missing/empty
+ * values render as `N/A` to mirror web's empty-state display.
+ */
+function InfoRow({
+  label,
+  value,
+  onEdit,
+}: {
+  label: string;
+  value?: string | null;
+  onEdit?: () => void;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: tokens.space[4],
+        paddingVertical: tokens.space[3],
+        borderBottomWidth: 1,
+        borderBottomColor: tokens.color.neutral100,
+        gap: tokens.space[3],
+      }}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text
+          style={{
+            fontSize: tokens.fontSize.labelSm,
+            color: tokens.color.neutral500,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{
+            fontSize: tokens.fontSize.bodyMd,
+            color: value ? tokens.color.neutral900 : tokens.color.neutral400,
+          }}
+        >
+          {value && value.trim() ? value : 'N/A'}
+        </Text>
+      </View>
+      {onEdit ? (
+        <Text
+          onPress={onEdit}
+          style={{ fontSize: 18, color: tokens.color.neutral500 }}
+          accessibilityRole="button"
+        >
+          ✏️
+        </Text>
+      ) : null}
     </View>
   );
 }
