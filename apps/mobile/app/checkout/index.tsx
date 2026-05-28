@@ -8,7 +8,7 @@
  * and navigates to /checkout/payment-webview after successful order creation.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -135,6 +135,12 @@ export default function CheckoutScreen() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>('VNPAY_QR');
   const [includeInsurance, setIncludeInsurance] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
+  // React state is async — checking `submitting` from inside onPress can read
+  // a stale value if a double-tap fires both handlers in the same tick. Use a
+  // ref as the synchronous lock so the second tap is a no-op even before
+  // setSubmitting(true) has flushed. Verified 2026-05-28 — simulator was
+  // firing /order/create 2-3× per Fake-payment tap before this guard.
+  const submitLock = useRef(false);
 
   // Draft persist scoped to race + course (BR-CHECKOUT-16, 24h TTL).
   const draft = useDraftPersist<AthleteForm>(
@@ -370,12 +376,13 @@ export default function CheckoutScreen() {
 
   const submitOrder = async () => {
     // Debounce: ignore re-tap while in-flight (BR-CHECKOUT — backend has no idempotency key).
-    if (submitting) return;
+    if (submitLock.current) return;
     if (!paymentMethod) return;
     if (!online) {
       toast.show({ variant: 'error', message: t('errors.network') });
       return;
     }
+    submitLock.current = true;
     setSubmitting(true);
     try {
       const input = buildOrderInput();
@@ -393,12 +400,14 @@ export default function CheckoutScreen() {
       toast.show({ variant: 'error', message: t('checkout.errors.createOrderFailed') });
     } finally {
       setSubmitting(false);
+      submitLock.current = false;
     }
   };
 
   // DEV-only: bypass real gateway, mark order paid via fake-payment endpoint.
   const submitFakePayment = async () => {
-    if (submitting) return;
+    if (submitLock.current) return;
+    submitLock.current = true;
     setSubmitting(true);
     try {
       const input = buildOrderInput();
@@ -429,6 +438,7 @@ export default function CheckoutScreen() {
       toast.show({ variant: 'error', message: msg.slice(0, 140) });
     } finally {
       setSubmitting(false);
+      submitLock.current = false;
     }
   };
 
