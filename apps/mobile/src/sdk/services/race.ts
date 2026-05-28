@@ -137,6 +137,12 @@ async function fetchSimpleCoursesForOneRace(
     const ticketTypes: TicketType[] = tts.map((tt) => ({
       id: String(tt.id ?? ''),
       raceCourseId: String(tt.race_course_id ?? r.id ?? ''),
+      variantId:
+        tt.variant_id != null
+          ? String(tt.variant_id)
+          : r.variant_id != null
+            ? String(r.variant_id)
+            : undefined,
       typeName: String(tt.type_name ?? tt.name ?? ''),
       price: Number(tt.price ?? 0),
       currency: 'VND',

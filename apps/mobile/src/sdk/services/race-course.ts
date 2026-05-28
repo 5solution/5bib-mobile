@@ -15,6 +15,12 @@ function normalizeTicketType(raw: unknown): TicketType {
   return {
     id: String(r.id ?? ''),
     raceCourseId: String(r.race_course_id ?? r.raceCourseId ?? ''),
+    variantId:
+      r.variant_id != null
+        ? String(r.variant_id)
+        : r.variantId != null
+          ? String(r.variantId)
+          : undefined,
     typeName: String(r.type_name ?? r.typeName ?? r.name ?? ''),
     price: Number(r.price ?? 0),
     currency: 'VND',

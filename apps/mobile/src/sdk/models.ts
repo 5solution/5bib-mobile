@@ -101,6 +101,13 @@ export type RaceStatus = 'OPEN_FOR_SALE' | 'COMING_SOON' | 'CLOSED' | 'FINISHED'
 export interface TicketType {
   id: string;
   raceCourseId: string;
+  /**
+   * Legacy Shopify-style product variant id (e.g. 124495055). Backend
+   * `/order/create` requires this in `line_items[].variant_id` — sending
+   * `race_course.id` instead returns 400 "This order should contain only
+   * tickets/race-course in race X". Verified 2026-05-28.
+   */
+  variantId?: string;
   /** Display name: "ELB", "Family", "Ultra", "Thường", etc. */
   typeName: string;
   price: number;
@@ -229,8 +236,14 @@ export interface GuardianPayload {
 
 export interface OrderCreateInput {
   raceId: string;
-  courseId: string;             // legacy: also used as variantId; see ticketTypeId below
-  ticketTypeId?: string;        // from /pub/ticket-type/by-variant (optional, backend tolerates undefined)
+  courseId: string; // race_course.id — kept for context/logging; NOT sent as variant_id
+  /**
+   * Legacy product variant id (e.g. 124495055). Backend `line_items[].variant_id`
+   * REQUIRES this — sending `courseId` returns 400 "This order should contain
+   * only tickets/race-course in race X". Read from selected ticketType.variantId.
+   */
+  variantId?: string;
+  ticketTypeId?: string; // from /pub/ticket-type/by-variant (optional, backend tolerates undefined)
   athlete: AthleteCreatePayload;
   delegator?: DelegatorPayload;
   guardian?: GuardianPayload;

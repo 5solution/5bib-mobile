@@ -301,7 +301,14 @@ export default function CheckoutScreen() {
 
   // Once courses are populated, fall back to first if selection is empty/stale.
   const activeCourse: RaceCourse = selectedCourse ?? courses[0]!;
-  const subtotal = activeCourse.price;
+  // Prefer the selected ticket_type's price (per-tier) over the course's
+  // headline price — same precedence as `subtotalEarly` above. Without this,
+  // multi-tier races would compute subtotal from ticketTypes[0] even when
+  // the user picked a different tier, and total would be wrong (or 0).
+  const subtotal =
+    selectedTicketType?.price ??
+    activeCourse.ticketTypes?.[0]?.price ??
+    activeCourse.price;
   const insuranceFee = includeInsurance ? 0 : 0; // Fee TBD by backend; UI flag only for now.
   const total = Math.max(0, subtotal + insuranceFee - (discountApplied?.amount ?? 0));
 
@@ -332,10 +339,16 @@ export default function CheckoutScreen() {
   const buildOrderInput = (): OrderCreateInput => ({
     raceId,
     courseId: activeCourse.id,
-    // ticketTypeId is what tells backend WHICH tier (Family/ELB/VIP) the user
-    // bought — without it, all orders default to ticket_types[0] which means
-    // users can't actually purchase the higher tiers they selected on the UI.
+    // ticketTypeId tells backend WHICH tier (Family/ELB/VIP) the user bought.
+    // variantId is the legacy product-variant id backend's `line_items[].variant_id`
+    // requires — sourced from the selected ticket_type. Falls back to course's
+    // first ticket_type when user didn't actively pick a tier (single-tier flow).
     ...(selectedTicketTypeId ? { ticketTypeId: selectedTicketTypeId } : {}),
+    ...(selectedTicketType?.variantId
+      ? { variantId: selectedTicketType.variantId }
+      : activeCourse.ticketTypes?.[0]?.variantId
+        ? { variantId: activeCourse.ticketTypes[0]!.variantId! }
+        : {}),
     athlete: {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -396,8 +409,24 @@ export default function CheckoutScreen() {
         pathname: '/checkout/result',
         params: { order_id: created.orderId, status: 'paid' },
       });
-    } catch {
-      toast.show({ variant: 'error', message: t('checkout.errors.createOrderFailed') });
+    } catch (err) {
+      // Surface backend's response body, not the generic axios message.
+      // FetcherError attaches `status` + `response` so we can show the real
+      // server error to the user instead of a generic "Could not create order".
+      const e = err as { status?: number; response?: unknown; message?: string };
+      let msg = e?.message ?? t('checkout.errors.createOrderFailed');
+      try {
+        const r = e.response;
+        if (r && typeof r === 'object') {
+          const errObj = (r as Record<string, unknown>).error as
+            | Record<string, unknown>
+            | undefined;
+          if (errObj?.message) msg = String(errObj.message);
+        }
+      } catch {
+        /* ignore */
+      }
+      toast.show({ variant: 'error', message: msg.slice(0, 140) });
     } finally {
       setSubmitting(false);
     }

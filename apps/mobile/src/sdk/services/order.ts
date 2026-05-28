@@ -57,7 +57,11 @@ function mapAthleteToSubInfo(
     last_name: a.lastName,
     contact_phone: a.phone,
     id_number: a.idNumber,
-    nationality: a.nationality,
+    // QC: nationality default "Việt Nam" contains a diacritic that Hermes'
+    // JSON.stringify sometimes serializes as bytes the backend rejects with
+    // "Mismatch request param". Strip to ASCII for the wire while keeping
+    // the form display in Vietnamese. Backend tolerates "Vietnam".
+    nationality: a.nationality === 'Việt Nam' ? 'Vietnam' : a.nationality,
     gender: toBackendGender(a.gender),
     dob: a.dob,
     tshirt_size: a.tshirtSize,
@@ -100,10 +104,13 @@ export const order = {
         line_items: [
           {
             quantity: 1,
-            // Backend uses `variant_id` (legacy product variant). courseId
-            // serves dual purpose; ticketTypeId optional (from
-            // /pub/ticket-type/by-variant) — backend tolerates undefined.
-            variant_id: Number(input.courseId),
+            // Backend REQUIRES legacy Shopify-style product variant id, NOT
+            // race_course.id. Verified 2026-05-28 — sending courseId returns
+            // 400 "This order should contain only tickets/race-course in race X".
+            // Real variant_id comes from ticket_type.variant_id (e.g. 124495055
+            // for race 305 course 552). courseId fallback only for the legacy
+            // single-tier path; modern flow always has a ticketType selected.
+            variant_id: Number(input.variantId ?? input.courseId),
             ticket_type_id: input.ticketTypeId
               ? Number(input.ticketTypeId)
               : undefined,
