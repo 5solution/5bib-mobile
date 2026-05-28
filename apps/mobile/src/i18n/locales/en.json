@@ -507,6 +507,7 @@
     "tabCompleted": "Completed",
     "tabAwaitingPayment": "Awaiting payment",
     "tabProcessing": "Processing",
+    "loadFailed": "Could not load orders",
     "statusPaid": "Paid",
     "statusPending": "Pending",
     "statusVoided": "Cancelled",

@@ -509,6 +509,7 @@
     "tabCompleted": "Hoàn tất",
     "tabAwaitingPayment": "Chờ thanh toán",
     "tabProcessing": "Đang xử lý",
+    "loadFailed": "Không tải được danh sách đơn hàng",
     "statusPaid": "Đã thanh toán",
     "statusPending": "Chờ thanh toán",
     "statusVoided": "Đã huỷ",

@@ -12,15 +12,33 @@ export function normalizeOrder(raw: unknown): Order {
 
   return {
     id: String(r.id ?? r.order_id ?? ''),
-    orderNumber: String(r.order_number ?? r.orderNumber ?? r.id ?? ''),
+    // Backend uses `name` for the printable order code (e.g. "#5B200002347IB").
+    // Web shows this verbatim — keep the leading "#" if present so we don't
+    // need to re-add it client-side.
+    orderNumber: String(
+      r.order_number ?? r.orderNumber ?? r.name ?? r.id ?? '',
+    ),
     raceId: String(r.race_id ?? r.raceId ?? ''),
-    raceName: String(r.race_name ?? r.raceName ?? ''),
+    // Backend nests race detail under `race.title`. Fall back through
+    // race_name / raceName for legacy callers.
+    raceName: String(
+      r.race_name ??
+        r.raceName ??
+        ((r.race as { title?: string } | undefined)?.title ?? ''),
+    ),
     courseId: String(r.course_id ?? r.race_course_id ?? r.courseId ?? ''),
     courseName: String(r.course_name ?? r.courseName ?? ''),
     athleteName: String(r.athlete_name ?? r.athleteName ?? ''),
-    totalAmount: toNumber(r.total_amount ?? r.totalAmount ?? r.total ?? 0),
-    subtotal: toNumber(r.subtotal ?? r.sub_total ?? 0),
-    discountAmount: toNumber(r.discount_amount ?? r.discountAmount ?? 0),
+    // Backend wire field is `total_price` (not `total_amount`).
+    totalAmount: toNumber(
+      r.total_amount ?? r.totalAmount ?? r.total_price ?? r.total ?? 0,
+    ),
+    subtotal: toNumber(
+      r.subtotal ?? r.sub_total ?? r.sub_total_price ?? 0,
+    ),
+    discountAmount: toNumber(
+      r.discount_amount ?? r.discountAmount ?? r.total_discounts ?? 0,
+    ),
     // typo fix: backend `finalcial_status` → clean `financialStatus`
     financialStatus: normalizeFinancialStatus(
       r.financial_status ??

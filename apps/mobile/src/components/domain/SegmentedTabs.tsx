@@ -84,8 +84,15 @@ export function SegmentedTabs({ options, value, onChange, scroll }: SegmentedTab
   );
 
   if (scroll) {
+    // `flexGrow: 0` keeps ScrollView from stretching vertically inside a
+    // flex parent (without it, the active pill renders viewport-tall).
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{ alignItems: 'center' }}
+      >
         {body}
       </ScrollView>
     );

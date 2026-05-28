@@ -507,6 +507,7 @@
     "tabCompleted": "Abgeschlossen",
     "tabAwaitingPayment": "Zahlung ausstehend",
     "tabProcessing": "Wird bearbeitet",
+    "loadFailed": "Bestellungen konnten nicht geladen werden",
     "statusPaid": "Bezahlt",
     "statusPending": "Ausstehend",
     "statusVoided": "Storniert",

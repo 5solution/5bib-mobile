@@ -31,18 +31,25 @@ import { FetcherError } from '../../src/sdk/core';
 import type { Order } from '../../src/sdk/models';
 
 /**
- * 4 tabs matching dev.5bib.com `/vi/orders` ordering (verified 2026-05-28):
- *   Đã đóng / Hoàn tất / Chờ thanh toán / Đang xử lý
- * Backend `internal_status` enum spans more values; group them so users see
- * the same buckets they see on web.
+ * 4 tabs matching dev.5bib.com `/vi/orders` ordering (verified 2026-05-28).
+ *
+ * Backend filter quirks discovered live:
+ *   - `internal_status` enum accepts only `CLOSE` / `COMPLETE` / `PROCESSING`
+ *     (other values incl. `CLOSED`, `PENDING` return 400 "Mismatch request param")
+ *   - "Awaiting payment" doesn't have a matching internal_status — those
+ *     orders have `internal_status=null`. Use `financial_status=pending`
+ *     instead. Backend wire spelling: `finalcial_status` (sic typo, handled
+ *     by SDK normalizer).
  */
 type StatusTab = 'closed' | 'completed' | 'awaitingPayment' | 'processing';
 
-const TAB_TO_STATUS: Record<StatusTab, string> = {
-  closed: 'CLOSED',
-  completed: 'COMPLETE',
-  awaitingPayment: 'PENDING',
-  processing: 'PROCESSING',
+type StatusFilter = { internalStatus?: string; financialStatus?: string };
+
+const TAB_TO_FILTER: Record<StatusTab, StatusFilter> = {
+  closed: { internalStatus: 'CLOSE' },
+  completed: { internalStatus: 'COMPLETE' },
+  awaitingPayment: { financialStatus: 'pending' },
+  processing: { internalStatus: 'PROCESSING' },
 };
 
 export default function OrdersScreen() {
@@ -62,7 +69,7 @@ export default function OrdersScreen() {
       setErrored(false);
       try {
         const r = await orderSdk.listMyOrders({
-          internalStatus: TAB_TO_STATUS[currentTab],
+          ...TAB_TO_FILTER[currentTab],
           pageSize: 20,
         });
         setOrders(r.items);

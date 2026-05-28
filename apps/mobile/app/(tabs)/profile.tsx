@@ -167,7 +167,7 @@ export default function ProfileScreen() {
         {/* Basic info — matches web `/vi/profile` "THÔNG TIN CƠ BẢN" section */}
         {!loading && user && (
           <InfoSection title={t('profile.basicInfo')}>
-            <InfoRow label={t('profile.fullName.label')} value={user.fullName} />
+            <InfoRow label={t('profile.fullName')} value={user.fullName} />
             <InfoRow label={t('profile.phone')} value={user.phone} />
             <InfoRow label={t('profile.email')} value={user.email} />
             <InfoRow

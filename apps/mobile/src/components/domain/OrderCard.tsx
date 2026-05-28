@@ -64,7 +64,9 @@ export function OrderCard({ order, onPress }: OrderCardProps) {
               fontFamily: 'Menlo',
             }}
           >
-            #{order.orderNumber ?? order.id ?? '—'}
+            {/* Backend `name` already includes leading "#"; strip+re-add so
+               we never double up while still showing one. */}
+            {'#' + String(order.orderNumber ?? order.id ?? '—').replace(/^#+/, '')}
           </Text>
           <Badge variant={sb.variant}>{sb.label}</Badge>
         </View>
