@@ -355,6 +355,13 @@ export default function EventDetailScreen() {
 
         <View style={{ padding: tokens.space[4], gap: tokens.space[4] }}>
           <View>
+            {/* Race-type badge above title (web: "TRAIL RACE" / "ROAD MARATHON"
+               in red pill, top of hero). Surfaced from race.raceType. */}
+            {race.raceType ? (
+              <View style={{ marginBottom: tokens.space[2], alignSelf: 'flex-start' }}>
+                <Badge variant="error">{formatRaceType(race.raceType)}</Badge>
+              </View>
+            ) : null}
             <Text
               style={{
                 fontSize: tokens.fontSize.h1,
@@ -371,6 +378,13 @@ export default function EventDetailScreen() {
               </View>
             )}
           </View>
+
+          {/* Race-day countdown — web shows ticking THÁNG/NGÀY/GIỜ/PHÚT/GIÂY
+             above the courses. FOMO driver before registration. Hidden once
+             event has passed (no point counting down a finished race). */}
+          {!isClosed && race.startDate ? (
+            <Countdown targetIso={race.startDate} />
+          ) : null}
 
           <View style={{ gap: tokens.space[1] }}>
             <Text style={{ fontSize: tokens.fontSize.bodyLg, color: tokens.color.neutral700 }}>
@@ -545,17 +559,105 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-/** Strip HTML tags — backend description sometimes contains rich HTML. Mobile
- *  MVP renders plain text; full HTML render deferred to Phase 2. */
+/** Strip HTML tags while preserving structural line breaks. Backend race
+ *  descriptions can have `<p>`, `<br>`, `<ul><li>` — collapsing everything
+ *  produces a wall of text. We convert structural tags to newlines BEFORE
+ *  stripping, so the rendered plain text retains paragraph rhythm.
+ *  Full rich-HTML render (links, images, inline formatting) is Phase 2 —
+ *  pull in `react-native-render-html` when PROD content demands it. */
 function stripHtml(html: string): string {
   return html
     .replace(/<style[^>]*>.*?<\/style>/gi, '')
     .replace(/<script[^>]*>.*?<\/script>/gi, '')
+    .replace(/<\/(p|div|h[1-6]|li|tr|blockquote)>/gi, '\n\n')
+    .replace(/<br\s*\/?>(?!\s*<\/)/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n') // collapse excessive blank lines
+    .replace(/[ \t]+\n/g, '\n')
     .trim();
+}
+
+/** Map backend race_type enum → display label. Mirrors web's red pill
+ *  ("ROAD MARATHON", "TRAIL RACE"). Unknown values pass through uppercased. */
+function formatRaceType(raceType: string): string {
+  const map: Record<string, string> = {
+    ROAD_MARATHON: 'ROAD MARATHON',
+    HILLROAD_RACE: 'ROAD MARATHON',
+    TRAIL_RACE: 'TRAIL RACE',
+    VIRTUAL_RACE: 'VIRTUAL RACE',
+    CYCLING: 'CYCLING',
+    TRIATHLON: 'TRIATHLON',
+  };
+  return map[raceType] ?? raceType.replace(/_/g, ' ');
+}
+
+/**
+ * Live race-day countdown — re-renders every second to tick down THÁNG /
+ * NGÀY / GIỜ / PHÚT / GIÂY. Web has the same widget on its hero section.
+ * Cleans up its interval on unmount so we don't leak after navigation.
+ */
+function Countdown({ targetIso }: { targetIso: string }) {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const target = new Date(targetIso).getTime();
+  if (!Number.isFinite(target)) return null;
+  const diff = Math.max(0, target - now);
+  if (diff <= 0) return null;
+  const sec = Math.floor(diff / 1000);
+  const months = Math.floor(sec / (30 * 86400));
+  const days = Math.floor((sec % (30 * 86400)) / 86400);
+  const hours = Math.floor((sec % 86400) / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const seconds = sec % 60;
+  const Cell = ({ n, label }: { n: number; label: string }) => (
+    <View style={{ alignItems: 'center', minWidth: 48 }}>
+      <Text
+        style={{
+          fontSize: tokens.fontSize.h2,
+          fontWeight: tokens.fontWeight.bold,
+          color: tokens.color.neutral900,
+        }}
+      >
+        {String(n).padStart(2, '0')}
+      </Text>
+      <Text style={{ fontSize: 10, color: tokens.color.neutral600, letterSpacing: 0.5 }}>
+        {label}
+      </Text>
+    </View>
+  );
+  return (
+    <View
+      style={{
+        padding: tokens.space[3],
+        borderRadius: tokens.radius.md,
+        backgroundColor: tokens.color.neutral50,
+        gap: tokens.space[2],
+      }}
+    >
+      <Text style={{ fontSize: 11, color: tokens.color.neutral600, letterSpacing: 1 }}>
+        ⏱ RACE DAY BẮT ĐẦU TRONG
+      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+        <Cell n={months} label="THÁNG" />
+        <Text style={{ fontSize: tokens.fontSize.h3, color: tokens.color.neutral400 }}>:</Text>
+        <Cell n={days} label="NGÀY" />
+        <Text style={{ fontSize: tokens.fontSize.h3, color: tokens.color.neutral400 }}>:</Text>
+        <Cell n={hours} label="GIỜ" />
+        <Text style={{ fontSize: tokens.fontSize.h3, color: tokens.color.neutral400 }}>:</Text>
+        <Cell n={minutes} label="PHÚT" />
+        <Text style={{ fontSize: tokens.fontSize.h3, color: tokens.color.neutral400 }}>:</Text>
+        <Cell n={seconds} label="GIÂY" />
+      </View>
+    </View>
+  );
 }
