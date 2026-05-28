@@ -252,22 +252,64 @@ export default function TicketDetailScreen() {
         />
 
         <Section title={t('tickets.athleteInfoSection')}>
-          <KV label="Tên" value={fullName(athlete) ?? ticket.athleteName ?? '—'} />
-          <KV label="Email" value={athlete?.email ?? ticket.receiptEmail ?? '—'} />
-          <KV label="SĐT" value={athlete?.contactPhone ?? '—'} />
+          {/* Matches web `/vi/tickets/{id}` sidebar — 13 fields verified 2026-05-29 */}
+          <KV label={t('tickets.field.fullName')} value={fullName(athlete) ?? ticket.athleteName ?? '—'} />
+          <KV label={t('tickets.field.email')} value={athlete?.email ?? ticket.receiptEmail ?? '—'} />
+          <KV label={t('tickets.field.tshirtSize')} value={athlete?.racekit ?? '—'} />
+          <KV label={t('tickets.field.dob')} value={athlete?.dob ? fmtDate(athlete.dob) : '—'} />
           <KV
-            label="Giới tính"
+            label={t('tickets.field.gender')}
             value={
               athlete?.gender === 'MALE'
-                ? t('profile.male')
+                ? t('profile.gender.male')
                 : athlete?.gender === 'FEMALE'
-                  ? t('profile.female')
+                  ? t('profile.gender.female')
                   : '—'
             }
           />
-          <KV label="Ngày sinh" value={athlete?.dob ? fmtDate(athlete.dob) : '—'} />
-          <KV label="Size áo" value={athlete?.racekit ?? '—'} />
+          <KV label={t('tickets.field.distance')} value={ticket.basicInfo?.courseDistance ?? '—'} />
+          <KV label={t('tickets.field.nameOnBib')} value={athlete?.nameOnBib ?? '—'} />
+          <KV label={t('tickets.field.nationality')} value={athlete?.nationality ?? '—'} />
+          <KV label={t('tickets.field.club')} value={athlete?.club ?? '—'} />
+          <KV label={t('tickets.field.idNumber')} value={athlete?.idNumber ?? '—'} />
+          <KV label={t('tickets.field.medical')} value={athlete?.medicalInfo ?? '—'} />
+          <KV label={t('tickets.field.phone')} value={athlete?.contactPhone ?? '—'} />
+          <KV label={t('tickets.field.sosPhone')} value={athlete?.sosPhone ?? '—'} />
         </Section>
+
+        {/* Delegated person info — only if isRepresent=true on athlete */}
+        {athlete?.isRepresent && (
+          <Section title={t('tickets.delegatedSection')}>
+            <KV
+              label={t('tickets.field.delegatedName')}
+              value={
+                (athlete as Athlete & { delegateName?: string }).delegateName ??
+                '—'
+              }
+            />
+            <KV
+              label={t('tickets.field.delegatedPhone')}
+              value={
+                (athlete as Athlete & { delegatePhone?: string }).delegatePhone ??
+                '—'
+              }
+            />
+            <KV
+              label={t('tickets.field.delegatedId')}
+              value={
+                (athlete as Athlete & { delegateIdNumber?: string }).delegateIdNumber ??
+                '—'
+              }
+            />
+            <KV
+              label={t('tickets.field.delegatedEmail')}
+              value={
+                (athlete as Athlete & { delegateEmail?: string }).delegateEmail ??
+                '—'
+              }
+            />
+          </Section>
+        )}
 
         <Section title={t('tickets.raceDetailSection')}>
           <Text
