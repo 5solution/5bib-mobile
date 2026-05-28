@@ -178,6 +178,16 @@ export interface Race {
   racekitImages?: string[];
   latitude?: number;
   longitude?: number;
+  /**
+   * Backend-configured payment-method allow-list, lifted from
+   * `race_extenstion.payment_options`. Examples: `VNPAY_QR`,
+   * `PAYX_DOMESTIC_CARD`, `PAYOO_WALLET`, `ONEPAY_INTL`.
+   * UI must filter the payment-method picker by this list — race 305
+   * advertises 4 options but only 2 are actually enabled
+   * (`["VNPAY_QR","PAYX_DOMESTIC_CARD"]`). Empty/undefined = unknown,
+   * fall back to showing all UI options.
+   */
+  paymentOptions?: string[];
 }
 
 export interface Pagination {

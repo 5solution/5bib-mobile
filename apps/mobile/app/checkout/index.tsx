@@ -29,7 +29,7 @@ import { FormLayout, FormSection, SectionDivider } from '../../src/components/Fo
 import { useToast } from '../../src/components/Toast';
 import { useOnline, useDraftPersist } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
-import { raceCourse, priceRule, order } from '../../src/sdk';
+import { raceCourse, priceRule, order, race as raceSdk } from '../../src/sdk';
 import type {
   RaceCourse,
   OrderCreateInput,
@@ -38,7 +38,22 @@ import type {
 import { useCheckoutStore } from '../../src/stores/useCheckoutStore';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const VN_PHONE_RX = /^(0|\+84)[35789][0-9]{8}$/;
+// VN mobile phone — accepts:
+//   - "0901234567" (legacy local format)
+//   - "+84901234567" (E.164)
+//   - "901234567"   (bare 9 digits — the UI shows a static "+84" prefix label
+//                    next to the input, so users naturally type without
+//                    a prefix; we accept that and prepend +84 at send-time)
+const VN_PHONE_RX = /^(0|\+84)?[35789][0-9]{8}$/;
+/** Normalize a VN phone input to a backend-friendly format with explicit
+ *  country code. Returns the original string if it can't be normalized. */
+function normalizePhone(raw: string): string {
+  const s = raw.trim();
+  if (s.startsWith('+84')) return s;
+  if (s.startsWith('0')) return '+84' + s.slice(1);
+  if (/^[35789][0-9]{8}$/.test(s)) return '+84' + s;
+  return s;
+}
 
 interface AthleteForm {
   mode: 'self' | 'represent';
@@ -83,6 +98,43 @@ function fmtVnd(n: number): string {
   return n.toLocaleString('vi-VN') + 'đ';
 }
 
+/**
+ * Filter the rendered payment-method picker by the race's
+ * `race_extenstion.payment_options` allow-list. Backend may publish e.g.
+ * `["VNPAY_QR","PAYX_DOMESTIC_CARD"]` while mobile UI hard-codes 4 options;
+ * showing the unsupported ones produces "Failed to load payment page" /
+ * gateway-config-missing errors at the WebView step. Race 305 is the
+ * canonical example (verified 2026-05-28).
+ *
+ * Behavior:
+ *   - `allowed=undefined` (still loading or race fetch failed) → show all
+ *     options so we don't accidentally render an empty picker.
+ *   - `allowed=[]` (race explicitly publishes no enabled gateway) → show
+ *     all options + let the WebView fail loudly. Probably misconfigured race
+ *     and worth surfacing rather than silently breaking the flow.
+ *   - `allowed=[…]` → keep options whose `id` matches any allowed entry
+ *     OR whose mapped gateway matches. Match is permissive on substring so
+ *     `PAYX_DOMESTIC_CARD` accepts both `PAYX_QR` and `PAYX_ATM` (we group
+ *     them under one UI logo).
+ */
+function filterPaymentOptions(
+  all: PaymentMethodOption[],
+  allowed: string[] | undefined,
+): PaymentMethodOption[] {
+  if (!allowed || allowed.length === 0) return all;
+  return all.filter((opt) => {
+    const gw = PICKER_TO_GATEWAY[opt.id]?.toUpperCase() ?? '';
+    return allowed.some((a) => {
+      const norm = a.toUpperCase();
+      return (
+        norm === opt.id ||
+        norm.startsWith(gw) ||
+        opt.id.startsWith(norm.split('_')[0] ?? '')
+      );
+    });
+  });
+}
+
 export default function CheckoutScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -104,6 +156,11 @@ export default function CheckoutScreen() {
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [courses, setCourses] = useState<RaceCourse[] | null>(null);
   const [coursesError, setCoursesError] = useState<string | null>(null);
+  // Backend-configured payment method allow-list. Loaded async after race
+  // detail fetch; undefined = unknown/loading = show all options.
+  const [allowedPayments, setAllowedPayments] = useState<string[] | undefined>(
+    undefined,
+  );
   const [selectedCourseId, setSelectedCourseId] = useState<string>(initialCourseId);
   // Per-tier ticket selection — race 305 has 4 ticket_types in the ELB course
   // tier (Family/Thường/Ultra etc.) with different prices + stock. Web shows
@@ -152,6 +209,25 @@ export default function CheckoutScreen() {
   useEffect(() => {
     if (raceId) checkoutStore.setRace(raceId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raceId]);
+
+  // Load race detail in parallel — only need it for the payment_options
+  // allow-list. Soft-fail leaves allowedPayments=undefined → show all options.
+  useEffect(() => {
+    if (!raceId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await raceSdk.getRaceById(raceId);
+        if (cancelled) return;
+        setAllowedPayments(r.paymentOptions);
+      } catch {
+        // ignore — fall back to default options
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [raceId]);
 
   // Load courses for race.
@@ -359,7 +435,9 @@ export default function CheckoutScreen() {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       email: form.email.trim(),
-      phone: form.phone,
+      // Normalize so backend always sees +84 prefix regardless of what
+      // shape the user typed (UI shows static "+84" label so people omit it).
+      phone: normalizePhone(form.phone),
       dob: form.dob,
       gender: (form.gender || 'other') as 'male' | 'female' | 'other',
       nationality: form.nationality,
@@ -368,7 +446,7 @@ export default function CheckoutScreen() {
       racekit: form.racekit || form.tshirtSize,
       nameOnBib: form.nameOnBib,
       emergencyContactName: form.emergencyContactName,
-      emergencyContactPhone: form.emergencyContactPhone,
+      emergencyContactPhone: normalizePhone(form.emergencyContactPhone),
     },
     ...(discountApplied ? { discountCode: discountApplied.code } : {}),
     includedInsurance: includeInsurance,
@@ -891,7 +969,7 @@ export default function CheckoutScreen() {
 
           <FormSection title={t('checkout.selectPaymentMethod')}>
             <PaymentMethodPicker
-              options={PAYMENT_OPTIONS}
+              options={filterPaymentOptions(PAYMENT_OPTIONS, allowedPayments)}
               value={paymentMethod}
               onChange={setPaymentMethod}
             />

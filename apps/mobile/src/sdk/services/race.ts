@@ -114,6 +114,10 @@ function normalizeRace(raw: unknown): Race {
     racekitImages: r.racekit_images as string[] | undefined,
     latitude: (r.latitude as number | undefined) ?? (r.event_lat as number | undefined),
     longitude: (r.longitude as number | undefined) ?? (r.event_lng as number | undefined),
+    // Payment allow-list is nested in race_extenstion (sic — backend typo).
+    paymentOptions: Array.isArray(ext.payment_options)
+      ? (ext.payment_options as string[])
+      : undefined,
   };
 }
 

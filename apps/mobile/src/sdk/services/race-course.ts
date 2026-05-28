@@ -96,7 +96,7 @@ function normalizeRaceCourse(raw: unknown): RaceCourse {
       (r.distance_meters as number | undefined) ??
       (r.distanceMeters as number | undefined),
     price: Number(r.price ?? r.amount ?? firstTicket?.price ?? 0),
-    currency: String(firstTicket?.currency ?? 'VND'),
+    currency: 'VND',
     availableSlots:
       (r.available_slots as number | null | undefined) ??
       (r.availableSlots as number | null | undefined) ??
