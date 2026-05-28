@@ -15,6 +15,18 @@ export interface RaceCardProps {
   race: Race;
   variant?: 'list' | 'featured';
   onPress?: () => void;
+  /**
+   * Computed price range across all courses × ticket_types. Renders as
+   * "100.000đ" if min==max, "100.000đ – 300.000đ" otherwise. Web shows this
+   * prominently on every race card; mobile MUST match for buy-intent signal.
+   * Omit when prices haven't loaded yet — card hides the row gracefully.
+   */
+  priceFrom?: number;
+  priceTo?: number;
+}
+
+function fmtVnd(n: number): string {
+  return Number(n).toLocaleString('vi-VN') + 'đ';
 }
 
 function statusBadge(status: Race['status'] | string | undefined): { variant: 'success' | 'info' | 'default' | 'warning'; label: string } {
@@ -51,10 +63,22 @@ function fmtDate(iso: string) {
   }
 }
 
-export function RaceCard({ race, variant = 'list', onPress }: RaceCardProps) {
+export function RaceCard({
+  race,
+  variant = 'list',
+  onPress,
+  priceFrom,
+  priceTo,
+}: RaceCardProps) {
   const sb = statusBadge(race.status);
   const distances = race.courses?.map((c) => c.distance).join('/') ?? '';
-  const a11y = `Giải ${race.title}, ${fmtDate(race.startDate)}, ${race.location ?? ''}, ${sb.label}`;
+  const hasPrice = priceFrom != null && priceFrom > 0;
+  const priceLabel = hasPrice
+    ? priceTo != null && priceTo > priceFrom
+      ? `${fmtVnd(priceFrom)} – ${fmtVnd(priceTo)}`
+      : fmtVnd(priceFrom)
+    : '';
+  const a11y = `Giải ${race.title}, ${fmtDate(race.startDate)}, ${race.location ?? ''}, ${sb.label}${hasPrice ? ', ' + priceLabel : ''}`;
 
   if (variant === 'featured') {
     return (
@@ -96,6 +120,17 @@ export function RaceCard({ race, variant = 'list', onPress }: RaceCardProps) {
           <Text style={{ fontSize: tokens.fontSize.bodyMd, color: tokens.color.neutral600 }}>
             📅 {fmtDate(race.startDate)} · 📍 {race.location ?? race.city ?? '—'}
           </Text>
+          {hasPrice && (
+            <Text
+              style={{
+                fontSize: tokens.fontSize.bodyLg,
+                fontWeight: tokens.fontWeight.bold,
+                color: tokens.color.brandPrimary,
+              }}
+            >
+              {priceLabel}
+            </Text>
+          )}
           <View style={{ flexDirection: 'row', gap: tokens.space[2], marginTop: tokens.space[1] }}>
             <Badge variant={sb.variant}>{sb.label}</Badge>
             {distances && <Badge variant="default">{distances}</Badge>}
@@ -152,6 +187,17 @@ export function RaceCard({ race, variant = 'list', onPress }: RaceCardProps) {
             📍 {race.location ?? race.city ?? '—'}
             {distances ? ` · ${distances}` : ''}
           </Text>
+          {hasPrice && (
+            <Text
+              style={{
+                fontSize: tokens.fontSize.bodyMd,
+                fontWeight: tokens.fontWeight.semibold,
+                color: tokens.color.brandPrimary,
+              }}
+            >
+              {priceLabel}
+            </Text>
+          )}
           <View style={{ marginTop: 4 }}>
             <Badge variant={sb.variant}>{sb.label}</Badge>
           </View>

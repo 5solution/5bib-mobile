@@ -8,7 +8,50 @@
  *         "EPIC-7 Metadata + Config" (ticket-type sub-endpoints).
  */
 import { network } from '../core';
-import type { RaceCourse } from '../models';
+import type { RaceCourse, TicketType } from '../models';
+
+function normalizeTicketType(raw: unknown): TicketType {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    id: String(r.id ?? ''),
+    raceCourseId: String(r.race_course_id ?? r.raceCourseId ?? ''),
+    typeName: String(r.type_name ?? r.typeName ?? r.name ?? ''),
+    price: Number(r.price ?? 0),
+    currency: 'VND',
+    remainedTicket:
+      r.remained_ticket != null
+        ? Number(r.remained_ticket)
+        : r.remainedTicket != null
+          ? Number(r.remainedTicket)
+          : null,
+    salesCount:
+      (r.sales_count as number | undefined) ??
+      (r.salesCount as number | undefined),
+    maxPerOrder:
+      (r.max_ticket_per_order as number | undefined) ??
+      (r.maxPerOrder as number | undefined),
+    minPerOrder:
+      (r.min_ticket_per_order as number | undefined) ??
+      (r.minPerOrder as number | undefined),
+    validFrom:
+      (r.valid_from as string | undefined) ??
+      (r.validFrom as string | undefined),
+    validTo:
+      (r.valid_to as string | undefined) ??
+      (r.validTo as string | undefined),
+    isFree:
+      (r.is_free as boolean | undefined) ?? (r.isFree as boolean | undefined),
+    isShow:
+      (r.is_show as boolean | undefined) ?? (r.isShow as boolean | undefined),
+    imageUrl:
+      (r.image_url as string | undefined) ??
+      (r.imageUrl as string | undefined),
+    description: r.description as string | undefined,
+    courseType:
+      (r.course_type as string | undefined) ??
+      (r.courseType as string | undefined),
+  };
+}
 
 /**
  * Defensive normalize: backend race-course shape has many optional fields
@@ -77,6 +120,10 @@ function normalizeRaceCourse(raw: unknown): RaceCourse {
       (r.map_image_url as string | undefined) ??
       (r.mapImageUrl as string | undefined),
     coordinates: r.coordinates as RaceCourse['coordinates'],
+    ticketTypes:
+      ticketTypes.length > 0
+        ? ticketTypes.map(normalizeTicketType)
+        : undefined,
   };
 }
 

@@ -88,10 +88,15 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const toast = useToast();
   const online = useOnline();
-  const { race_id, course_id } = useLocalSearchParams<{ race_id?: string; course_id?: string }>();
+  const { race_id, course_id, ticket_type_id } = useLocalSearchParams<{
+    race_id?: string;
+    course_id?: string;
+    ticket_type_id?: string;
+  }>();
 
   const raceId = race_id ?? '';
   const initialCourseId = course_id ?? '';
+  const initialTicketTypeId = ticket_type_id ?? '';
 
   // Persistent checkout store (multi-step state, draft sync).
   const checkoutStore = useCheckoutStore();
@@ -100,6 +105,10 @@ export default function CheckoutScreen() {
   const [courses, setCourses] = useState<RaceCourse[] | null>(null);
   const [coursesError, setCoursesError] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string>(initialCourseId);
+  // Per-tier ticket selection — race 305 has 4 ticket_types in the ELB course
+  // tier (Family/Thường/Ultra etc.) with different prices + stock. Web shows
+  // all tiers; mobile MUST persist the choice into createOrder.
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState<string>(initialTicketTypeId);
 
   const [form, setForm] = useState<AthleteForm>({
     mode: 'self',
@@ -152,8 +161,17 @@ export default function CheckoutScreen() {
         const list = await raceCourse.listCoursesByRace(raceId);
         if (cancelled) return;
         setCourses(list);
-        if (!selectedCourseId && list.length > 0) {
-          setSelectedCourseId(list[0]!.id);
+        // Auto-select course + first available ticket_type if user arrived
+        // without specifying them via query params.
+        if (list.length > 0) {
+          const initialCourse =
+            list.find((c) => c.id === selectedCourseId) ?? list[0]!;
+          if (!selectedCourseId) {
+            setSelectedCourseId(initialCourse.id);
+          }
+          if (!selectedTicketTypeId && initialCourse.ticketTypes?.length) {
+            setSelectedTicketTypeId(initialCourse.ticketTypes[0]!.id);
+          }
         }
       } catch {
         if (cancelled) return;
@@ -199,7 +217,13 @@ export default function CheckoutScreen() {
   const selectedCourse: RaceCourse | undefined = courses?.find(
     (c) => c.id === selectedCourseId,
   );
-  const subtotalEarly = selectedCourse?.price ?? 0;
+  const selectedTicketType = selectedCourse?.ticketTypes?.find(
+    (tt) => tt.id === selectedTicketTypeId,
+  );
+  // Price source-of-truth: per-tier ticket_type when present, else course
+  // headline price (single-tier fallback). Verified 2026-05-28 — `course.price`
+  // is always null at backend top-level; real price lives in ticket_types[].
+  const subtotalEarly = selectedTicketType?.price ?? selectedCourse?.price ?? 0;
 
   // applyDiscount declared HERE (before early-return guards) so React hook
   // count stays consistent across renders. Was at line ~261 → "Rendered more
@@ -308,6 +332,10 @@ export default function CheckoutScreen() {
   const buildOrderInput = (): OrderCreateInput => ({
     raceId,
     courseId: activeCourse.id,
+    // ticketTypeId is what tells backend WHICH tier (Family/ELB/VIP) the user
+    // bought — without it, all orders default to ticket_types[0] which means
+    // users can't actually purchase the higher tiers they selected on the UI.
+    ...(selectedTicketTypeId ? { ticketTypeId: selectedTicketTypeId } : {}),
     athlete: {
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
@@ -402,20 +430,61 @@ export default function CheckoutScreen() {
           }
         >
           <FormSection title={t('checkout.selectedCourse')}>
-            {courses.map((c) => (
-              <CourseCard
-                key={c.id}
-                course={{
-                  id: c.id,
-                  distance: c.distance || c.name,
-                  price: c.price,
-                  availableSlots: c.availableSlots ?? undefined,
-                }}
-                selected={selectedCourseId === c.id}
-                asRadio
-                onPress={() => setSelectedCourseId(c.id)}
-              />
-            ))}
+            {/* Flatten course × ticket_type. Tier label: ticket_type.type_name
+               when course has >1 tiers (real tier pricing like Early Bird /
+               Regular), else course.name as a distinguishing label (race 305
+               pattern where all ticket_types share type_name="ELB"). */}
+            {courses.flatMap((c) => {
+              const tts = c.ticketTypes ?? [];
+              if (tts.length > 1) {
+                return tts.map((tt) => (
+                  <CourseCard
+                    key={`${c.id}:${tt.id}`}
+                    course={{
+                      id: `${c.id}:${tt.id}`,
+                      distance: c.distance || c.name,
+                      tierName: tt.typeName || undefined,
+                      price: tt.price,
+                      availableSlots: tt.remainedTicket ?? undefined,
+                    }}
+                    selected={
+                      selectedCourseId === c.id &&
+                      selectedTicketTypeId === tt.id
+                    }
+                    asRadio
+                    onPress={() => {
+                      setSelectedCourseId(c.id);
+                      setSelectedTicketTypeId(tt.id);
+                    }}
+                  />
+                ));
+              }
+              const tt = tts[0];
+              const tierName =
+                c.name && c.name !== c.distance ? c.name : undefined;
+              return [
+                <CourseCard
+                  key={tt ? `${c.id}:${tt.id}` : c.id}
+                  course={{
+                    id: tt ? `${c.id}:${tt.id}` : c.id,
+                    distance: c.distance || c.name,
+                    tierName,
+                    price: tt?.price ?? c.price,
+                    availableSlots:
+                      tt?.remainedTicket ?? c.availableSlots ?? undefined,
+                  }}
+                  selected={
+                    selectedCourseId === c.id &&
+                    (tt ? selectedTicketTypeId === tt.id : true)
+                  }
+                  asRadio
+                  onPress={() => {
+                    setSelectedCourseId(c.id);
+                    setSelectedTicketTypeId(tt?.id ?? '');
+                  }}
+                />,
+              ];
+            })}
           </FormSection>
         </FormLayout>
       )}

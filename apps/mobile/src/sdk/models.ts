@@ -90,14 +90,51 @@ export type PaymentGateway = 'vnpay' | 'payx' | 'payoo' | 'onepay';
 
 export type RaceStatus = 'OPEN_FOR_SALE' | 'COMING_SOON' | 'CLOSED' | 'FINISHED';
 
+/**
+ * A purchasable tier within a course (e.g. ELB / FAMILY / VIP).
+ * Real backend shape from `/pub/race-course?race_id=X`:
+ *   course.ticket_types[] = [{ id, type_name, price, remained_ticket, ... }]
+ * One course can have multiple tiers with different prices + stock. Mobile
+ * MUST surface all of them or the user can't buy higher tiers (verified
+ * 2026-05-28 on race 305: 4 ticket_types in the ELB tier).
+ */
+export interface TicketType {
+  id: string;
+  raceCourseId: string;
+  /** Display name: "ELB", "Family", "Ultra", "Thường", etc. */
+  typeName: string;
+  price: number;
+  currency?: 'VND';
+  /** Remaining seats for this tier specifically. */
+  remainedTicket?: number | null;
+  salesCount?: number;
+  maxPerOrder?: number;
+  minPerOrder?: number;
+  validFrom?: string;
+  validTo?: string;
+  isFree?: boolean;
+  isShow?: boolean;
+  imageUrl?: string;
+  description?: string;
+  courseType?: string;
+}
+
 export interface RaceCourse {
   id: string;
   raceId?: string;
   name: string;
   distance: string;
   distanceMeters?: number;
+  /**
+   * Legacy "headline" price — kept for compatibility. Real per-tier prices
+   * live in `ticketTypes[].price`. Equal to `ticketTypes[0].price` when set.
+   */
   price: number;
   currency?: 'VND';
+  /**
+   * Sum of remained_ticket across ALL ticket_types. Equal to
+   * `ticketTypes.reduce((s, t) => s + (t.remainedTicket ?? 0), 0)`.
+   */
   availableSlots?: number | null;
   totalSlots?: number;
   saleOpenAt?: string;
@@ -108,6 +145,11 @@ export interface RaceCourse {
   cutOffMinutes?: number;
   mapImageUrl?: string;
   coordinates?: { lat: number; lng: number }[];
+  /**
+   * All purchasable tiers for this course. UI MUST iterate this (not just
+   * surface the headline price) so users can pick Family/VIP/ELB etc.
+   */
+  ticketTypes?: TicketType[];
 }
 
 export interface Race {

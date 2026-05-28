@@ -14,7 +14,7 @@
  *  - Anonymous tap CTA → redirect login with return path (BR-BROWSE-11).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Image, Pressable, Share } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -49,7 +49,79 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  // Composite selection key: `${courseId}:${ticketTypeId}` (or just courseId
+  // when a course has no ticket_types — single-tier legacy fallback).
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  /**
+   * Flatten courses × ticket_types into a single picker list. Web shows ALL
+   * tiers per course (Family/ELB/Ultra/Thường) — mobile MUST match or users
+   * can't buy higher tiers. For courses with no ticket_types data, emit a
+   * single row keyed by courseId so single-tier races still work.
+   */
+  type PickerRow = {
+    key: string; // `${courseId}:${ticketTypeId}` or just courseId
+    courseId: string;
+    ticketTypeId?: string;
+    distance: string;
+    tierName?: string;
+    price: number;
+    availableSlots: number | null;
+  };
+  /**
+   * Tier label resolution (verified 2026-05-28 via web compare):
+   *   - When course has MULTIPLE ticket_types → use ticket_type.type_name
+   *     (e.g. "Early Bird"/"Regular" for Techcombank-style tiered pricing).
+   *   - When course has 1 ticket_type → use course.name as the distinguishing
+   *     label (race 305: courses are "Thường"/"Ultra"/"Family" but all share
+   *     ticket_type.type_name="ELB", so falling back to course.name is what
+   *     matches the web layout).
+   *   - Hide the badge entirely when the label collapses to just the distance
+   *     number (no extra info to convey).
+   */
+  const pickerRows: PickerRow[] = useMemo(() => {
+    const rows: PickerRow[] = [];
+    for (const c of courses) {
+      const tts = c.ticketTypes ?? [];
+      if (tts.length > 1) {
+        for (const tt of tts) {
+          rows.push({
+            key: `${c.id}:${tt.id}`,
+            courseId: c.id,
+            ticketTypeId: tt.id,
+            distance: c.distance || c.name,
+            tierName: tt.typeName || undefined,
+            price: tt.price,
+            availableSlots: tt.remainedTicket ?? null,
+          });
+        }
+      } else if (tts.length === 1) {
+        const tt = tts[0]!;
+        const tierName =
+          c.name && c.name !== c.distance ? c.name : undefined;
+        rows.push({
+          key: `${c.id}:${tt.id}`,
+          courseId: c.id,
+          ticketTypeId: tt.id,
+          distance: c.distance || c.name,
+          tierName,
+          price: tt.price,
+          availableSlots: tt.remainedTicket ?? null,
+        });
+      } else {
+        rows.push({
+          key: c.id,
+          courseId: c.id,
+          distance: c.distance || c.name,
+          tierName: c.name && c.name !== c.distance ? c.name : undefined,
+          price: c.price,
+          availableSlots: c.availableSlots ?? null,
+        });
+      }
+    }
+    return rows;
+  }, [courses]);
+  const selectedRow = pickerRows.find((r) => r.key === selectedKey) ?? null;
 
   const fetchDetail = useCallback(async () => {
     if (!path) return;
@@ -121,9 +193,16 @@ export default function EventDetailScreen() {
       });
       return;
     }
+    if (!selectedRow) return;
     router.push({
       pathname: '/checkout',
-      params: { race_id: race.id, course_id: selectedCourseId! },
+      params: {
+        race_id: race.id,
+        course_id: selectedRow.courseId,
+        ...(selectedRow.ticketTypeId
+          ? { ticket_type_id: selectedRow.ticketTypeId }
+          : {}),
+      },
     });
   };
 
@@ -191,16 +270,14 @@ export default function EventDetailScreen() {
   // DO NOT gate on `race.bibSetUp` — verified 2026-05-27 across all 6 active
   // races on DEV: every one has bib_set_up=false even when sales are LIVE
   // (race 305 has remained_ticket=3 + sales_count=7). The flag is an admin
-  // toggle that's never set. Source of truth for availability = courses[].
-  // CTA enabled when: race is open AND user picked a course AND that course
-  // has stock. (Stock 0 fallback to disabled with different label below.)
-  const selected = courses.find((c) => c.id === selectedCourseId);
+  // toggle that's never set. Source of truth for availability = per-tier
+  // remained_ticket on the selected picker row.
   const selectedHasStock =
-    selected?.availableSlots == null /* unknown → trust */ ||
-    selected.availableSlots > 0;
+    selectedRow?.availableSlots == null /* unknown → trust */ ||
+    selectedRow.availableSlots > 0;
   const ctaDisabled = isClosed
     ? false
-    : !selectedCourseId || !selectedHasStock;
+    : !selectedRow || !selectedHasStock;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
@@ -332,25 +409,26 @@ export default function EventDetailScreen() {
             </View>
           )}
 
-          {/* Courses */}
-          {courses.length > 0 && (
+          {/* Courses — flattened by ticket_type so each tier (Family/ELB/VIP)
+             gets its own selectable row. Web shows ALL tiers per course
+             (verified 2026-05-28 race 305 has 4 ticket_types in ELB tier). */}
+          {pickerRows.length > 0 && (
             <View style={{ gap: tokens.space[2] }}>
               <SectionLabel label={t('browse.courses')} />
               <View style={{ gap: tokens.space[2] }}>
-                {courses.map((c) => (
+                {pickerRows.map((row) => (
                   <CourseCard
-                    key={c.id}
+                    key={row.key}
                     course={{
-                      id: c.id,
-                      distance: c.distance || c.name,
-                      price: c.price,
-                      availableSlots: c.availableSlots,
-                      saleOpenAt: c.saleOpenAt,
-                      saleCloseAt: c.saleCloseAt,
+                      id: row.key,
+                      distance: row.distance,
+                      tierName: row.tierName,
+                      price: row.price,
+                      availableSlots: row.availableSlots,
                     }}
                     asRadio
-                    selected={selectedCourseId === c.id}
-                    onPress={() => setSelectedCourseId(c.id)}
+                    selected={selectedKey === row.key}
+                    onPress={() => setSelectedKey(row.key)}
                   />
                 ))}
               </View>
@@ -440,7 +518,7 @@ export default function EventDetailScreen() {
             disabled={ctaDisabled}
             onPress={onRegister}
           >
-            {!selectedCourseId
+            {!selectedRow
               ? t('browse.selectCourseToRegister')
               : !selectedHasStock
               ? t('browse.soldOut')

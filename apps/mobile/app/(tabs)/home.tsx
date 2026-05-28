@@ -55,6 +55,44 @@ export default function HomeScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loadingMore, setLoadingMore] = useState(false);
+  // raceId → { from, to } VND price range computed from per-race
+  // /pub/simple-course fetch. Empty until courses load, render hides row.
+  const [priceRanges, setPriceRanges] = useState<
+    Record<string, { from: number; to: number }>
+  >({});
+
+  // Compute price range Map for a batch of races. Parallel SDK fetch — one
+  // round-trip latency for N races. Swallows per-race errors so a single
+  // bad race doesn't drop the whole card grid's pricing.
+  const fetchPriceRanges = useCallback(async (rs: Race[]) => {
+    const ids = rs.map((r) => r.id).filter(Boolean);
+    if (ids.length === 0) return;
+    try {
+      const groups = await raceSdk.getCoursesByRaces(ids);
+      const next: Record<string, { from: number; to: number }> = {};
+      for (const [raceId, courses] of groups.entries()) {
+        const prices: number[] = [];
+        for (const c of courses) {
+          if (c.ticketTypes && c.ticketTypes.length > 0) {
+            for (const tt of c.ticketTypes) {
+              if (tt.price > 0) prices.push(tt.price);
+            }
+          } else if (c.price > 0) {
+            prices.push(c.price);
+          }
+        }
+        if (prices.length > 0) {
+          next[raceId] = {
+            from: Math.min(...prices),
+            to: Math.max(...prices),
+          };
+        }
+      }
+      setPriceRanges((prev) => ({ ...prev, ...next }));
+    } catch {
+      // Soft-fail — card just hides price row.
+    }
+  }, []);
 
   const featured = useMemo(() => races.filter((r) => r.isHighlight).slice(0, 5), [races]);
 
@@ -109,7 +147,9 @@ export default function HomeScreen() {
     setPage(1);
     setTotalPages(res.totalPages);
     setState(res.items.length ? 'loaded' : 'empty');
-  }, [fetchPage]);
+    // Kick off price range fetch in background — doesn't block card render.
+    void fetchPriceRanges(res.items);
+  }, [fetchPage, fetchPriceRanges]);
 
   // Load ONCE on mount. `load` callback ref may change every render due to
   // useTranslation `t` reference instability — eslint-disable to avoid infinite
@@ -138,6 +178,7 @@ export default function HomeScreen() {
       setRaces((prev) => [...prev, ...res.items]);
       setPage(next);
       setTotalPages(res.totalPages);
+      void fetchPriceRanges(res.items);
     }
     setLoadingMore(false);
   };
@@ -276,6 +317,8 @@ export default function HomeScreen() {
                       <RaceCard
                         race={race}
                         variant="featured"
+                        priceFrom={priceRanges[race.id]?.from}
+                        priceTo={priceRanges[race.id]?.to}
                         onPress={() => router.push(`/events/${race.slug}`)}
                       />
                     </View>
@@ -321,7 +364,12 @@ export default function HomeScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <RaceCard race={item} onPress={() => router.push(`/events/${item.slug}`)} />
+          <RaceCard
+            race={item}
+            priceFrom={priceRanges[item.id]?.from}
+            priceTo={priceRanges[item.id]?.to}
+            onPress={() => router.push(`/events/${item.slug}`)}
+          />
         )}
         onEndReachedThreshold={0.5}
         onEndReached={loadMore}

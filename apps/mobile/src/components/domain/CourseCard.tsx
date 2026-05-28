@@ -18,6 +18,13 @@ export interface CourseCardData {
   saleCloseAt?: string;
   /** Mark this card as the current course (in change-course flow). */
   current?: boolean;
+  /**
+   * Tier name (Family / ELB / VIP / Ultra / Thường). When set, renders as a
+   * small badge next to the distance so the user can distinguish multiple
+   * tiers of the same distance. Web shows this prominently (e.g. "Family –
+   * FAMILY 300,000đ"). Omit for single-tier courses.
+   */
+  tierName?: string;
 }
 
 export interface CourseCardProps {
@@ -89,16 +96,21 @@ export function CourseCard({ course, selected, disabled, asRadio, onPress }: Cou
         </View>
       )}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text
-          style={{
-            fontSize: tokens.fontSize.bodyLg,
-            fontWeight: tokens.fontWeight.semibold,
-            color: tokens.color.neutral900,
-          }}
-        >
-          {course.distance}
-          {course.current ? ' (hiện tại)' : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
+          <Text
+            style={{
+              fontSize: tokens.fontSize.bodyLg,
+              fontWeight: tokens.fontWeight.semibold,
+              color: tokens.color.neutral900,
+            }}
+          >
+            {course.distance}
+            {course.current ? ' (hiện tại)' : ''}
+          </Text>
+          {course.tierName ? (
+            <Badge variant="brand">{course.tierName}</Badge>
+          ) : null}
+        </View>
         <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
           {fmtVnd(course.price)}
           {course.availableSlots != null ? ` · Còn ${course.availableSlots} vé` : ''}

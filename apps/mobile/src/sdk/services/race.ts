@@ -7,7 +7,7 @@
  * Source: docs/API_REFERENCE.md "EPIC-2 Browsing (Race Detail)".
  */
 import { network } from '../core';
-import type { ListRacesResponse, Race } from '../models';
+import type { ListRacesResponse, Race, RaceCourse, TicketType } from '../models';
 
 export interface ListRacesParams {
   pageNo?: number;
@@ -117,6 +117,50 @@ function normalizeRace(raw: unknown): Race {
   };
 }
 
+/**
+ * Internal helper: fetch one race's courses+tickets via `/pub/simple-course`,
+ * normalize to clean shape with raceId stamped on each.
+ */
+async function fetchSimpleCoursesForOneRace(
+  raceId: string,
+): Promise<RaceCourse[]> {
+  const raw = await network().get<{
+    data: unknown[] | { list?: unknown[] };
+  }>('/pub/simple-course', { params: { race_ids: raceId } });
+  const list = Array.isArray(raw.data)
+    ? (raw.data as Array<Record<string, unknown>>)
+    : ((raw.data?.list ?? []) as Array<Record<string, unknown>>);
+  return list.map((r) => {
+    const tts = Array.isArray(r.ticket_types)
+      ? (r.ticket_types as Array<Record<string, unknown>>)
+      : [];
+    const ticketTypes: TicketType[] = tts.map((tt) => ({
+      id: String(tt.id ?? ''),
+      raceCourseId: String(tt.race_course_id ?? r.id ?? ''),
+      typeName: String(tt.type_name ?? tt.name ?? ''),
+      price: Number(tt.price ?? 0),
+      currency: 'VND',
+      remainedTicket:
+        tt.remained_ticket != null ? Number(tt.remained_ticket) : null,
+      isFree: tt.is_free as boolean | undefined,
+      isShow: tt.is_show as boolean | undefined,
+    }));
+    return {
+      id: String(r.id ?? r.variant_id ?? ''),
+      raceId,
+      name: String(r.name ?? r.distance ?? ''),
+      distance: String(r.distance ?? ''),
+      price: Number(ticketTypes[0]?.price ?? r.price ?? 0),
+      currency: 'VND',
+      availableSlots: ticketTypes.reduce(
+        (s, t) => s + Number(t.remainedTicket ?? 0),
+        0,
+      ),
+      ticketTypes: ticketTypes.length > 0 ? ticketTypes : undefined,
+    };
+  });
+}
+
 export const race = {
   /**
    * GET /pub/race — paginated list of races.
@@ -166,17 +210,51 @@ export const race = {
   },
 
   /**
-   * GET /pub/simple-course?race_ids=X,Y,Z — bulk fetch minimal course info
-   * for multiple races. Comma-sep ids in the query.
+   * Fetch courses (with ticket_types + prices) for multiple races in parallel
+   * and return them grouped by raceId. Backend's `/pub/simple-course?race_ids`
+   * does NOT tag each course with its race_id, so we have to call per-race —
+   * but in parallel it's still ~1 round-trip latency for the home tab.
+   *
+   * Used by the home race grid to compute price ranges
+   * ("100.000đ – 300.000đ") without falling back to single-price headlines.
    */
-  async getSimpleCourses(raceIds: string[]): Promise<unknown[]> {
-    if (raceIds.length === 0) return [];
-    const raw = await network().get<{ data: unknown[] | { list?: unknown[] } }>(
-      '/pub/simple-course',
-      { params: { race_ids: raceIds.join(',') } },
+  async getCoursesByRaces(
+    raceIds: string[],
+  ): Promise<Map<string, RaceCourse[]>> {
+    const m = new Map<string, RaceCourse[]>();
+    if (raceIds.length === 0) return m;
+    await Promise.all(
+      raceIds.map(async (id) => {
+        try {
+          const list = await fetchSimpleCoursesForOneRace(id);
+          m.set(id, list);
+        } catch {
+          // Soft-fail per race — empty entry; UI hides price range.
+          m.set(id, []);
+        }
+      }),
     );
-    if (Array.isArray(raw.data)) return raw.data;
-    return raw.data?.list ?? [];
+    return m;
+  },
+
+  /**
+   * GET /pub/simple-course?race_ids=X,Y,Z — bulk fetch courses + ticket_types
+   * for multiple races in one round trip. Returned shape mirrors single-race
+   * `/pub/race-course` but flattened across all requested raceIds.
+   *
+   * NOTE: backend does NOT tag race_id per returned course — use
+   * `getCoursesByRaces()` instead when you need grouping.
+   */
+  async getSimpleCourses(raceIds: string[]): Promise<RaceCourse[]> {
+    if (raceIds.length === 0) return [];
+    // Single-race call: trivial.
+    if (raceIds.length === 1) return fetchSimpleCoursesForOneRace(raceIds[0]!);
+    // Multi-race: parallel fan-out so each course is correctly stamped with
+    // its race_id (backend doesn't tag it when called with comma-sep ids).
+    const groups = await race.getCoursesByRaces(raceIds);
+    const flat: RaceCourse[] = [];
+    for (const list of groups.values()) flat.push(...list);
+    return flat;
   },
 
   /**
