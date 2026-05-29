@@ -49,20 +49,40 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleProp, ViewStyle } from 'react-native';
 import {
-  Canvas,
-  Circle,
-  Group,
-  Path,
-  Rect,
-  Skia,
-} from '@shopify/react-native-skia';
-import {
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
 } from 'react-native-reanimated';
 
 import { tokens } from '../../theme/tokens';
+
+// Dynamic require so the file loads even when the @shopify/react-native-skia
+// native binding isn't present in the current dev client (i.e. the user added
+// the package but hasn't run `npx expo run:ios` / `prebuild` yet). Without
+// this the module-level import would throw at JS init and white-screen the
+// app. When Skia IS present, behaviour is identical to a normal import.
+let Skia: any;
+let Canvas: any;
+let Circle: any;
+let Group: any;
+let Path: any;
+let Rect: any;
+let SKIA_AVAILABLE = false;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const skia = require('@shopify/react-native-skia');
+  Canvas = skia.Canvas;
+  Circle = skia.Circle;
+  Group = skia.Group;
+  Path = skia.Path;
+  Rect = skia.Rect;
+  Skia = skia.Skia;
+  SKIA_AVAILABLE = true;
+} catch {
+  // Skia native module not available — every <SkiaConfetti> render returns
+  // null below, so the caller silently gets "no confetti" instead of a crash.
+  SKIA_AVAILABLE = false;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -283,6 +303,10 @@ export const SkiaConfetti: React.FC<SkiaConfettiProps> = ({
   origin,
   style,
 }) => {
+  // Skia native binding missing → render nothing. Caller still gets a
+  // working app, just no confetti. Once `npx expo prebuild --clean` +
+  // run:ios has been done, the binding loads and the burst returns.
+  if (!SKIA_AVAILABLE) return null;
   // Track the previous trigger value so we can fire only on the rising edge.
   const [prevTrigger, setPrevTrigger] = useState(false);
   // Whether the burst is currently animating. While false, the frame callback

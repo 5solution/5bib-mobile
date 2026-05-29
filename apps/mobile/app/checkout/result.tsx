@@ -11,7 +11,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +21,6 @@ import { Card } from '../../src/components/Card';
 import { Banner } from '../../src/components/ErrorState';
 import { Spinner } from '../../src/components/Skeleton';
 import { SuccessBurst, FadeSlideIn, SkiaConfetti, haptics } from '../../src/components/motion';
-import { useWindowDimensions } from 'react-native';
 import { useToast } from '../../src/components/Toast';
 import { useCountdown, usePolling } from '../../src/hooks';
 import { order as orderService } from '../../src/sdk/services/order';

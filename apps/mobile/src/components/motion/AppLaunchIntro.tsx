@@ -98,6 +98,16 @@ export function AppLaunchIntro({ children, onComplete }: AppLaunchIntroProps) {
         },
       ),
     );
+    // Safety net: if the Reanimated callback never fires (worklet cancellation,
+    // app backgrounded during the intro, etc.) force the overlay off after the
+    // expected total time + 1s of slack. Without this the splash could stick
+    // forever on edge cases, blocking the whole app behind an invisible
+    // overlay with pointerEvents="none" (still blocks visual confidence).
+    const fallback = setTimeout(
+      () => setDone(true),
+      OVERLAY_FADE_OUT_DELAY_MS + OVERLAY_FADE_OUT_DURATION_MS + 1000,
+    );
+    return () => clearTimeout(fallback);
     // One-shot — splash never re-plays for the same mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -113,17 +123,19 @@ export function AppLaunchIntro({ children, onComplete }: AppLaunchIntroProps) {
   }));
 
   return (
+    // Children render as the layout root (normal flex flow) — important for
+    // Expo Router's <Stack>, which expects a real flex parent rather than an
+    // absolutely-positioned wrapper. The overlay sits on top via absolute
+    // positioning so it never participates in the layout tree of the app.
     <View style={styles.root}>
-      {/* Children mount immediately, behind the overlay. */}
-      <View style={StyleSheet.absoluteFill}>{children}</View>
+      {children}
 
       {/* Overlay — sits on top until the fade-out finishes. */}
       {!done && (
         <Animated.View
           style={[styles.overlay, overlayStyle]}
-          // Once we're in the fade-out window, the overlay should let taps
-          // through. `pointerEvents="none"` is safe the whole time because
-          // there's nothing tappable inside the overlay anyway.
+          // pointerEvents="none" — nothing inside is interactive, and we
+          // want the underlying app to be tappable as the opacity drops.
           pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"

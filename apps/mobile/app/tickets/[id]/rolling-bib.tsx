@@ -30,6 +30,7 @@ import {
   Text,
   View,
   AccessibilityInfo,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -54,7 +55,6 @@ import { tokens } from '../../../src/theme/tokens';
 import { ticket as ticketSdk } from '../../../src/sdk/services/ticket';
 import { athlete as athleteSdk } from '../../../src/sdk/services/athlete';
 import { Flip3D, SkiaConfetti } from '../../../src/components/motion';
-import { useWindowDimensions } from 'react-native';
 import { FetcherError } from '../../../src/sdk/core';
 import type { Ticket } from '../../../src/sdk/models';
 
