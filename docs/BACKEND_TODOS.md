@@ -130,3 +130,28 @@ a `race_id` field, making client-side grouping impossible.
 single-race fetches, stamping `raceId` on each course locally.
 
 **Backend ask:** Add `race_id` to each course in the multi-race response.
+
+---
+
+## 🚫 Out of mobile scope — Phase 2 (locked 2026-05-29 by Danny)
+
+These web features were verified during the parity audit but **explicitly
+deferred** out of mobile MVP. Do NOT reopen unless requirements change.
+
+### Group buys — `/vi/my-group-buys`
+Web has a dedicated tab + page for group registration management. The
+audit visit showed it empty (paginated empty list) for `ceo@5bib.com`.
+Backend endpoints exist (`/buy-group/*`) but mobile has no UI surface.
+
+**Status:** SKIP for v2.0 mobile launch. Reassess if a customer asks.
+
+### KYC identity verification
+Mobile profile screen has the "THÔNG TIN ĐỊNH DANH" UI block with a
+status badge derived from `user.idNumber` presence (mirrors web's empty
+state). The actual KYC integration — uploading ID document scans, OCR,
+manual review queue — is backend-side and not implemented yet on web
+either (web shows the same "CHƯA ĐỊNH DANH" badge with no upload flow).
+
+**Status:** UI placeholder is enough for v2.0. Full KYC integration is
+Phase 2 — own track, own PRD, depends on backend integration with a
+KYC vendor (VietQR? VNPT eKYC? — Danny TBD).
