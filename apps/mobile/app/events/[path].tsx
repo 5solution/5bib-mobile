@@ -215,6 +215,45 @@ export default function EventDetailScreen() {
     });
   };
 
+  // --- Scroll-driven motion --------------------------------------------------
+  // Hooks MUST run on every render, including the loading / not-found paths
+  // below, so they live above the early returns. scrollY drives 3 effects:
+  //   1) hero parallax: image translates DOWN at half rate so it feels deep
+  //   2) hero scale: image scales UP when overscrolled past 0 (rubber-band)
+  //   3) sticky header reveal: a white bar fades in once user scrolls past
+  //      the hero, with the race title appearing underneath the round buttons
+  const HERO_HEIGHT = 240;
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      scrollY.value = e.contentOffset.y;
+    },
+  });
+  const heroStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [-HERO_HEIGHT, 0, HERO_HEIGHT],
+      [-HERO_HEIGHT / 2, 0, HERO_HEIGHT / 2],
+      Extrapolation.CLAMP,
+    );
+    const scale = interpolate(
+      scrollY.value,
+      [-HERO_HEIGHT, 0],
+      [1.5, 1],
+      Extrapolation.CLAMP,
+    );
+    return { transform: [{ translateY }, { scale }] };
+  });
+  const stickyStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [HERO_HEIGHT - 120, HERO_HEIGHT - 40],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
+    return { opacity };
+  });
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
@@ -287,44 +326,6 @@ export default function EventDetailScreen() {
   const ctaDisabled = isClosed
     ? false
     : !selectedRow || !selectedHasStock;
-
-  // --- Scroll-driven motion --------------------------------------------------
-  // scrollY drives 3 effects:
-  //   1) hero parallax: image translates DOWN at half rate so it feels deep
-  //   2) hero scale: image scales UP when overscrolled past 0 (rubber-band)
-  //   3) sticky header reveal: a white bar fades in once user scrolls past
-  //      the hero, with the race title appearing underneath the round buttons
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (e) => {
-      scrollY.value = e.contentOffset.y;
-    },
-  });
-  const HERO_HEIGHT = 240;
-  const heroStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(
-      scrollY.value,
-      [-HERO_HEIGHT, 0, HERO_HEIGHT],
-      [-HERO_HEIGHT / 2, 0, HERO_HEIGHT / 2],
-      Extrapolation.CLAMP,
-    );
-    const scale = interpolate(
-      scrollY.value,
-      [-HERO_HEIGHT, 0],
-      [1.5, 1],
-      Extrapolation.CLAMP,
-    );
-    return { transform: [{ translateY }, { scale }] };
-  });
-  const stickyStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [HERO_HEIGHT - 120, HERO_HEIGHT - 40],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
-    return { opacity };
-  });
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
