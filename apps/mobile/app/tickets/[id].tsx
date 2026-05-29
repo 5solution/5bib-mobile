@@ -62,14 +62,23 @@ function asAthleteStatus(s: string | undefined): AthleteStatus {
 }
 
 function fmtDate(iso?: string) {
-  if (!iso) return '—';
+  if (!iso) return '';
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
+  if (isNaN(d.getTime())) return '';
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
-function bibLabel(b: unknown): string {
-  return b != null && b !== '' ? String(b) : '—';
+function bibLabel(b: unknown, fallback: string): string {
+  return b != null && b !== '' ? String(b) : fallback;
+}
+
+/** Distance + date as "12 km · 30/08/2029" or just one side if the other
+ *  is missing. Avoids the awkward "12 · —" placeholder we used to render
+ *  when the backend left startDate null. */
+function joinCourseAndDate(distance?: string, dateIso?: string): string {
+  const dist = distance ? `${distance} km` : '';
+  const date = fmtDate(dateIso);
+  return [dist, date].filter(Boolean).join(' · ');
 }
 
 function fullName(a: Athlete | null): string | undefined {
@@ -245,9 +254,12 @@ export default function TicketDetailScreen() {
       <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[5] }}>
         <QRDisplayCard
           value={ticket.value}
-          bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib)}
-          raceName={ticket.race?.title ?? ticket.basicInfo?.raceName ?? '—'}
-          courseAndDate={`${ticket.basicInfo?.courseDistance ?? ''} · ${fmtDate(ticket.race?.startDate)}`}
+          bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
+          raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
+          courseAndDate={joinCourseAndDate(
+            ticket.basicInfo?.courseDistance,
+            ticket.race?.startDate,
+          )}
           online={online}
         />
 
@@ -267,7 +279,14 @@ export default function TicketDetailScreen() {
                   : '—'
             }
           />
-          <KV label={t('tickets.field.distance')} value={ticket.basicInfo?.courseDistance ?? '—'} />
+          <KV
+            label={t('tickets.field.distance')}
+            value={
+              ticket.basicInfo?.courseDistance
+                ? `${ticket.basicInfo.courseDistance} km`
+                : '—'
+            }
+          />
           <KV label={t('tickets.field.nameOnBib')} value={athlete?.nameOnBib ?? '—'} />
           <KV label={t('tickets.field.nationality')} value={athlete?.nationality ?? '—'} />
           <KV label={t('tickets.field.club')} value={athlete?.club ?? '—'} />

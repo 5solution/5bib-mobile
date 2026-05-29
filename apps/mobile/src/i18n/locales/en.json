@@ -416,6 +416,7 @@
     "ticketTransferred": "Transferred",
     "ticketCancelled": "Cancelled",
     "bibLabel": "BIB",
+    "bibNotAssigned": "Not yet assigned",
     "emptyUpcoming": "No upcoming tickets",
     "emptyUpcomingCta": "Find races",
     "emptyCheckedIn": "No completed races yet",

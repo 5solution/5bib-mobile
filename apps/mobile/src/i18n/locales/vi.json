@@ -417,6 +417,7 @@
     "ticketTransferred": "Đã chuyển",
     "ticketCancelled": "Đã huỷ",
     "bibLabel": "BIB",
+    "bibNotAssigned": "Chưa cấp",
     "emptyUpcoming": "Bạn chưa có vé sắp tới",
     "emptyUpcomingCta": "Tìm giải đấu",
     "emptyCheckedIn": "Chưa có race nào đã hoàn thành",

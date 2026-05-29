@@ -28,23 +28,30 @@ function ticketStatusBadge(t: Ticket): { variant: 'success' | 'info' | 'default'
 }
 
 function fmtDate(iso?: string) {
-  if (!iso) return '—';
+  if (!iso) return '';
   try {
     const d = new Date(iso);
-    if (isNaN(d.getTime())) return '—';
+    if (isNaN(d.getTime())) return '';
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   } catch {
-    return '—';
+    return '';
   }
 }
 
 export function TicketCard({ ticket, onPress }: TicketCardProps) {
   const sb = ticketStatusBadge(ticket);
   const bibRaw = ticket.bib ?? ticket.basicInfo?.bib;
-  const bib = bibRaw != null && bibRaw !== '' ? String(bibRaw) : '—';
-  const raceName = ticket.race?.title ?? ticket.basicInfo?.raceName ?? '—';
+  const hasBib = bibRaw != null && bibRaw !== '';
+  const bib = hasBib ? String(bibRaw) : '—';
+  // Trim — backend race titles often have trailing spaces (e.g. "TEKO RUNNING CLUB ").
+  const raceName = (ticket.race?.title ?? ticket.basicInfo?.raceName ?? '—').trim();
   const distance = ticket.basicInfo?.courseDistance ?? ticket.raceCourseDistance ?? '';
   const startDate = fmtDate(ticket.race?.startDate);
+  // Join distance + date with "·" only when both present, else show whichever
+  // exists. Avoids the awkward "12 · —" when backend leaves startDate null.
+  const subtitle = [distance ? `${distance} km` : '', startDate]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <Card
       onPress={onPress}
@@ -79,19 +86,23 @@ export function TicketCard({ ticket, onPress }: TicketCardProps) {
           >
             {raceName}
           </Text>
-          <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
-            {distance} · {startDate}
-          </Text>
-          <Text
-            style={{
-              fontSize: tokens.fontSize.monoMd,
-              fontFamily: 'Menlo',
-              color: tokens.color.neutral700,
-              fontWeight: tokens.fontWeight.semibold,
-            }}
-          >
-            BIB: {bib}
-          </Text>
+          {!!subtitle && (
+            <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
+              {subtitle}
+            </Text>
+          )}
+          {hasBib && (
+            <Text
+              style={{
+                fontSize: tokens.fontSize.monoMd,
+                fontFamily: 'Menlo',
+                color: tokens.color.neutral700,
+                fontWeight: tokens.fontWeight.semibold,
+              }}
+            >
+              BIB: {bib}
+            </Text>
+          )}
           <View style={{ marginTop: 4 }}>
             <Badge variant={sb.variant}>{sb.label}</Badge>
           </View>
