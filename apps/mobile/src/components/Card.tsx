@@ -4,10 +4,21 @@
  * Spec: design-system #4
  * Variants: default | race | ticket | order | result
  * Tappable card supports pressed state.
+ *
+ * Press feedback uses Reanimated 3 — scale to 0.97 on press, spring back on
+ * release. This applies wherever Card is used (RaceCard, TicketCard,
+ * OrderCard, CourseCard, …) so the whole app gets a consistent tactile feel
+ * without each card needing to know about animations.
  */
 
 import React from 'react';
 import { View, Pressable, ViewStyle } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { tokens } from '../theme/tokens';
 
 export interface CardProps {
@@ -30,6 +41,7 @@ export function Card({
   testID,
 }: CardProps) {
   const padValue = padding === 'none' ? 0 : tokens.space[padding];
+  const scale = useSharedValue(1);
 
   const cardStyle: ViewStyle = {
     backgroundColor: tokens.color.surfaceCard,
@@ -39,20 +51,28 @@ export function Card({
     ...style,
   };
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   if (onPress) {
     return (
       <Pressable
         onPress={onPress}
+        onPressIn={() => {
+          // Quick down-stroke (~80ms) registers the touch instantly.
+          scale.value = withTiming(0.97, { duration: 80 });
+        }}
+        onPressOut={() => {
+          // Spring back — release is where the feel lives.
+          scale.value = withSpring(1, { damping: 12, stiffness: 220 });
+        }}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
         testID={testID}
-        style={({ pressed }) => [
-          cardStyle,
-          pressed && { backgroundColor: tokens.color.neutral50, transform: [{ translateY: 1 }] },
-        ]}
       >
-        {children}
+        <Animated.View style={[cardStyle, animatedStyle]}>{children}</Animated.View>
       </Pressable>
     );
   }

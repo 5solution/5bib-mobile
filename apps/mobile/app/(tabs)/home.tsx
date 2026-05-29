@@ -29,6 +29,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
 import { Button } from '../../src/components/Button';
 import { RaceCard } from '../../src/components/domain/RaceCard';
+import { StaggerItem } from '../../src/components/motion';
 import { useOnline } from '../../src/hooks';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { useToast } from '../../src/components';
@@ -363,13 +364,15 @@ export default function HomeScreen() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <RaceCard
-            race={item}
-            priceFrom={priceRanges[item.id]?.from}
-            priceTo={priceRanges[item.id]?.to}
-            onPress={() => router.push(`/events/${item.slug}`)}
-          />
+        renderItem={({ item, index }) => (
+          <StaggerItem index={index}>
+            <RaceCard
+              race={item}
+              priceFrom={priceRanges[item.id]?.from}
+              priceTo={priceRanges[item.id]?.to}
+              onPress={() => router.push(`/events/${item.slug}`)}
+            />
+          </StaggerItem>
         )}
         onEndReachedThreshold={0.5}
         onEndReached={loadMore}

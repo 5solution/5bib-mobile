@@ -23,6 +23,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
 import { SegmentedTabs } from '../../src/components/domain/SegmentedTabs';
 import { OrderCard } from '../../src/components/domain/OrderCard';
+import { StaggerItem } from '../../src/components/motion';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
@@ -170,8 +171,10 @@ export default function OrdersScreen() {
               tintColor={tokens.color.brandPrimary}
             />
           }
-          renderItem={({ item }) => (
-            <OrderCard order={item} onPress={() => router.push(`/orders/${item.id}`)} />
+          renderItem={({ item, index }) => (
+            <StaggerItem index={index}>
+              <OrderCard order={item} onPress={() => router.push(`/orders/${item.id}`)} />
+            </StaggerItem>
           )}
         />
       )}

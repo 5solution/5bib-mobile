@@ -15,6 +15,7 @@ import { Banner } from '../../src/components/ErrorState';
 import { ListItem } from '../../src/components/ListItem';
 import { Button } from '../../src/components/Button';
 import { Skeleton } from '../../src/components/Skeleton';
+import { FadeSlideIn } from '../../src/components/motion';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
 import { user as sdkUser } from '../../src/sdk/services/user';
@@ -166,6 +167,7 @@ export default function ProfileScreen() {
 
         {/* Basic info — matches web `/vi/profile` "THÔNG TIN CƠ BẢN" section */}
         {!loading && user && (
+          <FadeSlideIn delay={0}>
           <InfoSection title={t('profile.basicInfo')}>
             <InfoRow label={t('profile.fullName')} value={user.fullName} />
             <InfoRow label={t('profile.phone')} value={user.phone} />
@@ -186,11 +188,13 @@ export default function ProfileScreen() {
               onEdit={() => router.push('/profile/edit')}
             />
           </InfoSection>
+          </FadeSlideIn>
         )}
 
         {/* Identity (KYC) — matches "THÔNG TIN ĐỊNH DANH". Status badge derived
            from idNumber presence (real KYC integration deferred to Phase 2). */}
         {!loading && user && (
+          <FadeSlideIn delay={90}>
           <InfoSection
             title={t('profile.identity.title')}
             trailingAction={{
@@ -257,11 +261,13 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </InfoSection>
+          </FadeSlideIn>
         )}
 
         {/* Medical info — matches "THÔNG TIN Y TẾ". All fields editable from
            the Edit Profile screen so we surface them here as read-only. */}
         {!loading && user && (
+          <FadeSlideIn delay={180}>
           <InfoSection title={t('profile.medical.title')}>
             <InfoRow
               label={t('profile.medical.sosPhone')}
@@ -281,8 +287,10 @@ export default function ProfileScreen() {
             <InfoRow label={t('profile.medical.height')} value={user.height} />
             <InfoRow label={t('profile.medical.weight')} value={user.weight} />
           </InfoSection>
+          </FadeSlideIn>
         )}
 
+        <FadeSlideIn delay={240}>
         <View style={{ paddingTop: tokens.space[3] }}>
           <Text
             style={{
@@ -359,6 +367,7 @@ export default function ProfileScreen() {
             accessibilityLabel={t('profile.deleteAccount.menuTitle')}
           />
         </View>
+        </FadeSlideIn>
 
         <View
           style={{ paddingHorizontal: tokens.space[4], paddingTop: tokens.space[5] }}

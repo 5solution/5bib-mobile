@@ -26,6 +26,7 @@ import { Badge } from '../../src/components/Badge';
 import { Skeleton } from '../../src/components/Skeleton';
 import { Banner } from '../../src/components/ErrorState';
 import { CourseCard } from '../../src/components/domain/CourseCard';
+import { FadeSlideIn, StaggerItem } from '../../src/components/motion';
 import { useOnline } from '../../src/hooks';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { useToast } from '../../src/components';
@@ -354,6 +355,7 @@ export default function EventDetailScreen() {
         {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
 
         <View style={{ padding: tokens.space[4], gap: tokens.space[4] }}>
+          <FadeSlideIn delay={0}>
           <View>
             {/* Race-type badge above title (web: "TRAIL RACE" / "ROAD MARATHON"
                in red pill, top of hero). Surfaced from race.raceType. */}
@@ -378,14 +380,18 @@ export default function EventDetailScreen() {
               </View>
             )}
           </View>
+          </FadeSlideIn>
 
           {/* Race-day countdown — web shows ticking THÁNG/NGÀY/GIỜ/PHÚT/GIÂY
              above the courses. FOMO driver before registration. Hidden once
              event has passed (no point counting down a finished race). */}
           {!isClosed && race.startDate ? (
-            <Countdown targetIso={race.startDate} />
+            <FadeSlideIn delay={80}>
+              <Countdown targetIso={race.startDate} />
+            </FadeSlideIn>
           ) : null}
 
+          <FadeSlideIn delay={130}>
           <View style={{ gap: tokens.space[1] }}>
             <Text style={{ fontSize: tokens.fontSize.bodyLg, color: tokens.color.neutral700 }}>
               📅 {fmtDate(race.startDate)}
@@ -396,15 +402,19 @@ export default function EventDetailScreen() {
               </Text>
             )}
           </View>
+          </FadeSlideIn>
 
+          <FadeSlideIn delay={180}>
           <View>
             <Badge variant={isClosed ? 'default' : 'success'}>
               {isClosed ? t('browse.statusClosed') : t('browse.statusOpen')}
             </Badge>
           </View>
+          </FadeSlideIn>
 
           {/* Description */}
           {race.description && (
+            <FadeSlideIn delay={220}>
             <View style={{ gap: tokens.space[2] }}>
               <SectionLabel label={t('browse.courseDescription')} />
               <Text
@@ -421,36 +431,41 @@ export default function EventDetailScreen() {
                 {descExpanded ? 'Thu gọn ↑' : 'Xem thêm ↓'}
               </Button>
             </View>
+            </FadeSlideIn>
           )}
 
           {/* Courses — flattened by ticket_type so each tier (Family/ELB/VIP)
              gets its own selectable row. Web shows ALL tiers per course
              (verified 2026-05-28 race 305 has 4 ticket_types in ELB tier). */}
           {pickerRows.length > 0 && (
+            <FadeSlideIn delay={260}>
             <View style={{ gap: tokens.space[2] }}>
               <SectionLabel label={t('browse.courses')} />
               <View style={{ gap: tokens.space[2] }}>
-                {pickerRows.map((row) => (
-                  <CourseCard
-                    key={row.key}
-                    course={{
-                      id: row.key,
-                      distance: row.distance,
-                      tierName: row.tierName,
-                      price: row.price,
-                      availableSlots: row.availableSlots,
-                    }}
-                    asRadio
-                    selected={selectedKey === row.key}
-                    onPress={() => setSelectedKey(row.key)}
-                  />
+                {pickerRows.map((row, idx) => (
+                  <StaggerItem key={row.key} index={idx} step={60} maxDelay={240}>
+                    <CourseCard
+                      course={{
+                        id: row.key,
+                        distance: row.distance,
+                        tierName: row.tierName,
+                        price: row.price,
+                        availableSlots: row.availableSlots,
+                      }}
+                      asRadio
+                      selected={selectedKey === row.key}
+                      onPress={() => setSelectedKey(row.key)}
+                    />
+                  </StaggerItem>
                 ))}
               </View>
             </View>
+            </FadeSlideIn>
           )}
 
           {/* Schedule */}
           {race.schedule && race.schedule.length > 0 && (
+            <FadeSlideIn delay={310}>
             <View style={{ gap: tokens.space[2] }}>
               <SectionLabel label={t('browse.schedule')} />
               {race.schedule.map((s, i) => (
@@ -472,10 +487,12 @@ export default function EventDetailScreen() {
                 </View>
               ))}
             </View>
+            </FadeSlideIn>
           )}
 
           {/* Race kit */}
           {race.racekitImages && race.racekitImages.length > 0 && (
+            <FadeSlideIn delay={340}>
             <View style={{ gap: tokens.space[2] }}>
               <SectionLabel label={t('browse.racekit')} />
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -495,6 +512,7 @@ export default function EventDetailScreen() {
                 </View>
               </ScrollView>
             </View>
+            </FadeSlideIn>
           )}
         </View>
       </ScrollView>

@@ -17,6 +17,9 @@
 export { FadeSlideIn } from './FadeSlideIn';
 export type { FadeSlideInProps } from './FadeSlideIn';
 
+export { StaggerItem } from './StaggerItem';
+export type { StaggerItemProps } from './StaggerItem';
+
 export { PressScale } from './PressScale';
 export type { PressScaleProps } from './PressScale';
 
@@ -25,3 +28,6 @@ export type { QRPulseRingProps } from './QRPulseRing';
 
 export { BadgeShimmer } from './BadgeShimmer';
 export type { BadgeShimmerProps } from './BadgeShimmer';
+
+export { SuccessBurst } from './SuccessBurst';
+export type { SuccessBurstProps } from './SuccessBurst';

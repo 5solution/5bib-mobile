@@ -21,6 +21,7 @@ import { Banner } from '../../src/components/ErrorState';
 import { Button } from '../../src/components/Button';
 import { Badge } from '../../src/components/Badge';
 import { Skeleton } from '../../src/components/Skeleton';
+import { FadeSlideIn } from '../../src/components/motion';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
@@ -123,6 +124,7 @@ export default function OrderDetailScreen() {
         ) : (
           <>
             {/* Event info — matches "ℹ️ Thông tin sự kiện" card on web. */}
+            <FadeSlideIn delay={0}>
             <SectionCard
               icon="ℹ️"
               title={t('orders.detail.eventInfo')}
@@ -157,8 +159,10 @@ export default function OrderDetailScreen() {
                 </Text>
               </View>
             </SectionCard>
+            </FadeSlideIn>
 
             {/* Products — matches "🛒 Sản phẩm" table on web. */}
+            <FadeSlideIn delay={90}>
             <SectionCard icon="🛒" title={t('orders.detail.products')}>
               <View
                 style={{
@@ -193,8 +197,10 @@ export default function OrderDetailScreen() {
                 </Text>
               </View>
             </SectionCard>
+            </FadeSlideIn>
 
             {/* Payment info — matches "✉️ Thông tin thanh toán" sidebar */}
+            <FadeSlideIn delay={180}>
             <SectionCard
               icon="✉️"
               title={t('orders.detail.paymentInfo')}
@@ -255,6 +261,7 @@ export default function OrderDetailScreen() {
                 />
               )}
             </SectionCard>
+            </FadeSlideIn>
 
             {/* CTAs — web shows "Thanh toán ngay" + back-links */}
             {isPending && order.id && (

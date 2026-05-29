@@ -20,6 +20,7 @@ import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { Banner } from '../../src/components/ErrorState';
 import { Spinner } from '../../src/components/Skeleton';
+import { SuccessBurst, FadeSlideIn } from '../../src/components/motion';
 import { useToast } from '../../src/components/Toast';
 import { useCountdown, usePolling } from '../../src/hooks';
 import { order as orderService } from '../../src/sdk/services/order';
@@ -212,28 +213,38 @@ export default function CheckoutResultScreen() {
             marginBottom: tokens.space[6],
           }}
         >
-          {/* Status icon circle */}
-          <View
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: 48,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor:
-                display === 'success'
-                  ? tokens.color.successBg
-                  : display === 'pending'
-                    ? tokens.color.warningBg
-                    : tokens.color.errorBg,
-            }}
+          {/* Status icon circle. On success → spring-in + ripple halo +
+             ambient glow via SuccessBurst (motion). Other states get a
+             static circle (a confidence move would feel wrong for pending
+             or failed states). */}
+          <SuccessBurst
+            color={tokens.color.success}
+            size={96}
+            disabled={display !== 'success'}
           >
-            <Text style={{ fontSize: 48 }}>
-              {display === 'success' ? '✓' : display === 'pending' ? '⏳' : '✕'}
-            </Text>
-          </View>
+            <View
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: 48,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor:
+                  display === 'success'
+                    ? tokens.color.successBg
+                    : display === 'pending'
+                      ? tokens.color.warningBg
+                      : tokens.color.errorBg,
+              }}
+            >
+              <Text style={{ fontSize: 48 }}>
+                {display === 'success' ? '✓' : display === 'pending' ? '⏳' : '✕'}
+              </Text>
+            </View>
+          </SuccessBurst>
 
-          {/* Title */}
+          {/* Title — fades in just after the icon settles. */}
+          <FadeSlideIn delay={display === 'success' ? 180 : 0}>
           <Text
             style={{
               fontSize: tokens.fontSize.h1,
@@ -249,6 +260,7 @@ export default function CheckoutResultScreen() {
                 ? t('payment.result.pending.title')
                 : t('payment.result.failed.title')}
           </Text>
+          </FadeSlideIn>
 
           {/* Subtitle */}
           <Text

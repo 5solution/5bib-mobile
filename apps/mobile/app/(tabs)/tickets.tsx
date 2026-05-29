@@ -20,6 +20,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
 import { SegmentedTabs } from '../../src/components/domain/SegmentedTabs';
 import { TicketCard } from '../../src/components/domain/TicketCard';
+import { StaggerItem } from '../../src/components/motion';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
@@ -231,8 +232,10 @@ export default function TicketsScreen() {
               tintColor={tokens.color.brandPrimary}
             />
           }
-          renderItem={({ item }) => (
-            <TicketCard ticket={item} onPress={() => router.push(`/tickets/${item.id}`)} />
+          renderItem={({ item, index }) => (
+            <StaggerItem index={index}>
+              <TicketCard ticket={item} onPress={() => router.push(`/tickets/${item.id}`)} />
+            </StaggerItem>
           )}
         />
       )}

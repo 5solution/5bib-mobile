@@ -29,6 +29,7 @@ import { Skeleton } from '../../src/components/Skeleton';
 import { Input } from '../../src/components/Input';
 import { RaceCard } from '../../src/components/domain/RaceCard';
 import { FilterChip } from '../../src/components/domain/FilterChip';
+import { StaggerItem } from '../../src/components/motion';
 import { RaceFilterSheet } from '../../src/components/domain/RaceFilterSheet';
 import { useOnline, useDebouncedValue } from '../../src/hooks';
 import { useBrowseFilterStore } from '../../src/stores/useBrowseFilterStore';
@@ -322,8 +323,10 @@ export default function AllEventsScreen() {
               tintColor={tokens.color.brandPrimary}
             />
           }
-          renderItem={({ item }) => (
-            <RaceCard race={item} onPress={() => router.push(`/events/${item.slug}`)} />
+          renderItem={({ item, index }) => (
+            <StaggerItem index={index}>
+              <RaceCard race={item} onPress={() => router.push(`/events/${item.slug}`)} />
+            </StaggerItem>
           )}
           onEndReachedThreshold={0.5}
           onEndReached={loadMore}
