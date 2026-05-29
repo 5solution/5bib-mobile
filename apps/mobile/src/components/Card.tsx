@@ -20,6 +20,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { tokens } from '../theme/tokens';
+import { haptics } from './motion/haptics';
 
 export interface CardProps {
   onPress?: () => void;
@@ -62,6 +63,8 @@ export function Card({
         onPressIn={() => {
           // Quick down-stroke (~80ms) registers the touch instantly.
           scale.value = withTiming(0.97, { duration: 80 });
+          // Light haptic — every tappable card gets a tiny tactile click.
+          haptics.light();
         }}
         onPressOut={() => {
           // Spring back — release is where the feel lives.

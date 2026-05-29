@@ -26,6 +26,7 @@ import { Badge } from '../../src/components/Badge';
 import { Skeleton } from '../../src/components/Skeleton';
 import { Banner } from '../../src/components/ErrorState';
 import { CourseCard } from '../../src/components/domain/CourseCard';
+import { CountdownRing } from '../../src/components/domain/CountdownRing';
 import { FadeSlideIn, StaggerItem } from '../../src/components/motion';
 import { useOnline } from '../../src/hooks';
 import { useAuthStore } from '../../src/stores/useAuthStore';
@@ -387,7 +388,7 @@ export default function EventDetailScreen() {
              event has passed (no point counting down a finished race). */}
           {!isClosed && race.startDate ? (
             <FadeSlideIn delay={80}>
-              <Countdown targetIso={race.startDate} />
+              <CountdownRing targetIso={race.startDate} />
             </FadeSlideIn>
           ) : null}
 

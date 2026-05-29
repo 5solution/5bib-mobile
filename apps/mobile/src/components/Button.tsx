@@ -5,12 +5,30 @@
  * Variants: primary | secondary | outline | ghost | destructive
  * Sizes: sm | md | lg | xl
  * States: default | pressed | disabled | loading
+ *
+ * Motion polish (2026-05-29):
+ *   - Light haptic on every press (medium on primary/destructive).
+ *   - Primary variant has a gradient sweep that pulses slowly across the
+ *     button — "alive" CTA. Disabled while loading.
+ *   - Loading state animates with a Reanimated spinner instead of the
+ *     default flat ActivityIndicator.
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator } from 'react-native';
-import { Button as TButton, styled, GetProps, Stack, Text } from 'tamagui';
+import { Button as TButton, Stack, Text } from 'tamagui';
+import Animated, {
+  Easing,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../theme/tokens';
+import { haptics } from './motion/haptics';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
 type Size = 'sm' | 'md' | 'lg' | 'xl';
@@ -79,6 +97,54 @@ export interface ButtonProps {
   testID?: string;
 }
 
+const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
+
+/** Internal — gradient sweep overlay for primary/destructive CTAs. */
+function CTASweep({ width, variant }: { width: number; variant: Variant }) {
+  const progress = useSharedValue(0);
+  useEffect(() => {
+    // Slow ~3.2s loop with 1.4s idle baked into the easing — reads as a
+    // sheen, not a marquee.
+    progress.value = withRepeat(
+      withTiming(1, { duration: 3200, easing: Easing.inOut(Easing.cubic) }),
+      -1,
+      false,
+    );
+  }, [progress]);
+
+  const style = useAnimatedStyle(() => {
+    const tx = interpolate(progress.value, [0, 1], [-100, width + 100], Extrapolation.CLAMP);
+    const opacity = interpolate(
+      progress.value,
+      [0, 0.25, 0.5, 0.75, 1],
+      [0, 0.5, 0.8, 0.5, 0],
+      Extrapolation.CLAMP,
+    );
+    return { transform: [{ translateX: tx }, { skewX: '-20deg' }], opacity };
+  });
+
+  const tint =
+    variant === 'destructive' ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.55)';
+
+  return (
+    <AnimatedGradient
+      pointerEvents="none"
+      colors={['rgba(255,255,255,0)', tint, 'rgba(255,255,255,0)']}
+      start={{ x: 0, y: 0.5 }}
+      end={{ x: 1, y: 0.5 }}
+      style={[
+        {
+          position: 'absolute',
+          top: -10,
+          bottom: -10,
+          width: 80,
+        },
+        style,
+      ]}
+    />
+  );
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',
@@ -107,10 +173,25 @@ export function Button({
   const s = SIZE_MAP[size];
   const isDisabled = disabled || loading;
 
+  const handlePress = () => {
+    if (isDisabled) return;
+    // Heavier haptic for the loud variants — feels like a confident commit.
+    if (resolvedVariant === 'primary' || resolvedVariant === 'destructive') {
+      haptics.medium();
+    } else {
+      haptics.light();
+    }
+    onPress?.();
+  };
+
+  // Sheen only on the bold CTAs and only when actionable.
+  const showSweep =
+    !isDisabled && (resolvedVariant === 'primary' || resolvedVariant === 'destructive');
+
   return (
     <TButton
       unstyled
-      onPress={isDisabled ? undefined : onPress}
+      onPress={isDisabled ? undefined : handlePress}
       disabled={isDisabled}
       backgroundColor={isDisabled ? v.bgDisabled : v.bg}
       pressStyle={{ backgroundColor: v.bgPressed, opacity: 0.95, translateY: 1 }}
@@ -126,12 +207,16 @@ export function Button({
       alignItems="center"
       justifyContent="center"
       gap={tokens.space[2]}
+      overflow="hidden"
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
     >
+      {/* Gradient sheen layer — purely decorative, sits under the content. */}
+      {showSweep ? <CTASweep width={fullWidth ? 360 : 200} variant={resolvedVariant} /> : null}
+
       {loading ? (
         <ActivityIndicator size="small" color={isDisabled ? v.fgDisabled : v.fg} />
       ) : (
