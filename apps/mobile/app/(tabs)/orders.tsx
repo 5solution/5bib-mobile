@@ -31,25 +31,24 @@ import { FetcherError } from '../../src/sdk/core';
 import type { Order } from '../../src/sdk/models';
 
 /**
- * 4 tabs matching dev.5bib.com `/vi/orders` ordering (verified 2026-05-28).
+ * 4 tabs matching dev.5bib.com `/vi/orders` ordering.
  *
- * Backend filter quirks discovered live:
- *   - `internal_status` enum accepts only `CLOSE` / `COMPLETE` / `PROCESSING`
- *     (other values incl. `CLOSED`, `PENDING` return 400 "Mismatch request param")
- *   - "Awaiting payment" doesn't have a matching internal_status — those
- *     orders have `internal_status=null`. Use `financial_status=pending`
- *     instead. Backend wire spelling: `finalcial_status` (sic typo, handled
- *     by SDK normalizer).
+ * Backend `internal_status` enum (verified live 2026-05-29 on 204 orders):
+ *   CLOSE (51) / COMPLETE (123) / WAIT_FOR_PAYMENT (27) / PROCESSING (0)
+ *
+ * Earlier attempt used `financial_status=pending` for Chờ thanh toán —
+ * but that returns voided + paid + pending mixed (loose filter). The
+ * correct enum is `WAIT_FOR_PAYMENT` (not in any earlier doc), which
+ * cleanly returns 27 unpaid orders incl. all of yesterday's e2e test
+ * orders (#5B200002322IB ... #5B200002347IB).
  */
 type StatusTab = 'closed' | 'completed' | 'awaitingPayment' | 'processing';
 
-type StatusFilter = { internalStatus?: string; financialStatus?: string };
-
-const TAB_TO_FILTER: Record<StatusTab, StatusFilter> = {
-  closed: { internalStatus: 'CLOSE' },
-  completed: { internalStatus: 'COMPLETE' },
-  awaitingPayment: { financialStatus: 'pending' },
-  processing: { internalStatus: 'PROCESSING' },
+const TAB_TO_INTERNAL_STATUS: Record<StatusTab, string> = {
+  closed: 'CLOSE',
+  completed: 'COMPLETE',
+  awaitingPayment: 'WAIT_FOR_PAYMENT',
+  processing: 'PROCESSING',
 };
 
 export default function OrdersScreen() {
@@ -69,18 +68,10 @@ export default function OrdersScreen() {
       setErrored(false);
       try {
         const r = await orderSdk.listMyOrders({
-          ...TAB_TO_FILTER[currentTab],
+          internalStatus: TAB_TO_INTERNAL_STATUS[currentTab],
           pageSize: 20,
         });
-        // Backend's `financial_status=pending` filter is loose — it returns
-        // voided + paid + pending mixed (verified live 2026-05-29: tab
-        // "Chờ thanh toán" sent pending, first row came back voided).
-        // Apply a strict client-side check per tab to keep the bucket clean.
-        const filter = TAB_TO_FILTER[currentTab];
-        const strict = filter.financialStatus
-          ? r.items.filter((o) => o.financialStatus === filter.financialStatus)
-          : r.items;
-        setOrders(strict);
+        setOrders(r.items);
       } catch (e) {
         setErrored(true);
         if (e instanceof FetcherError && e.status === 401) return; // global handler
