@@ -116,6 +116,10 @@ export default function RootLayout() {
                 />
                 {/* S-PROFILE-05 Delete Account — Apple Guideline 5.1.1(v) */}
                 <Stack.Screen name="profile/delete-account" />
+                {/* DEV-only motion preview — left out of nav, reach via
+                   deep-link `exp+5bib://dev/motion-showcase`. Easy to gate
+                   with `__DEV__` later if we want to drop from prod bundle. */}
+                <Stack.Screen name="dev/motion-showcase" options={{ title: 'Motion showcase' }} />
               </Stack>
               </AppLaunchIntro>
             </ToastProvider>

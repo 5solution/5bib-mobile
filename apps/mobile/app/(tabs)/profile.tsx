@@ -5,7 +5,7 @@
  * Logout: BR-AUTH-12 — clear SecureStore + Zustand + nav stack → login.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
@@ -30,6 +30,9 @@ export default function ProfileScreen() {
   const online = useOnline();
   const user = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(!user);
+  // 6-tap on the build version opens the dev motion showcase. Easter egg
+  // pattern Android uses for build-number tap to enable dev mode.
+  const versionTapCount = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -383,6 +386,15 @@ export default function ProfileScreen() {
               fontSize: tokens.fontSize.bodySm,
               color: tokens.color.neutral400,
               marginTop: tokens.space[3],
+            }}
+            onPress={() => {
+              // 6-tap on the version label opens the dev motion showcase.
+              // Same easter-egg pattern Android uses for the build-number tap.
+              versionTapCount.current += 1;
+              if (versionTapCount.current >= 6) {
+                versionTapCount.current = 0;
+                router.push('/dev/motion-showcase');
+              }
             }}
           >
             v2.0.0 (build 1)
