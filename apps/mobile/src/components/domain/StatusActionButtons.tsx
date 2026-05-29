@@ -46,6 +46,7 @@ const ACTION_VARIANTS: Partial<Record<AthleteAction, 'primary' | 'secondary' | '
   EWAIVER: 'primary',
   SHARE_BIB: 'secondary',
   VIEW_RESULT: 'secondary',
+  DELEGATE_RACEKIT: 'secondary',
   EDIT_INFO: 'tertiary',
   CHANGE_COURSE: 'tertiary',
   TRANSFER: 'tertiary',

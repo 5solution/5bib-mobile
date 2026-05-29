@@ -48,18 +48,27 @@ type TabId =
   | 'racekitReceived'
   | 'racekitNot';
 
+/**
+ * Predicate per pill. Verified 2026-05-29 against the URL param values used by
+ * dev.5bib.com (`?athlete_status=...`):
+ *   NEW · REGISTER · REMIND_CHECK_IN · CHECKEDIN (no underscore on web —
+ *   backend accepts both forms) · RACEKIT_RECEIVED · RACEKIT_NOT_RECEIVED
+ *   Plus ticket-level TRANSFERRING surfaced as a separate pill.
+ *
+ * The "Chưa ghi danh" pill on web only filters NEW. REGISTER goes under its
+ * own "Đã ghi danh" pill — we match that split so the counts line up.
+ */
 const TAB_PREDICATES: Record<TabId, (t: Ticket) => boolean> = {
   all: () => true,
-  notRegistered: (t) => {
-    const a = String(t.athleteStatus ?? '');
-    return a === 'NEW' || a === 'REGISTER';
-  },
-  transferring: (t) => String(t.status ?? '') === 'TRANSFERRING',
-  registered: (t) => String(t.athleteStatus ?? '') === 'REGISTERED',
+  notRegistered: (t) => String(t.athleteStatus ?? '') === 'NEW',
+  transferring: (t) =>
+    String(t.status ?? '') === 'TRANSFERRING' ||
+    String(t.athleteStatus ?? '') === 'TRANSFERRING',
+  registered: (t) => String(t.athleteStatus ?? '') === 'REGISTER',
   awaitConfirm: (t) => String(t.athleteStatus ?? '') === 'REMIND_CHECK_IN',
   checkedIn: (t) => {
     const a = String(t.athleteStatus ?? '');
-    return a === 'CHECK_IN' || a === 'CHECKED_IN';
+    return a === 'CHECK_IN' || a === 'CHECKED_IN' || a === 'CHECKEDIN';
   },
   racekitReceived: (t) => String(t.athleteStatus ?? '') === 'RACEKIT_RECEIVED',
   racekitNot: (t) => String(t.athleteStatus ?? '') === 'RACEKIT_NOT_RECEIVED',

@@ -8,23 +8,58 @@ import { Card } from '../Card';
 import { Badge } from '../Badge';
 import { tokens } from '../../theme/tokens';
 import type { Ticket } from '../../sdk/models';
+import {
+  ATHLETE_STATUS_LABELS,
+  ATHLETE_STATUS_VARIANT,
+  type AthleteStatus,
+} from '../../sdk/constants/athlete-status';
 
 export interface TicketCardProps {
   ticket: Ticket;
   onPress?: () => void;
 }
 
+/**
+ * Pick badge label + color variant for a ticket card.
+ *
+ * Order of precedence:
+ *   1) Ticket-level status (TRANSFERRED, CANCELLED, TRANSFERRING) overrides
+ *      the per-athlete status since those are terminal at the order layer.
+ *   2) Athlete status mapped via the shared ATHLETE_STATUS_LABELS /
+ *      ATHLETE_STATUS_VARIANT (single source of truth — matches web).
+ *   3) Race-day result statuses (FINISH / DNF / DNS / DSQ) fall through to
+ *      a small post-race table since these aren't in the 8-status enum.
+ */
 function ticketStatusBadge(t: Ticket): { variant: 'success' | 'info' | 'default' | 'warning'; label: string } {
   const status = String(t.status ?? '');
   const aStatus = String(t.athleteStatus ?? '');
+
   if (status === 'TRANSFERRED') return { variant: 'default', label: 'Đã chuyển' };
   if (status === 'CANCELLED') return { variant: 'default', label: 'Đã huỷ' };
-  if (aStatus === 'CHECKED_IN' || aStatus === 'CHECK_IN') return { variant: 'info', label: 'Đã check-in' };
+  if (status === 'TRANSFERRING' || aStatus === 'TRANSFERRING') {
+    return { variant: 'default', label: 'Đang chuyển nhượng' };
+  }
+
+  // Race-day result statuses — not in the 8-status enum, keep inline.
   if (aStatus === 'FINISH') return { variant: 'success', label: 'Hoàn thành' };
   if (aStatus === 'DNF' || aStatus === 'DNS' || aStatus === 'DSQ') {
     return { variant: 'default', label: aStatus };
   }
-  return { variant: 'success', label: 'Sẵn sàng' };
+
+  // Normalise to the 8-status enum. Backend variant CHECK_IN folds to CHECKED_IN.
+  const normalised =
+    aStatus === 'CHECK_IN' ? 'CHECKED_IN' : (aStatus as AthleteStatus);
+
+  if (normalised in ATHLETE_STATUS_LABELS) {
+    return {
+      variant: ATHLETE_STATUS_VARIANT[normalised],
+      label: ATHLETE_STATUS_LABELS[normalised],
+    };
+  }
+
+  // Unknown / blank — neutral placeholder rather than the previous "Sẵn sàng"
+  // which over-promised readiness for tickets still missing an athlete record.
+  return { variant: 'default', label: '—' };
 }
 
 function fmtDate(iso?: string) {

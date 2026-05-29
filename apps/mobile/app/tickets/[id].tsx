@@ -17,7 +17,10 @@ import { Skeleton } from '../../src/components/Skeleton';
 import { QRDisplayCard } from '../../src/components/QRDisplayCard';
 import { StatusActionButtons } from '../../src/components/domain/StatusActionButtons';
 import type { StatusActionHandlers } from '../../src/components/domain/StatusActionButtons';
-import type { AthleteStatus } from '../../src/sdk/constants/athlete-status';
+import {
+  shouldShowTicketQR,
+  type AthleteStatus,
+} from '../../src/sdk/constants/athlete-status';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
@@ -234,6 +237,7 @@ export default function TicketDetailScreen() {
       ? () => router.push(`/tickets/${ticket.id}/rolling-bib`)
       : undefined,
     SHARE_BIB: share,
+    DELEGATE_RACEKIT: () => router.push(`/tickets/${ticket.id}/edit?focus=delegate`),
     VIEW_RESULT: () => router.push(`/result/race-history`),
     CONTACT_SUPPORT: () => router.push('/profile'),
     VIEW_ORDER: ticket.orderId ? () => router.push(`/orders/${ticket.orderId}`) : undefined,
@@ -257,16 +261,34 @@ export default function TicketDetailScreen() {
       {transferred && <Banner variant="warning" message={t('tickets.transferredBanner')} />}
 
       <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[5] }}>
-        <QRDisplayCard
-          value={ticket.value}
-          bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
-          raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
-          courseAndDate={joinCourseAndDate(
-            ticket.basicInfo?.courseDistance,
-            ticket.race?.startDate,
-          )}
-          online={online}
-        />
+        {/*
+         * QR card visible only in CHECKED_IN / RACEKIT_RECEIVED per web parity.
+         * Other statuses get a static summary card without the scannable QR —
+         * the BIB hasn't been assigned for race-day check-in yet, or the ticket
+         * is no longer actionable (CANCELLED, TRANSFERRING).
+         */}
+        {shouldShowTicketQR(aStatus) ? (
+          <QRDisplayCard
+            value={ticket.value}
+            bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
+            raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
+            courseAndDate={joinCourseAndDate(
+              ticket.basicInfo?.courseDistance,
+              ticket.race?.startDate,
+            )}
+            online={online}
+          />
+        ) : (
+          <TicketSummaryCard
+            code={ticket.value}
+            bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
+            raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
+            courseAndDate={joinCourseAndDate(
+              ticket.basicInfo?.courseDistance,
+              ticket.race?.startDate,
+            )}
+          />
+        )}
 
         <Section title={t('tickets.athleteInfoSection')}>
           {/* Matches web `/vi/tickets/{id}` sidebar — 13 fields verified 2026-05-29 */}
@@ -388,6 +410,70 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         {title}
       </Text>
       <View style={{ gap: tokens.space[2] }}>{children}</View>
+    </View>
+  );
+}
+
+/**
+ * Static summary card for ticket statuses where the QR isn't meaningful
+ * (NEW, REGISTER, REMIND_CHECK_IN, TRANSFERRING, RACEKIT_NOT_RECEIVED,
+ * CANCELLED). Shows the same race / BIB / code identifiers as the QR card
+ * but without the scan target, matching the web detail layout.
+ */
+function TicketSummaryCard({
+  code,
+  bib,
+  raceName,
+  courseAndDate,
+}: {
+  code: string;
+  bib: string;
+  raceName: string;
+  courseAndDate: string;
+}) {
+  return (
+    <View
+      style={{
+        backgroundColor: tokens.color.surfaceCard,
+        borderRadius: tokens.radius.lg,
+        padding: tokens.space[4],
+        gap: tokens.space[2],
+        ...tokens.elevation[1],
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: 'Menlo',
+          fontSize: tokens.fontSize.monoMd,
+          color: tokens.color.neutral500,
+        }}
+      >
+        {code}
+      </Text>
+      <Text
+        style={{
+          fontSize: tokens.fontSize.h3,
+          fontWeight: tokens.fontWeight.semibold,
+          color: tokens.color.neutral900,
+        }}
+        numberOfLines={2}
+      >
+        {raceName}
+      </Text>
+      {!!courseAndDate && (
+        <Text style={{ color: tokens.color.neutral600 }}>{courseAndDate}</Text>
+      )}
+      <Text
+        style={{
+          fontSize: tokens.fontSize.monoMd,
+          fontFamily: 'Menlo',
+          color: tokens.color.neutral800,
+          fontWeight: tokens.fontWeight.semibold,
+          marginTop: tokens.space[2],
+        }}
+      >
+        BIB: {bib}
+      </Text>
     </View>
   );
 }
