@@ -16,6 +16,7 @@ import { Button } from '../../src/components/Button';
 import { Skeleton } from '../../src/components/Skeleton';
 import { QRDisplayCard } from '../../src/components/QRDisplayCard';
 import { StatusActionButtons } from '../../src/components/domain/StatusActionButtons';
+import { FadeSlideIn, QRPulseRing } from '../../src/components/motion';
 import type { StatusActionHandlers } from '../../src/components/domain/StatusActionButtons';
 import {
   shouldShowTicketQR,
@@ -266,30 +267,42 @@ export default function TicketDetailScreen() {
          * Other statuses get a static summary card without the scannable QR —
          * the BIB hasn't been assigned for race-day check-in yet, or the ticket
          * is no longer actionable (CANCELLED, TRANSFERRING).
+         *
+         * Motion prototype (FEATURE-004 candidate, 2026-05-29):
+         *   - FadeSlideIn staggers each section so the page assembles instead
+         *     of slamming in flat.
+         *   - QRPulseRing wraps the QR with a breathing accent ring when the
+         *     ticket is live (CHECKED_IN / RACEKIT_RECEIVED) — telegraphs
+         *     "scan me" at the gate without a single string of copy.
          */}
-        {shouldShowTicketQR(aStatus) ? (
-          <QRDisplayCard
-            value={ticket.value}
-            bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
-            raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
-            courseAndDate={joinCourseAndDate(
-              ticket.basicInfo?.courseDistance,
-              ticket.race?.startDate,
-            )}
-            online={online}
-          />
-        ) : (
-          <TicketSummaryCard
-            code={ticket.value}
-            bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
-            raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
-            courseAndDate={joinCourseAndDate(
-              ticket.basicInfo?.courseDistance,
-              ticket.race?.startDate,
-            )}
-          />
-        )}
+        <FadeSlideIn delay={0}>
+          {shouldShowTicketQR(aStatus) ? (
+            <QRPulseRing color={tokens.color.brandPrimary} style={{ borderRadius: tokens.radius.xl }}>
+              <QRDisplayCard
+                value={ticket.value}
+                bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
+                raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
+                courseAndDate={joinCourseAndDate(
+                  ticket.basicInfo?.courseDistance,
+                  ticket.race?.startDate,
+                )}
+                online={online}
+              />
+            </QRPulseRing>
+          ) : (
+            <TicketSummaryCard
+              code={ticket.value}
+              bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
+              raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
+              courseAndDate={joinCourseAndDate(
+                ticket.basicInfo?.courseDistance,
+                ticket.race?.startDate,
+              )}
+            />
+          )}
+        </FadeSlideIn>
 
+        <FadeSlideIn delay={90}>
         <Section title={t('tickets.athleteInfoSection')}>
           {/* Matches web `/vi/tickets/{id}` sidebar — 13 fields verified 2026-05-29 */}
           <KV label={t('tickets.field.fullName')} value={fullName(athlete) ?? ticket.athleteName ?? '—'} />
@@ -322,9 +335,11 @@ export default function TicketDetailScreen() {
           <KV label={t('tickets.field.phone')} value={athlete?.contactPhone ?? '—'} />
           <KV label={t('tickets.field.sosPhone')} value={athlete?.sosPhone ?? '—'} />
         </Section>
+        </FadeSlideIn>
 
         {/* Delegated person info — only if isRepresent=true on athlete */}
         {athlete?.isRepresent && (
+          <FadeSlideIn delay={150}>
           <Section title={t('tickets.delegatedSection')}>
             <KV
               label={t('tickets.field.delegatedName')}
@@ -355,8 +370,10 @@ export default function TicketDetailScreen() {
               }
             />
           </Section>
+          </FadeSlideIn>
         )}
 
+        <FadeSlideIn delay={athlete?.isRepresent ? 210 : 180}>
         <Section title={t('tickets.raceDetailSection')}>
           <Text
             style={{
@@ -382,7 +399,9 @@ export default function TicketDetailScreen() {
             </Button>
           )}
         </Section>
+        </FadeSlideIn>
 
+        <FadeSlideIn delay={athlete?.isRepresent ? 270 : 240}>
         <Section title={t('tickets.actionsSection')}>
           <StatusActionButtons
             status={aStatus}
@@ -390,6 +409,7 @@ export default function TicketDetailScreen() {
             rollingBibAvailable={availableToRoll}
           />
         </Section>
+        </FadeSlideIn>
       </ScrollView>
     </View>
   );
