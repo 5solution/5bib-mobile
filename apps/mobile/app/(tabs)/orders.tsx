@@ -72,7 +72,15 @@ export default function OrdersScreen() {
           ...TAB_TO_FILTER[currentTab],
           pageSize: 20,
         });
-        setOrders(r.items);
+        // Backend's `financial_status=pending` filter is loose — it returns
+        // voided + paid + pending mixed (verified live 2026-05-29: tab
+        // "Chờ thanh toán" sent pending, first row came back voided).
+        // Apply a strict client-side check per tab to keep the bucket clean.
+        const filter = TAB_TO_FILTER[currentTab];
+        const strict = filter.financialStatus
+          ? r.items.filter((o) => o.financialStatus === filter.financialStatus)
+          : r.items;
+        setOrders(strict);
       } catch (e) {
         setErrored(true);
         if (e instanceof FetcherError && e.status === 401) return; // global handler

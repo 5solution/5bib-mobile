@@ -82,7 +82,7 @@ export default function TicketsScreen() {
     try {
       // Backend `/codes/fetch-by-user` rejects comma-separated code_statuses
       // (verified 2026-05-27 → 400 "Mismatch request param"). Fetch ACTIVE
-      // only, classify all 3 tabs client-side from athlete status.
+      // only, classify all 8 tabs client-side from athlete status.
       const r = await ticketSdk.listMyTickets({
         athleteStatus: 'ALL',
         codeStatuses: 'ACTIVE',
