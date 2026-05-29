@@ -49,9 +49,12 @@ export function TicketCard({ ticket, onPress }: TicketCardProps) {
   const startDate = fmtDate(ticket.race?.startDate);
   // Join distance + date with "·" only when both present, else show whichever
   // exists. Avoids the awkward "12 · —" when backend leaves startDate null.
-  const subtitle = [distance ? `${distance} km` : '', startDate]
-    .filter(Boolean)
-    .join(' · ');
+  // Distance may arrive as bare "12" OR pre-suffixed "10km" depending on
+  // backend course. Strip trailing "km" before re-adding to avoid "10km km".
+  const distText = distance
+    ? `${String(distance).replace(/\s*km\s*$/i, '')} km`
+    : '';
+  const subtitle = [distText, startDate].filter(Boolean).join(' · ');
   return (
     <Card
       onPress={onPress}

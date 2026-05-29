@@ -76,7 +76,12 @@ function bibLabel(b: unknown, fallback: string): string {
  *  is missing. Avoids the awkward "12 · —" placeholder we used to render
  *  when the backend left startDate null. */
 function joinCourseAndDate(distance?: string, dateIso?: string): string {
-  const dist = distance ? `${distance} km` : '';
+  // Strip trailing "km" from backend value before re-suffixing — race courses
+  // come down as "12" on some endpoints and "10km" on others, double-suffix
+  // would render "10km km".
+  const dist = distance
+    ? `${String(distance).replace(/\s*km\s*$/i, '')} km`
+    : '';
   const date = fmtDate(dateIso);
   return [dist, date].filter(Boolean).join(' · ');
 }
@@ -283,7 +288,7 @@ export default function TicketDetailScreen() {
             label={t('tickets.field.distance')}
             value={
               ticket.basicInfo?.courseDistance
-                ? `${ticket.basicInfo.courseDistance} km`
+                ? `${String(ticket.basicInfo.courseDistance).replace(/\s*km\s*$/i, '')} km`
                 : '—'
             }
           />

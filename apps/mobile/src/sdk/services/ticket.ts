@@ -46,11 +46,14 @@ export const ticket = {
       codeStatuses = 'ACTIVE',
     } = params;
 
-    // Backend (verified 2026-05-27): rejects camelCase pagination params with
-    // 400 "Mismatch request param". Use snake_case throughout.
+    // **Mixed conventions** verified live 2026-05-29: backend wants
+    // camelCase pageNo/sortField/sortDirection — snake_case versions are
+    // silently ignored. But filter params remain snake_case
+    // (code_statuses, athlete_status). Default sort newest-first.
     const queryParams: Record<string, unknown> = {
-      sort_direction: 'DESC',
-      page_no: pageNo,
+      pageNo,
+      sortField: 'createdOn',
+      sortDirection: 'DESC',
       code_statuses: codeStatuses,
     };
     if (athleteStatus !== 'ALL') {
@@ -78,7 +81,7 @@ export const ticket = {
     };
   },
 
-  /**
+/**
    * GET /codes/get/:id — ticket detail by code value or ID.
    */
   async getTicketById(ticketId: string): Promise<Ticket> {

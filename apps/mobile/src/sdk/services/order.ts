@@ -152,11 +152,14 @@ export const order = {
       };
     }>('/order', {
       params: {
-        // snake_case — backend rejects camelCase with 400.
-        page_no: params.pageNo,
-        page_size: params.pageSize,
-        sort_field: params.sortField,
-        sort_direction: params.sortDirection,
+        // **Mixed conventions** verified live 2026-05-29: backend wants
+        // camelCase pageNo/sortField/sortDirection (NOT snake_case — those
+        // are silently ignored and always return page 0 sorted by id ASC),
+        // but snake_case internal_status / finalcial_status. Yes, painful.
+        pageNo: params.pageNo,
+        pageSize: params.pageSize,
+        sortField: params.sortField ?? 'processedOn',
+        sortDirection: params.sortDirection ?? 'DESC',
         internal_status: params.internalStatus,
         // typo preserved on wire — fixed in normalizer
         finalcial_status: params.financialStatus,
@@ -174,7 +177,7 @@ export const order = {
     };
   },
 
-  /**
+/**
    * GET /order/by-id?order_id=X — order detail.
    */
   async getOrderById(orderId: string): Promise<Order> {

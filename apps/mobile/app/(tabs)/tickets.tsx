@@ -80,12 +80,13 @@ export default function TicketsScreen() {
   const load = useCallback(async () => {
     setErrored(false);
     try {
-      // Backend `/codes/fetch-by-user` rejects comma-separated code_statuses
-      // (verified 2026-05-27 → 400 "Mismatch request param"). Fetch ACTIVE
-      // only, classify all 8 tabs client-side from athlete status.
+      // Backend wants camelCase pageNo + sortField — SDK now handles that
+      // automatically, defaulting to sortField=createdOn / DESC so the
+      // user sees newest tickets first (incl. fresh fakePayment ones).
       const r = await ticketSdk.listMyTickets({
         athleteStatus: 'ALL',
         codeStatuses: 'ACTIVE',
+        pageNo: 1,
       });
       setAllTickets(r.items);
     } catch (e) {

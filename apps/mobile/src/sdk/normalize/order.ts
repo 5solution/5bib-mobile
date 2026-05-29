@@ -47,7 +47,13 @@ export function normalizeOrder(raw: unknown): Order {
         r.status,
     ),
     internalStatus: String(r.internal_status ?? r.internalStatus ?? ''),
-    createdAt: String(r.created_at ?? r.createdAt ?? r.created_on ?? ''),
+    // Backend uses `processed_on` as the canonical creation timestamp on
+    // orders (verified 2026-05-29: every fresh order has processed_on set,
+    // `created_at`/`created_on` are absent). Fall back through legacy keys
+    // for older callers / mock data.
+    createdAt: String(
+      r.processed_on ?? r.created_at ?? r.createdAt ?? r.created_on ?? '',
+    ),
     paidAt: (r.paid_at as string | undefined) ?? (r.paidAt as string | undefined),
     paymentMethod:
       (r.payment_method as string | undefined) ??

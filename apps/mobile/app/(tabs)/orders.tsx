@@ -12,7 +12,7 @@
  * server-side count.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -67,8 +67,13 @@ export default function OrdersScreen() {
     async (currentTab: StatusTab) => {
       setErrored(false);
       try {
+        // Backend wants camelCase pageNo + sortField (verified live
+        // 2026-05-29: snake_case versions are silently ignored). SDK
+        // defaults to sortField=processedOn / DESC so user sees the
+        // newest orders first per tab (incl. recent test orders).
         const r = await orderSdk.listMyOrders({
           internalStatus: TAB_TO_INTERNAL_STATUS[currentTab],
+          pageNo: 1,
           pageSize: 20,
         });
         setOrders(r.items);
