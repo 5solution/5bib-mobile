@@ -16,6 +16,13 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Image, Pressable, Share } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -281,22 +288,66 @@ export default function EventDetailScreen() {
     ? false
     : !selectedRow || !selectedHasStock;
 
+  // --- Scroll-driven motion --------------------------------------------------
+  // scrollY drives 3 effects:
+  //   1) hero parallax: image translates DOWN at half rate so it feels deep
+  //   2) hero scale: image scales UP when overscrolled past 0 (rubber-band)
+  //   3) sticky header reveal: a white bar fades in once user scrolls past
+  //      the hero, with the race title appearing underneath the round buttons
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      scrollY.value = e.contentOffset.y;
+    },
+  });
+  const HERO_HEIGHT = 240;
+  const heroStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [-HERO_HEIGHT, 0, HERO_HEIGHT],
+      [-HERO_HEIGHT / 2, 0, HERO_HEIGHT / 2],
+      Extrapolation.CLAMP,
+    );
+    const scale = interpolate(
+      scrollY.value,
+      [-HERO_HEIGHT, 0],
+      [1.5, 1],
+      Extrapolation.CLAMP,
+    );
+    return { transform: [{ translateY }, { scale }] };
+  });
+  const stickyStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [HERO_HEIGHT - 120, HERO_HEIGHT - 40],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
+    return { opacity };
+  });
+
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
-      <ScrollView
+      <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
       >
-        {/* Hero */}
-        <View style={{ height: 240, backgroundColor: tokens.color.neutral300 }}>
+        {/* Hero — parallax: image moves at half scroll rate + scales on
+           overscroll. The dark scrim is a separate layer that does NOT
+           translate so the cover dives behind it gracefully. */}
+        <View style={{ height: HERO_HEIGHT, backgroundColor: tokens.color.neutral300, overflow: 'hidden' }}>
           {race.coverImageUrl ? (
-            <Image
-              source={{ uri: race.coverImageUrl }}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
-            />
+            <Animated.View style={[{ width: '100%', height: '100%' }, heroStyle]}>
+              <Image
+                source={{ uri: race.coverImageUrl }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+            </Animated.View>
           ) : null}
-          {/* overlay header */}
+          {/* overlay header — buttons stay put as the image parallaxes */}
           <View
             style={{
               position: 'absolute',
@@ -516,7 +567,42 @@ export default function EventDetailScreen() {
             </FadeSlideIn>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+
+      {/* Sticky top header — appears once user scrolls past the hero.
+         Fades in white bg + the race title. Absolutely positioned so it
+         sits on top of the scroll without competing for layout space. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            paddingTop: insets.top,
+            height: insets.top + tokens.layout.headerHeight,
+            backgroundColor: tokens.color.surfaceBg,
+            borderBottomWidth: 1,
+            borderBottomColor: tokens.color.neutral100,
+            justifyContent: 'center',
+            paddingHorizontal: tokens.space[6],
+          },
+          stickyStyle,
+        ]}
+      >
+        <Text
+          style={{
+            fontSize: tokens.fontSize.h3,
+            fontWeight: tokens.fontWeight.semibold,
+            color: tokens.color.neutral900,
+            textAlign: 'center',
+          }}
+          numberOfLines={1}
+        >
+          {race.title}
+        </Text>
+      </Animated.View>
 
       {/* Sticky bottom CTA */}
       <View

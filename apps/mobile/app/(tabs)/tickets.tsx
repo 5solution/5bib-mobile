@@ -20,7 +20,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
 import { SegmentedTabs } from '../../src/components/domain/SegmentedTabs';
 import { TicketCard } from '../../src/components/domain/TicketCard';
-import { StaggerItem } from '../../src/components/motion';
+import { StaggerItem, SwipeActions } from '../../src/components/motion';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
@@ -234,7 +234,33 @@ export default function TicketsScreen() {
           }
           renderItem={({ item, index }) => (
             <StaggerItem index={index}>
-              <TicketCard ticket={item} onPress={() => router.push(`/tickets/${item.id}`)} />
+              {/* Swipe-to-action — iOS Mail-style. Swipe left to reveal
+                 Share + Transfer; full-swipe triggers Share (most common
+                 action). Status-aware: cancelled / transferred / finished
+                 tickets get no actions (read-only). */}
+              <SwipeActions
+                actions={
+                  String(item.status) === 'CANCELLED' ||
+                  String(item.status) === 'TRANSFERRED'
+                    ? []
+                    : [
+                        {
+                          label: 'Chia sẻ',
+                          icon: '⤴',
+                          color: tokens.color.brandPrimary,
+                          onPress: () => router.push(`/tickets/${item.id}`),
+                        },
+                        {
+                          label: 'Chuyển nhượng',
+                          icon: '↗',
+                          color: tokens.color.warning,
+                          onPress: () => router.push(`/tickets/${item.id}/transfer`),
+                        },
+                      ]
+                }
+              >
+                <TicketCard ticket={item} onPress={() => router.push(`/tickets/${item.id}`)} />
+              </SwipeActions>
             </StaggerItem>
           )}
         />

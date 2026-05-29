@@ -23,7 +23,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
 import { SegmentedTabs } from '../../src/components/domain/SegmentedTabs';
 import { OrderCard } from '../../src/components/domain/OrderCard';
-import { StaggerItem } from '../../src/components/motion';
+import { StaggerItem, SwipeActions } from '../../src/components/motion';
 import { useToast } from '../../src/components/Toast';
 import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
@@ -173,7 +173,38 @@ export default function OrdersScreen() {
           }
           renderItem={({ item, index }) => (
             <StaggerItem index={index}>
-              <OrderCard order={item} onPress={() => router.push(`/orders/${item.id}`)} />
+              {/* Swipe-to-action: WAIT_FOR_PAYMENT orders get a "Pay now"
+                 swipe action; completed/cancelled orders only swipe to
+                 details (single action). */}
+              <SwipeActions
+                actions={
+                  String(item.internalStatus) === 'WAIT_FOR_PAYMENT'
+                    ? [
+                        {
+                          label: 'Thanh toán',
+                          icon: '💳',
+                          color: tokens.color.brandPrimary,
+                          onPress: () => router.push(`/orders/${item.id}`),
+                        },
+                        {
+                          label: 'Chi tiết',
+                          icon: '›',
+                          color: tokens.color.neutral500,
+                          onPress: () => router.push(`/orders/${item.id}`),
+                        },
+                      ]
+                    : [
+                        {
+                          label: 'Chi tiết',
+                          icon: '›',
+                          color: tokens.color.neutral500,
+                          onPress: () => router.push(`/orders/${item.id}`),
+                        },
+                      ]
+                }
+              >
+                <OrderCard order={item} onPress={() => router.push(`/orders/${item.id}`)} />
+              </SwipeActions>
             </StaggerItem>
           )}
         />

@@ -31,3 +31,27 @@ export type { BadgeShimmerProps } from './BadgeShimmer';
 
 export { SuccessBurst } from './SuccessBurst';
 export type { SuccessBurstProps } from './SuccessBurst';
+
+export { Flip3D, DoubleSidedFlip } from './Flip3D';
+export type { Flip3DProps, DoubleSidedFlipProps } from './Flip3D';
+
+export { AppLaunchIntro } from './AppLaunchIntro';
+export type { AppLaunchIntroProps } from './AppLaunchIntro';
+
+export { SwipeActions } from './SwipeActions';
+export type { SwipeActionsProps, SwipeAction, SwipeActionsHandle } from './SwipeActions';
+
+export { SkiaConfetti, useConfettiTrigger } from './SkiaConfetti';
+export type { SkiaConfettiProps } from './SkiaConfetti';
+
+export { LottieView, LottiePlaceholder } from './LottieView';
+export type { LottieViewProps, LottiePreset } from './LottieView';
+
+export { AnimatedLogo } from './AnimatedLogo';
+export type { AnimatedLogoProps } from './AnimatedLogo';
+
+export { IconMorph, ICON_MORPH_TIMING } from './IconMorph';
+export type { IconMorphProps } from './IconMorph';
+
+export { haptics } from './haptics';
+export type { HapticVariant } from './haptics';

@@ -53,6 +53,8 @@ import { useCountdown } from '../../../src/hooks';
 import { tokens } from '../../../src/theme/tokens';
 import { ticket as ticketSdk } from '../../../src/sdk/services/ticket';
 import { athlete as athleteSdk } from '../../../src/sdk/services/athlete';
+import { Flip3D, SkiaConfetti } from '../../../src/components/motion';
+import { useWindowDimensions } from 'react-native';
 import { FetcherError } from '../../../src/sdk/core';
 import type { Ticket } from '../../../src/sdk/models';
 
@@ -461,6 +463,7 @@ function ConfirmState({
   const hh = String(Math.floor(secondsLeft / 3600)).padStart(2, '0');
   const mm = String(Math.floor((secondsLeft % 3600) / 60)).padStart(2, '0');
   const ss = String(secondsLeft % 60).padStart(2, '0');
+  const { width: winW, height: winH } = useWindowDimensions();
 
   return (
     <>
@@ -470,19 +473,25 @@ function ConfirmState({
         onLeadingPress={onBack}
       />
       <ScrollView contentContainerStyle={styles.bodyPad}>
-        <View style={[styles.gradientCard, { padding: tokens.space[7] }]}>
-          <Text style={styles.gradientHeading}>🎉 {t('tickets.rollingBib.luckyBib')}</Text>
-          <Text style={styles.gradientBigBib} accessibilityRole="text">
-            {bib}
-          </Text>
-          <Text style={styles.gradientHelp}>{t('tickets.rollingBib.contextLine')}</Text>
-          <Text
-            style={[styles.countdown, { color: COUNTDOWN_COLOR }]}
-            accessibilityLabel={`${t('tickets.rollingBib.timeLeft')} ${hh}:${mm}:${ss}`}
-          >
-            ⏱ {t('tickets.rollingBib.timeLeft')}: {hh}:{mm}:{ss}
-          </Text>
-        </View>
+        {/* 3D card flip-in reveal — the BIB card lands like a flipped
+           lottery card. Spring overshoot + perspective transform sells the
+           "tada!" feel without any confetti needed inside the card itself
+           (we layer Skia confetti above). */}
+        <Flip3D trigger={!!bib} axis="y" perspective={1200} duration={900}>
+          <View style={[styles.gradientCard, { padding: tokens.space[7] }]}>
+            <Text style={styles.gradientHeading}>🎉 {t('tickets.rollingBib.luckyBib')}</Text>
+            <Text style={styles.gradientBigBib} accessibilityRole="text">
+              {bib}
+            </Text>
+            <Text style={styles.gradientHelp}>{t('tickets.rollingBib.contextLine')}</Text>
+            <Text
+              style={[styles.countdown, { color: COUNTDOWN_COLOR }]}
+              accessibilityLabel={`${t('tickets.rollingBib.timeLeft')} ${hh}:${mm}:${ss}`}
+            >
+              ⏱ {t('tickets.rollingBib.timeLeft')}: {hh}:{mm}:{ss}
+            </Text>
+          </View>
+        </Flip3D>
       </ScrollView>
       <View style={[styles.stickyBottom, { flexDirection: 'row', gap: tokens.space[3] }]}>
         <View style={{ flex: 1 }}>
@@ -504,6 +513,21 @@ function ConfirmState({
         </View>
       </View>
       {submitting && <FullScreenLoading />}
+      {/* Confetti when the lucky BIB lands — fires once on mount of this
+         state (and replays if user re-rolls into a new winning state). */}
+      <SkiaConfetti
+        trigger={!!bib}
+        duration={2800}
+        particleCount={70}
+        origin={{ x: winW / 2, y: 180 }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: winW,
+          height: winH,
+        }}
+      />
     </>
   );
 }

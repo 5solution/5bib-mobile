@@ -20,7 +20,8 @@ import { Button } from '../../src/components/Button';
 import { Card } from '../../src/components/Card';
 import { Banner } from '../../src/components/ErrorState';
 import { Spinner } from '../../src/components/Skeleton';
-import { SuccessBurst, FadeSlideIn } from '../../src/components/motion';
+import { SuccessBurst, FadeSlideIn, SkiaConfetti, haptics } from '../../src/components/motion';
+import { useWindowDimensions } from 'react-native';
 import { useToast } from '../../src/components/Toast';
 import { useCountdown, usePolling } from '../../src/hooks';
 import { order as orderService } from '../../src/sdk/services/order';
@@ -180,6 +181,20 @@ export default function CheckoutResultScreen() {
     `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
   const fmtAmount = (n: number) => n.toLocaleString('vi-VN');
+
+  // Window dims for the confetti canvas. We compute the burst origin from
+  // the icon centre (~64dp from top of scroll container).
+  const { width: winW, height: winH } = useWindowDimensions();
+
+  // Fire a celebratory success haptic once when display flips to 'success'.
+  // The SkiaConfetti's `trigger` prop handles the visual burst.
+  const successFiredRef = React.useRef(false);
+  useEffect(() => {
+    if (display === 'success' && !successFiredRef.current) {
+      successFiredRef.current = true;
+      haptics.success();
+    }
+  }, [display]);
 
   return (
     <View
@@ -485,6 +500,24 @@ export default function CheckoutResultScreen() {
           <Spinner size="large" label={t('common.loading')} />
         </View>
       )}
+
+      {/* Particle confetti — fires once when payment confirms.
+         Sits absolutely above everything except modals; pointer events off
+         so the user can still tap the CTA underneath. Origin near the icon
+         circle so the burst feels anchored to the ✓ tick. */}
+      <SkiaConfetti
+        trigger={display === 'success'}
+        duration={3200}
+        particleCount={90}
+        origin={{ x: winW / 2, y: 200 }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: winW,
+          height: winH,
+        }}
+      />
     </View>
   );
 }

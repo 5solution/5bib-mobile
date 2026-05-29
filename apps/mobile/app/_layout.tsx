@@ -23,6 +23,7 @@ import { TamaguiProvider } from 'tamagui';
 
 import tamaguiConfig from '../src/theme/tamagui.config';
 import { ToastProvider, useToast } from '../src/components';
+import { AppLaunchIntro } from '../src/components/motion';
 import { initSentry } from '../src/adapters/sentry';
 import { initGoogleSignIn } from '../src/adapters/google-signin';
 import { initSdk } from '../src/adapters/sdk-init';
@@ -66,6 +67,11 @@ function AuthExpiredListener() {
 }
 
 export default function RootLayout() {
+  // Show the 5BIB animated logo splash on cold launch. The intro is purely
+  // decorative — children mount underneath at full opacity from the start
+  // (so warm-up like SDK init has already happened), then the splash fades
+  // off the top after ~1.9s.
+  const [introDone, setIntroDone] = React.useState(false);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -73,6 +79,9 @@ export default function RootLayout() {
           <BottomSheetModalProvider>
             <ToastProvider>
               <AuthExpiredListener />
+              {/* Intro plays once per mount. `introDone` is kept around in
+                 case we want to short-circuit later (e.g. deep-linked URL). */}
+              <AppLaunchIntro onComplete={() => setIntroDone(true)}>
               <Stack
                 screenOptions={{
                   headerShown: false,
@@ -108,6 +117,7 @@ export default function RootLayout() {
                 {/* S-PROFILE-05 Delete Account — Apple Guideline 5.1.1(v) */}
                 <Stack.Screen name="profile/delete-account" />
               </Stack>
+              </AppLaunchIntro>
             </ToastProvider>
           </BottomSheetModalProvider>
         </TamaguiProvider>
