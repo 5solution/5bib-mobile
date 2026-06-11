@@ -86,8 +86,8 @@ import { haptics } from './haptics';
 export type SwipeAction = {
   /** Label shown under the icon. Keep it short — 1-2 words. */
   label: string;
-  /** Glyph / emoji. Mono-color render assumed (white over `color`). */
-  icon?: string;
+  /** Glyph string or icon node (e.g. Ionicons). String glyphs render white over `color`. */
+  icon?: string | React.ReactNode;
   /** Background colour of the action tile. Usually `tokens.color.*`. */
   color: string;
   /** Tap handler. Closes the row before firing. */
@@ -306,7 +306,11 @@ export const SwipeActions = forwardRef<SwipeActionsHandle, SwipeActionsProps>(
               accessibilityLabel={action.label}
             >
               {action.icon ? (
-                <Text style={styles.actionIcon}>{action.icon}</Text>
+                typeof action.icon === 'string' ? (
+                  <Text style={styles.actionIcon}>{action.icon}</Text>
+                ) : (
+                  action.icon
+                )
               ) : null}
               <Text style={styles.actionLabel} numberOfLines={1}>
                 {action.label}

@@ -28,6 +28,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../../theme/tokens';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -120,7 +121,7 @@ export interface CountdownRingProps {
   label?: string;
 }
 
-export function CountdownRing({ targetIso, label = '⏱ RACE DAY BẮT ĐẦU TRONG' }: CountdownRingProps) {
+export function CountdownRing({ targetIso, label = 'RACE DAY BẮT ĐẦU TRONG' }: CountdownRingProps) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -164,9 +165,12 @@ export function CountdownRing({ targetIso, label = '⏱ RACE DAY BẮT ĐẦU TR
         ...tokens.elevation[1],
       }}
     >
-      <Text style={{ fontSize: 11, color: tokens.color.neutral600, letterSpacing: 1 }}>
-        {label}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[1] }}>
+        <Ionicons name="timer-outline" size={13} color={tokens.color.neutral600} />
+        <Text style={{ fontSize: 11, color: tokens.color.neutral600, letterSpacing: 1 }}>
+          {label}
+        </Text>
+      </View>
       <View
         style={{
           flexDirection: 'row',

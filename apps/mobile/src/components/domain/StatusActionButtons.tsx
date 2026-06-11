@@ -27,6 +27,7 @@
 
 import React from 'react';
 import { View, Text, Pressable, StyleProp, ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../Button';
 import { tokens } from '../../theme/tokens';
 import { haptics } from '../motion/haptics';
@@ -50,19 +51,20 @@ export interface StatusActionButtonsProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Icon glyph per action — single emoji, intentionally simple. */
-const ACTION_ICONS: Record<AthleteAction, string> = {
-  REGISTER_FORM: '📝',
-  ROLLING_BIB: '🎰',
-  EWAIVER: '✍️',
-  SHARE_BIB: '⤴',
-  DELEGATE_RACEKIT: '🎁',
-  VIEW_RESULT: '🏁',
-  EDIT_INFO: '✏️',
-  CHANGE_COURSE: '🔁',
-  TRANSFER: '↗',
-  CONTACT_SUPPORT: '💬',
-  VIEW_ORDER: '🧾',
+/** Ionicons name per action — proper icon set (ships with Expo), replacing
+ *  the emoji tiles that read as a prototype. */
+const ACTION_ICONS: Record<AthleteAction, keyof typeof Ionicons.glyphMap> = {
+  REGISTER_FORM: 'create-outline',
+  ROLLING_BIB: 'dice-outline',
+  EWAIVER: 'document-text-outline',
+  SHARE_BIB: 'share-outline',
+  DELEGATE_RACEKIT: 'gift-outline',
+  VIEW_RESULT: 'flag-outline',
+  EDIT_INFO: 'pencil-outline',
+  CHANGE_COURSE: 'swap-horizontal-outline',
+  TRANSFER: 'arrow-redo-outline',
+  CONTACT_SUPPORT: 'chatbubble-ellipses-outline',
+  VIEW_ORDER: 'receipt-outline',
 };
 
 /** Color accent for icon tiles — neutral by default, brand for engagement. */
@@ -118,7 +120,7 @@ function ActionTile({
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontSize: 18, color: accent }}>{ACTION_ICONS[action]}</Text>
+        <Ionicons name={ACTION_ICONS[action]} size={19} color={accent} />
       </View>
       <Text
         style={{

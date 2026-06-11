@@ -12,6 +12,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleProp, ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../../theme/tokens';
 import { BottomSheet } from '../BottomSheet';
 
@@ -51,7 +52,7 @@ export function BuyGroupDiscountBadge({
   style,
 }: BuyGroupDiscountBadgeProps) {
   const [open, setOpen] = useState(false);
-  const label = `🎉 Tiết kiệm ${fmtVND(discountAmount)} khi mua ≥${minQuantity} vé`;
+  const label = `Tiết kiệm ${fmtVND(discountAmount)} khi mua ≥${minQuantity} vé`;
   const bg = hexAlpha(tokens.color.brandAccent, 0.1);
 
   return (
@@ -78,6 +79,7 @@ export function BuyGroupDiscountBadge({
           style,
         ]}
       >
+        <Ionicons name="gift-outline" size={16} color={tokens.color.brandAccent} />
         <Text
           style={{
             color: tokens.color.neutral900,
@@ -89,7 +91,11 @@ export function BuyGroupDiscountBadge({
         >
           {label}
         </Text>
-        <Text style={{ color: tokens.color.neutral600, fontSize: tokens.fontSize.labelMd }}>ⓘ</Text>
+        <Ionicons
+          name="information-circle-outline"
+          size={16}
+          color={tokens.color.neutral600}
+        />
       </Pressable>
 
       <BottomSheet

@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../theme/tokens';
 
 export interface ListItemProps {
@@ -79,7 +80,7 @@ export function ListItem({
       )}
       {trailing}
       {showChevron && onPress && (
-        <Text style={{ color: tokens.color.neutral400, fontSize: 18 }}>›</Text>
+        <Ionicons name="chevron-forward" size={18} color={tokens.color.neutral400} />
       )}
     </View>
   );

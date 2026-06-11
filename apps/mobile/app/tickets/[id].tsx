@@ -23,6 +23,7 @@ import { View, Text, ScrollView, Share, Image, useWindowDimensions } from 'react
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -327,7 +328,11 @@ export default function TicketDetailScreen() {
         onLeadingPress={() => router.back()}
         actions={[
           {
-            icon: sharing ? '…' : '⤴',
+            icon: sharing ? (
+              '…'
+            ) : (
+              <Ionicons name="share-outline" size={22} color={tokens.color.neutral900} />
+            ),
             label: t('common.share'),
             onPress: sharing ? () => {} : share,
           },

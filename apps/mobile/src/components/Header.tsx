@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, Pressable, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../theme/tokens';
 
 export interface HeaderAction {
@@ -84,7 +85,11 @@ export function Header({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontSize: 22, color: fg }}>{leading === 'back' ? '←' : '✕'}</Text>
+              <Ionicons
+                name={leading === 'back' ? 'chevron-back' : 'close'}
+                size={26}
+                color={fg}
+              />
             </Pressable>
           ) : (
             leading

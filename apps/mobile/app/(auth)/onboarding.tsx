@@ -34,6 +34,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -67,7 +68,7 @@ const DOT_HEIGHT = 6;
 interface SlideContent {
   title: string;
   body: string;
-  glyph: string;
+  glyph: keyof typeof Ionicons.glyphMap;
   gradient: readonly [string, string];
 }
 
@@ -75,19 +76,19 @@ const SLIDES: ReadonlyArray<SlideContent> = [
   {
     title: 'Tìm giải chạy phù hợp',
     body: 'Hơn 200 giải khắp Việt Nam, lọc theo cự ly, ngày, địa điểm',
-    glyph: '🏃‍♂️',
+    glyph: 'walk-outline',
     gradient: [tokens.color.brandPrimary, tokens.color.brandPrimaryDark],
   },
   {
     title: 'Đăng ký nhanh chóng',
     body: 'Thanh toán 1 chạm, e-waiver số, BIB ngay trên app',
-    glyph: '🎫',
+    glyph: 'ticket-outline',
     gradient: [tokens.color.brandSecondary, tokens.color.magenta],
   },
   {
     title: 'Race-day không lo',
     body: 'QR check-in offline, kết quả live, chia sẻ tới bạn bè',
-    glyph: '🏆',
+    glyph: 'trophy-outline',
     gradient: [tokens.color.brandAccent, tokens.color.warning],
   },
 ] as const;
@@ -281,9 +282,13 @@ function Slide({ slide, index, width, scrollX }: SlideProps) {
 
       <View style={styles.slideContent}>
         <Animated.View style={[styles.glyphWrap, glyphStyle]}>
-          <Text style={styles.glyph} accessibilityElementsHidden>
-            {slide.glyph}
-          </Text>
+          <Ionicons
+            name={slide.glyph}
+            size={96}
+            color={tokens.color.neutral0}
+            style={styles.glyph}
+            accessibilityElementsHidden
+          />
         </Animated.View>
 
         <Animated.View style={[styles.copyWrap, titleStyle]}>
@@ -406,7 +411,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   glyph: {
-    fontSize: 96,
     // Drop shadow to lift glyph off the gradient — small detail, big effect.
     textShadowColor: 'rgba(0,0,0,0.15)',
     textShadowOffset: { width: 0, height: 2 },

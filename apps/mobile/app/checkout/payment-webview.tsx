@@ -25,6 +25,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
@@ -423,7 +424,7 @@ export default function PaymentWebviewScreen() {
             padding: tokens.space[6],
           }}
         >
-          <Text style={{ fontSize: 48 }}>⚠</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={tokens.color.warning} />
           <Text
             style={{
               fontSize: tokens.fontSize.h3,

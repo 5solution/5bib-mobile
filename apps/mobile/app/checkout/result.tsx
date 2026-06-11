@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, Alert, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '../../src/components/Button';
@@ -251,9 +252,23 @@ export default function CheckoutResultScreen() {
                       : tokens.color.errorBg,
               }}
             >
-              <Text style={{ fontSize: 48 }}>
-                {display === 'success' ? '✓' : display === 'pending' ? '⏳' : '✕'}
-              </Text>
+              <Ionicons
+                name={
+                  display === 'success'
+                    ? 'checkmark'
+                    : display === 'pending'
+                      ? 'time-outline'
+                      : 'close'
+                }
+                size={48}
+                color={
+                  display === 'success'
+                    ? tokens.color.success
+                    : display === 'pending'
+                      ? tokens.color.warning
+                      : tokens.color.error
+                }
+              />
             </View>
           </SuccessBurst>
 

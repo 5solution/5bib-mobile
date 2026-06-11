@@ -16,6 +16,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -182,13 +183,25 @@ export default function OrdersScreen() {
                     ? [
                         {
                           label: 'Thanh toán',
-                          icon: '💳',
+                          icon: (
+                            <Ionicons
+                              name="card-outline"
+                              size={tokens.iconSize.lg}
+                              color={tokens.color.neutral0}
+                            />
+                          ),
                           color: tokens.color.brandPrimary,
                           onPress: () => router.push(`/orders/${item.id}`),
                         },
                         {
                           label: 'Chi tiết',
-                          icon: '›',
+                          icon: (
+                            <Ionicons
+                              name="chevron-forward"
+                              size={tokens.iconSize.lg}
+                              color={tokens.color.neutral0}
+                            />
+                          ),
                           color: tokens.color.neutral500,
                           onPress: () => router.push(`/orders/${item.id}`),
                         },
@@ -196,7 +209,13 @@ export default function OrdersScreen() {
                     : [
                         {
                           label: 'Chi tiết',
-                          icon: '›',
+                          icon: (
+                            <Ionicons
+                              name="chevron-forward"
+                              size={tokens.iconSize.lg}
+                              color={tokens.color.neutral0}
+                            />
+                          ),
                           color: tokens.color.neutral500,
                           onPress: () => router.push(`/orders/${item.id}`),
                         },

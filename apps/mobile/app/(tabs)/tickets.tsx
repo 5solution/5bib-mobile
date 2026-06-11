@@ -13,6 +13,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -246,13 +247,25 @@ export default function TicketsScreen() {
                     : [
                         {
                           label: 'Chia sẻ',
-                          icon: '⤴',
+                          icon: (
+                            <Ionicons
+                              name="share-outline"
+                              size={tokens.iconSize.lg}
+                              color={tokens.color.neutral0}
+                            />
+                          ),
                           color: tokens.color.brandPrimary,
                           onPress: () => router.push(`/tickets/${item.id}`),
                         },
                         {
                           label: 'Chuyển nhượng',
-                          icon: '↗',
+                          icon: (
+                            <Ionicons
+                              name="swap-horizontal-outline"
+                              size={tokens.iconSize.lg}
+                              color={tokens.color.neutral0}
+                            />
+                          ),
                           color: tokens.color.warning,
                           onPress: () => router.push(`/tickets/${item.id}/transfer`),
                         },

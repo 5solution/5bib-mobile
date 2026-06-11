@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -274,7 +275,12 @@ export default function ProfileScreen() {
                   marginTop: tokens.space[2],
                 }}
               >
-                🛡️ {t('profile.identity.secure')}
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={13}
+                  color={tokens.color.neutral500}
+                />{' '}
+                {t('profile.identity.secure')}
               </Text>
             </View>
           </InfoSection>
@@ -324,26 +330,26 @@ export default function ProfileScreen() {
           </Text>
 
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>✏️</Text>}
+            leading={<Ionicons name="pencil-outline" size={20} color={tokens.color.neutral600} />}
             title={t('profile.editProfile')}
             onPress={() => router.push('/profile/edit')}
             accessibilityLabel={t('profile.editProfile')}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>🖼️</Text>}
+            leading={<Ionicons name="image-outline" size={20} color={tokens.color.neutral600} />}
             title={t('profile.changeAvatar')}
             onPress={() => router.push('/profile/change-avatar')}
             accessibilityLabel={t('profile.changeAvatar')}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>🚪</Text>}
+            leading={<Ionicons name="log-out-outline" size={20} color={tokens.color.error} />}
             title={t('auth.logout')}
             onPress={onLogout}
             destructive
             accessibilityLabel={t('auth.logout')}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>🌐</Text>}
+            leading={<Ionicons name="globe-outline" size={20} color={tokens.color.neutral600} />}
             title={t('common.language')}
             trailingText={
               i18n.language === 'vi' ? 'Tiếng Việt' : i18n.language === 'en' ? 'English' : 'Deutsch'
@@ -351,28 +357,28 @@ export default function ProfileScreen() {
             onPress={() => {/* open language bottom sheet */}}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>🔔</Text>}
+            leading={<Ionicons name="notifications-outline" size={20} color={tokens.color.neutral600} />}
             title={t('profile.notifications')}
             onPress={() => {/* /settings/notifications */}}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>🏃</Text>}
+            leading={<Ionicons name="walk-outline" size={20} color={tokens.color.neutral600} />}
             title={t('result.historyTitle')}
             onPress={() => router.push('/result/race-history')}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>ℹ️</Text>}
+            leading={<Ionicons name="information-circle-outline" size={20} color={tokens.color.neutral600} />}
             title={t('profile.about')}
             onPress={() => {}}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>⭐</Text>}
+            leading={<Ionicons name="star-outline" size={20} color={tokens.color.neutral600} />}
             title={t('profile.rateApp')}
             onPress={() => {}}
           />
           {/* S-PROFILE-05: Apple Guideline 5.1.1(v) — delete account in-app */}
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>🗑️</Text>}
+            leading={<Ionicons name="trash-outline" size={20} color={tokens.color.error} />}
             title={t('profile.deleteAccount.menuTitle')}
             onPress={() => router.push('/profile/delete-account')}
             destructive
@@ -400,7 +406,7 @@ export default function ProfileScreen() {
           {LEGAL_LINKS.map((l) => (
             <ListItem
               key={l.slug}
-              leading={<Text style={{ fontSize: 20 }}>📄</Text>}
+              leading={<Ionicons name="document-outline" size={20} color={tokens.color.neutral600} />}
               title={t(`profile.legal.${l.key}`)}
               onPress={() =>
                 router.push({
@@ -548,13 +554,13 @@ function InfoRow({
         </Text>
       </View>
       {onEdit ? (
-        <Text
+        <Ionicons
+          name="pencil-outline"
+          size={18}
+          color={tokens.color.neutral500}
           onPress={onEdit}
-          style={{ fontSize: 18, color: tokens.color.neutral500 }}
           accessibilityRole="button"
-        >
-          ✏️
-        </Text>
+        />
       ) : null}
     </View>
   );

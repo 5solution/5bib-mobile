@@ -21,6 +21,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../Card';
 import { Badge } from '../Badge';
 import { tokens } from '../../theme/tokens';
@@ -78,19 +79,26 @@ function ticketStatusBadge(t: Ticket): { variant: 'success' | 'info' | 'default'
   return { variant: 'default', label: '—' };
 }
 
-/** Icon + text row, matching the web card's icon-led info lines. */
+/** Icon + text row, matching the web card's icon-led info lines.
+ *  Ionicons (ships with Expo) instead of emoji — the emoji glyphs were a
+ *  big part of the "prototype" look. */
 function InfoRow({
   icon,
   children,
   mono,
 }: {
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   children: React.ReactNode;
   mono?: boolean;
 }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
-      <Text style={{ fontSize: 13, width: 18, textAlign: 'center' }}>{icon}</Text>
+      <Ionicons
+        name={icon}
+        size={15}
+        color={tokens.color.neutral500}
+        style={{ width: 18, textAlign: 'center' }}
+      />
       <Text
         style={{
           fontSize: tokens.fontSize.bodySm,
@@ -152,18 +160,18 @@ export function TicketCard({ ticket, onPress }: TicketCardProps) {
         </View>
 
         {/* Info lines — same order as the web card. */}
-        {!!athleteName && <InfoRow icon="👤">{athleteName}</InfoRow>}
+        {!!athleteName && <InfoRow icon="person-outline">{athleteName}</InfoRow>}
         {hasBib ? (
-          <InfoRow icon="🎫" mono>
+          <InfoRow icon="pricetag-outline" mono>
             <Text style={{ fontWeight: tokens.fontWeight.bold }}>{String(bibRaw)}</Text>
             {courseName ? ` – ${courseName}` : ''}
           </InfoRow>
         ) : (
-          <InfoRow icon="🎫">
+          <InfoRow icon="pricetag-outline">
             <Text style={{ color: tokens.color.neutral500 }}>{t('tickets.bibNotAssigned')}</Text>
           </InfoRow>
         )}
-        {!!distance && <InfoRow icon="↔️">{distance}</InfoRow>}
+        {!!distance && <InfoRow icon="footsteps-outline">{distance}</InfoRow>}
 
         {/* Web-style CTA — same navigation as tapping the card. */}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>

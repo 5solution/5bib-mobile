@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../../theme/tokens';
 
 export interface FilterChipProps {
@@ -32,6 +33,11 @@ export function FilterChip({ label, onRemove, onPress, active = true }: FilterCh
         minHeight: 32,
       }}
     >
+      <Ionicons
+        name="pricetag-outline"
+        size={13}
+        color={active ? tokens.color.brandPrimary : tokens.color.neutral700}
+      />
       <Text
         style={{
           fontSize: tokens.fontSize.labelSm,
@@ -39,7 +45,7 @@ export function FilterChip({ label, onRemove, onPress, active = true }: FilterCh
           color: active ? tokens.color.brandPrimary : tokens.color.neutral700,
         }}
       >
-        🏷 {label}
+        {label}
       </Text>
       {onRemove && (
         <Pressable

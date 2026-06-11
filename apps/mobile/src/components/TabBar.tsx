@@ -8,14 +8,20 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../theme/tokens';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
-const ICON_MAP: Record<string, string> = {
-  home: '🏠',
-  tickets: '🎫',
-  orders: '📋',
-  profile: '👤',
+/**
+ * Proper icon set (Ionicons ships with Expo) — replaced the emoji tab
+ * icons (🏠🎫📋👤) that read as a prototype, not a product. Outline when
+ * idle, filled when focused — the standard iOS tab idiom.
+ */
+const ICON_MAP: Record<string, { idle: keyof typeof Ionicons.glyphMap; focused: keyof typeof Ionicons.glyphMap }> = {
+  home: { idle: 'home-outline', focused: 'home' },
+  tickets: { idle: 'ticket-outline', focused: 'ticket' },
+  orders: { idle: 'receipt-outline', focused: 'receipt' },
+  profile: { idle: 'person-outline', focused: 'person' },
 };
 
 const LABEL_KEY_MAP: Record<string, string> = {
@@ -52,7 +58,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           (typeof options.tabBarLabel === 'string' && options.tabBarLabel) ||
           options.title ||
           route.name;
-        const icon = ICON_MAP[route.name] ?? '•';
+        const icon = ICON_MAP[route.name];
 
         const onPress = () => {
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -88,7 +94,11 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 }}
               />
             )}
-            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>{icon}</Text>
+            <Ionicons
+              name={icon ? (focused ? icon.focused : icon.idle) : 'ellipse-outline'}
+              size={23}
+              color={focused ? tokens.color.brandPrimary : tokens.color.neutral500}
+            />
             <Text
               style={{
                 fontSize: tokens.fontSize.labelSm,

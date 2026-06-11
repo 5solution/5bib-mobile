@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, SectionList, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -21,7 +22,12 @@ import type { MyResultItem, RaceResultRow } from '../../src/sdk/models';
 import { athlete } from '../../src/sdk/services/athlete';
 import { result as resultSdk } from '../../src/sdk/services/result';
 
-const medalIcon: Record<string, string> = { gold: '🥇', silver: '🥈', bronze: '🥉' };
+/** Medal tint per podium tier — rendered as an Ionicons `medal` glyph. */
+const medalColor: Record<string, string> = {
+  gold: '#D4AF37',
+  silver: '#9CA3AF',
+  bronze: '#CD7F32',
+};
 
 /**
  * Pick a medal tier from rank when backend doesn't provide one.
@@ -119,7 +125,7 @@ export default function RaceHistoryScreen() {
         </View>
       ) : items.length === 0 ? (
         <EmptyState
-          icon={<Text style={{ fontSize: 32 }}>🏆</Text>}
+          icon={<Ionicons name="trophy-outline" size={32} color={tokens.color.neutral500} />}
           title="Chưa có lịch sử thi đấu"
           description="Hoàn thành race đầu tiên để thấy ở đây"
           ctaLabel={t('browse.viewAllRaces')}
@@ -165,7 +171,11 @@ export default function RaceHistoryScreen() {
             <Card>
               <View style={{ gap: 4 }}>
                 <Text style={{ fontSize: tokens.fontSize.bodyLg, fontWeight: tokens.fontWeight.semibold }}>
-                  {item.medal ? medalIcon[item.medal] + ' ' : ''}
+                  {item.medal ? (
+                    <>
+                      <Ionicons name="medal" size={15} color={medalColor[item.medal]} />{' '}
+                    </>
+                  ) : null}
                   {item.raceName}
                 </Text>
                 <Text style={{ color: tokens.color.neutral600 }}>

@@ -8,6 +8,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../theme/tokens';
 
 let CameraView: any;
@@ -53,7 +54,7 @@ export function QRScannerView({
           gap: tokens.space[4],
         }}
       >
-        <Text style={{ fontSize: 48 }}>📷</Text>
+        <Ionicons name="camera-outline" size={48} color={tokens.color.neutral500} />
         <Text
           style={{
             fontSize: tokens.fontSize.h3,
@@ -194,7 +195,7 @@ export function QRScannerView({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 28 }}>⚡</Text>
+          <Ionicons name="flash-outline" size={28} color="#fff" />
         </Pressable>
       </View>
     </View>

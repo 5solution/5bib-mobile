@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -335,7 +336,7 @@ export default function WaiverScreen() {
             <EmptyState title={t('errors.noResults')} />
           ) : allSigned ? (
             <EmptyState
-              icon={<Text style={{ fontSize: 32 }}>🎉</Text>}
+              icon={<Ionicons name="checkmark-done-outline" size={32} color={tokens.color.success} />}
               title={t('waiver.allSigned')}
               ctaLabel={t('common.goHome')}
               onPress={() => router.replace('/home')}
@@ -349,13 +350,26 @@ export default function WaiverScreen() {
                       {tk.courseInfo?.raceName} · {tk.name} - {tk.courseInfo?.courseName}
                     </Text>
                     <Text style={{ color: tokens.color.neutral600, fontSize: tokens.fontSize.bodySm }}>
-                      📞 {tk.athleteSubInfo?.contactPhone} · 🎂 {tk.athleteSubInfo?.dob}
+                      <Ionicons name="call-outline" size={12} color={tokens.color.neutral600} />{' '}
+                      {tk.athleteSubInfo?.contactPhone} ·{' '}
+                      <Ionicons name="calendar-outline" size={12} color={tokens.color.neutral600} />{' '}
+                      {tk.athleteSubInfo?.dob}
                     </Text>
                     <View>
                       {tk.disclaimerStatus ? (
-                        <Badge variant="success">✓ {t('waiver.signedBadge')}</Badge>
+                        <Badge
+                          variant="success"
+                          icon={<Ionicons name="checkmark" size={12} color={tokens.color.success} />}
+                        >
+                          {t('waiver.signedBadge')}
+                        </Badge>
                       ) : (
-                        <Badge variant="warning">⚠ {t('waiver.notSignedBadge')}</Badge>
+                        <Badge
+                          variant="warning"
+                          icon={<Ionicons name="warning-outline" size={12} color={tokens.color.warning} />}
+                        >
+                          {t('waiver.notSignedBadge')}
+                        </Badge>
                       )}
                     </View>
                     <Button

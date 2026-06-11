@@ -15,6 +15,7 @@
 
 import React, { useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
@@ -210,7 +211,8 @@ export default function EditProfileScreen() {
             </Text>
           </View>
           <Text style={{ color: tokens.color.brandPrimary, fontWeight: tokens.fontWeight.semibold }}>
-            ✏ {t('profile.changeAvatar')}
+            <Ionicons name="pencil-outline" size={14} color={tokens.color.brandPrimary} />{' '}
+            {t('profile.changeAvatar')}
           </Text>
         </Pressable>
 

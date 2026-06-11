@@ -15,6 +15,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -113,7 +114,7 @@ export default function OrderDetailScreen() {
           </>
         ) : errored || !order ? (
           <View style={{ alignItems: 'center', padding: tokens.space[6], gap: tokens.space[3] }}>
-            <Text style={{ fontSize: 36 }}>⚠️</Text>
+            <Ionicons name="alert-circle-outline" size={36} color={tokens.color.warning} />
             <Text style={{ fontSize: tokens.fontSize.h4, color: tokens.color.neutral900 }}>
               {t('orders.loadFailed')}
             </Text>
@@ -126,7 +127,7 @@ export default function OrderDetailScreen() {
             {/* Event info — matches "ℹ️ Thông tin sự kiện" card on web. */}
             <FadeSlideIn delay={0}>
             <SectionCard
-              icon="ℹ️"
+              icon="information-circle-outline"
               title={t('orders.detail.eventInfo')}
             >
               <Text
@@ -163,7 +164,7 @@ export default function OrderDetailScreen() {
 
             {/* Products — matches "🛒 Sản phẩm" table on web. */}
             <FadeSlideIn delay={90}>
-            <SectionCard icon="🛒" title={t('orders.detail.products')}>
+            <SectionCard icon="cart-outline" title={t('orders.detail.products')}>
               <View
                 style={{
                   flexDirection: 'row',
@@ -202,7 +203,7 @@ export default function OrderDetailScreen() {
             {/* Payment info — matches "✉️ Thông tin thanh toán" sidebar */}
             <FadeSlideIn delay={180}>
             <SectionCard
-              icon="✉️"
+              icon="mail-outline"
               title={t('orders.detail.paymentInfo')}
             >
               <Row
@@ -301,7 +302,7 @@ function SectionCard({
   title,
   children,
 }: {
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   children: React.ReactNode;
 }) {
@@ -316,7 +317,7 @@ function SectionCard({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
+        <Ionicons name={icon} size={18} color={tokens.color.neutral600} />
         <Text
           style={{
             fontSize: tokens.fontSize.labelMd,

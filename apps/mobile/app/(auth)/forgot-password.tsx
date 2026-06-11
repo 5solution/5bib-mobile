@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
@@ -79,7 +80,7 @@ export default function ForgotPasswordScreen() {
         }
       >
         <View style={{ alignItems: 'center', marginVertical: tokens.space[4] }}>
-          <Text style={{ fontSize: 64 }}>📧</Text>
+          <Ionicons name="mail-outline" size={64} color={tokens.color.brandPrimary} />
         </View>
         <Text
           style={{

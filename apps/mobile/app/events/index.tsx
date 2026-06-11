@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -286,12 +287,12 @@ export default function AllEventsScreen() {
           onLeadingPress={() => router.back()}
           actions={[
             {
-              icon: '🔍',
+              icon: <Ionicons name="search-outline" size={22} color={tokens.color.neutral900} />,
               label: t('common.search'),
               onPress: () => setSearchActive(true),
             },
             {
-              icon: '⚙',
+              icon: <Ionicons name="options-outline" size={22} color={tokens.color.neutral900} />,
               label: t('browse.filter'),
               onPress: () => setFilterSheetOpen(true),
             },
@@ -344,7 +345,7 @@ export default function AllEventsScreen() {
         </View>
       ) : error && races.length === 0 ? (
         <EmptyState
-          icon={<Text style={{ fontSize: 32 }}>⚠️</Text>}
+          icon={<Ionicons name="alert-circle-outline" size={32} color={tokens.color.warning} />}
           title={t('browse.fetchError')}
           ctaLabel={t('common.retry')}
           onPress={() => load('initial')}

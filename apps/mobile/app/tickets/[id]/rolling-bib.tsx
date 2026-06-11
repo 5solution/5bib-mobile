@@ -43,6 +43,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import * as Haptics from 'expo-haptics';
 
@@ -326,7 +327,10 @@ function NoBibState({
       />
       <ScrollView contentContainerStyle={styles.bodyPad}>
         <View style={[styles.gradientCard, { padding: tokens.space[7] }]}>
-          <Text style={styles.gradientHeading}>🎲 {t('tickets.rollingBib.randomBib')}</Text>
+          <Text style={styles.gradientHeading}>
+            <Ionicons name="dice-outline" size={22} color={tokens.color.neutral0} />{' '}
+            {t('tickets.rollingBib.randomBib')}
+          </Text>
           <View style={styles.placeholderRow}>
             {[0, 1, 2, 3, 4].map((i) => (
               <Text key={i} style={styles.placeholderDigit}>
@@ -337,7 +341,8 @@ function NoBibState({
           <Text style={styles.gradientHelp}>{t('tickets.rollingBib.tagline')}</Text>
         </View>
         <Text style={styles.warningText} accessibilityLabel={t('tickets.rollingBib.onceWarning')}>
-          ⚠ {t('tickets.rollingBib.onceWarning')}
+          <Ionicons name="warning-outline" size={13} color={tokens.color.warning} />{' '}
+          {t('tickets.rollingBib.onceWarning')}
         </Text>
       </ScrollView>
       <View style={styles.stickyBottom}>
@@ -348,7 +353,8 @@ function NoBibState({
           onPress={onStart}
           accessibilityLabel={t('tickets.rollingBib.tryNowCta')}
         >
-          {t('tickets.rollingBib.tryNowCta')} 🎲
+          {t('tickets.rollingBib.tryNowCta')}{' '}
+          <Ionicons name="dice-outline" size={16} color={tokens.color.neutral0} />
         </Button>
       </View>
     </>
@@ -479,7 +485,10 @@ function ConfirmState({
            (we layer Skia confetti above). */}
         <Flip3D trigger={!!bib} axis="y" perspective={1200} duration={900}>
           <View style={[styles.gradientCard, { padding: tokens.space[7] }]}>
-            <Text style={styles.gradientHeading}>🎉 {t('tickets.rollingBib.luckyBib')}</Text>
+            <Text style={styles.gradientHeading}>
+              <Ionicons name="sparkles-outline" size={22} color={tokens.color.neutral0} />{' '}
+              {t('tickets.rollingBib.luckyBib')}
+            </Text>
             <Text style={styles.gradientBigBib} accessibilityRole="text">
               {bib}
             </Text>
@@ -488,7 +497,8 @@ function ConfirmState({
               style={[styles.countdown, { color: COUNTDOWN_COLOR }]}
               accessibilityLabel={`${t('tickets.rollingBib.timeLeft')} ${hh}:${mm}:${ss}`}
             >
-              ⏱ {t('tickets.rollingBib.timeLeft')}: {hh}:{mm}:{ss}
+              <Ionicons name="timer-outline" size={14} color={COUNTDOWN_COLOR} />{' '}
+              {t('tickets.rollingBib.timeLeft')}: {hh}:{mm}:{ss}
             </Text>
           </View>
         </Flip3D>
@@ -574,7 +584,8 @@ function SuccessState({
           <View style={styles.successFooterBar} />
         </Animated.View>
         <Text style={styles.successConfirmation}>
-          ✅ {t('tickets.rollingBib.confirmedToast')}
+          <Ionicons name="checkmark-circle" size={16} color={tokens.color.success} />{' '}
+          {t('tickets.rollingBib.confirmedToast')}
         </Text>
       </ScrollView>
       <View style={styles.stickyBottom}>

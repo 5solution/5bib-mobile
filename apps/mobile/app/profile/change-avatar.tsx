@@ -22,6 +22,7 @@
 
 import React, { useState } from 'react';
 import { Alert, Linking, Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -203,20 +204,20 @@ export default function ChangeAvatarScreen() {
       />
       <View style={{ padding: tokens.space[4], gap: tokens.space[2] }}>
         <ListItem
-          leading={<Text style={{ fontSize: 22 }}>📷</Text>}
+          leading={<Ionicons name="camera-outline" size={22} color={tokens.color.neutral600} />}
           title={t('profile.takePhoto')}
           onPress={onTakePhoto}
           accessibilityLabel={t('profile.takePhoto')}
         />
         <ListItem
-          leading={<Text style={{ fontSize: 22 }}>🖼️</Text>}
+          leading={<Ionicons name="image-outline" size={22} color={tokens.color.neutral600} />}
           title={t('profile.pickFromLibrary')}
           onPress={onPickFromLibrary}
           accessibilityLabel={t('profile.pickFromLibrary')}
         />
         {hasAvatar && (
           <ListItem
-            leading={<Text style={{ fontSize: 22 }}>🗑️</Text>}
+            leading={<Ionicons name="trash-outline" size={22} color={tokens.color.error} />}
             title={t('profile.removeAvatar')}
             onPress={onRemove}
             destructive

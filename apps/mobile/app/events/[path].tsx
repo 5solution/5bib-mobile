@@ -26,6 +26,7 @@ import Animated, {
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Button } from '../../src/components/Button';
@@ -352,7 +353,7 @@ export default function EventDetailScreen() {
             gap: tokens.space[3],
           }}
         >
-          <Text style={{ fontSize: 48 }}>🔍</Text>
+          <Ionicons name="search-outline" size={48} color={tokens.color.neutral400} />
           <Text
             style={{
               fontSize: tokens.fontSize.h3,
@@ -448,7 +449,7 @@ export default function EventDetailScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontSize: 18 }}>←</Text>
+                <Ionicons name="chevron-back" size={20} color="#fff" />
               </View>
             </Pressable>
             <View style={{ flexDirection: 'row', gap: tokens.space[2] }}>
@@ -468,7 +469,7 @@ export default function EventDetailScreen() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: '#fff', fontSize: 16 }}>⤴</Text>
+                  <Ionicons name="share-outline" size={18} color="#fff" />
                 </View>
               </Pressable>
             </View>
@@ -499,7 +500,12 @@ export default function EventDetailScreen() {
             </Text>
             {race.isHighlight && (
               <View style={{ marginTop: tokens.space[2] }}>
-                <Badge variant="brand">⭐ {t('browse.highlight')}</Badge>
+                <Badge
+                  variant="brand"
+                  icon={<Ionicons name="star" size={12} color={tokens.color.brandPrimary} />}
+                >
+                  {t('browse.highlight')}
+                </Badge>
               </View>
             )}
           </View>
@@ -516,13 +522,19 @@ export default function EventDetailScreen() {
 
           <FadeSlideIn delay={130}>
           <View style={{ gap: tokens.space[1] }}>
-            <Text style={{ fontSize: tokens.fontSize.bodyLg, color: tokens.color.neutral700 }}>
-              📅 {fmtDate(race.startDate)}
-            </Text>
-            {(race.location || race.city) && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
+              <Ionicons name="calendar-outline" size={16} color={tokens.color.neutral500} />
               <Text style={{ fontSize: tokens.fontSize.bodyLg, color: tokens.color.neutral700 }}>
-                📍 {race.location ?? race.city}
+                {fmtDate(race.startDate)}
               </Text>
+            </View>
+            {(race.location || race.city) && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
+                <Ionicons name="location-outline" size={16} color={tokens.color.neutral500} />
+                <Text style={{ fontSize: tokens.fontSize.bodyLg, color: tokens.color.neutral700 }}>
+                  {race.location ?? race.city}
+                </Text>
+              </View>
             )}
           </View>
           </FadeSlideIn>
@@ -849,7 +861,8 @@ function Countdown({ targetIso }: { targetIso: string }) {
       }}
     >
       <Text style={{ fontSize: 11, color: tokens.color.neutral600, letterSpacing: 1 }}>
-        ⏱ RACE DAY BẮT ĐẦU TRONG
+        <Ionicons name="timer-outline" size={12} color={tokens.color.neutral600} /> RACE DAY BẮT
+        ĐẦU TRONG
       </Text>
       <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
         <Cell n={months} label="THÁNG" />

@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Linking, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -53,7 +54,7 @@ export default function ResultHubScreen() {
       {!online && <Banner variant="warning" message={t('errors.needNetwork')} />}
       <FormLayout>
         <View style={{ alignItems: 'center', paddingVertical: tokens.space[5] }}>
-          <Text style={{ fontSize: 64 }}>🏆</Text>
+          <Ionicons name="trophy-outline" size={64} color={tokens.color.brandPrimary} />
         </View>
 
         <Text

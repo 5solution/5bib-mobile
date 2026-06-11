@@ -8,6 +8,7 @@
 
 import React, { useState, forwardRef } from 'react';
 import { TextInput, View, Text, Pressable, TextInputProps as RNTextInputProps } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { tokens } from '../theme/tokens';
 
 type Variant = 'text' | 'password' | 'email' | 'phone' | 'number' | 'search' | 'textarea';
@@ -132,9 +133,12 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       >
         {leftIcon}
         {isSearch && !leftIcon && (
-          <Text style={{ fontSize: 18 }} accessibilityElementsHidden>
-            🔍
-          </Text>
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={tokens.color.neutral500}
+            accessibilityElementsHidden
+          />
         )}
         {isPhone && (
           <Text
@@ -201,7 +205,11 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             accessibilityLabel={showPwd ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
             hitSlop={8}
           >
-            <Text style={{ fontSize: 18 }}>{showPwd ? '🙈' : '👁'}</Text>
+            <Ionicons
+              name={showPwd ? 'eye-off-outline' : 'eye-outline'}
+              size={18}
+              color={tokens.color.neutral600}
+            />
           </Pressable>
         )}
 

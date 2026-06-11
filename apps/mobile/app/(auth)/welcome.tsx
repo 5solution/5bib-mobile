@@ -6,6 +6,7 @@
 
 import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, useWindowDimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,10 +15,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from '../../src/components/Button';
 import { tokens } from '../../src/theme/tokens';
 
-const SLIDE_KEYS = [
-  { title: 'onboarding.slide1Title', desc: 'onboarding.slide1Desc', glyph: '🏃' },
-  { title: 'onboarding.slide2Title', desc: 'onboarding.slide2Desc', glyph: '🎫' },
-  { title: 'onboarding.slide3Title', desc: 'onboarding.slide3Desc', glyph: '🏆' },
+const SLIDE_KEYS: readonly {
+  title: string;
+  desc: string;
+  glyph: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { title: 'onboarding.slide1Title', desc: 'onboarding.slide1Desc', glyph: 'walk-outline' },
+  { title: 'onboarding.slide2Title', desc: 'onboarding.slide2Desc', glyph: 'ticket-outline' },
+  { title: 'onboarding.slide3Title', desc: 'onboarding.slide3Desc', glyph: 'trophy-outline' },
 ];
 
 export default function WelcomeScreen() {
@@ -100,7 +105,7 @@ export default function WelcomeScreen() {
                 marginBottom: tokens.space[6],
               }}
             >
-              <Text style={{ fontSize: 96 }}>{s.glyph}</Text>
+              <Ionicons name={s.glyph} size={96} color={tokens.color.brandPrimary} />
             </View>
             <Text
               style={{
@@ -165,7 +170,8 @@ export default function WelcomeScreen() {
           {t('auth.loginLink')}
         </Button>
         <Button variant="ghost" size="md" fullWidth onPress={() => {/* open language picker */}}>
-          🌐 {t('onboarding.switchLang')}
+          <Ionicons name="globe-outline" size={14} color={tokens.color.brandPrimary} />{' '}
+          {t('onboarding.switchLang')}
         </Button>
       </View>
     </View>

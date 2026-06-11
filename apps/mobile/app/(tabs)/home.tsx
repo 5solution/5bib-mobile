@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Header } from '../../src/components/Header';
 import { BrandLogo } from '../../src/components/BrandLogo';
@@ -49,13 +50,17 @@ const PAGE_SIZE = 10;
  * web home's chip row. Both deep-link into /events with the filter
  * pre-seeded via route params.
  */
-const DISCOVER_TYPES: ReadonlyArray<{ value: string; label: string; icon: string }> = [
-  { value: 'ROAD_MARATHON', label: 'Marathon', icon: '🏃' },
-  { value: 'ROAD_HALF_MARATHON', label: 'Half Marathon', icon: '🏃‍♀️' },
-  { value: 'TRAIL_RACE', label: 'Trail', icon: '⛰️' },
-  { value: 'ULTRA_RAIL_RACE', label: 'Ultra Trail', icon: '🌄' },
-  { value: 'EKIDEN_RACE', label: 'Ekiden', icon: '🤝' },
-  { value: 'VIRTUAL', label: 'Virtual', icon: '📱' },
+const DISCOVER_TYPES: ReadonlyArray<{
+  value: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  { value: 'ROAD_MARATHON', label: 'Marathon', icon: 'walk-outline' },
+  { value: 'ROAD_HALF_MARATHON', label: 'Half Marathon', icon: 'fitness-outline' },
+  { value: 'TRAIL_RACE', label: 'Trail', icon: 'trail-sign-outline' },
+  { value: 'ULTRA_RAIL_RACE', label: 'Ultra Trail', icon: 'triangle-outline' },
+  { value: 'EKIDEN_RACE', label: 'Ekiden', icon: 'people-outline' },
+  { value: 'VIRTUAL', label: 'Virtual', icon: 'phone-portrait-outline' },
 ];
 
 /**
@@ -259,7 +264,7 @@ export default function HomeScreen() {
         <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} />
         {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
         <EmptyState
-          icon={<Text style={{ fontSize: 32 }}>🏃</Text>}
+          icon={<Ionicons name="walk-outline" size={32} color={tokens.color.neutral500} />}
           title={t('browse.emptyNoFilter')}
         />
       </View>
@@ -272,7 +277,7 @@ export default function HomeScreen() {
         <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} />
         {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
         <EmptyState
-          icon={<Text style={{ fontSize: 32 }}>⚠️</Text>}
+          icon={<Ionicons name="alert-circle-outline" size={32} color={tokens.color.warning} />}
           title={t('browse.fetchError')}
           ctaLabel={t('common.retry')}
           onPress={load}
@@ -284,16 +289,18 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
       <Header
-        title="5BIB"
-        titleAlign="left"
-        leading="none"
+        leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />}
         actions={[
           {
-            icon: '🔍',
+            icon: <Ionicons name="search-outline" size={22} color={tokens.color.neutral900} />,
             label: t('common.search'),
             onPress: () => router.push('/events'),
           },
-          { icon: '🔔', label: t('profile.notifications'), onPress: () => {} },
+          {
+            icon: <Ionicons name="notifications-outline" size={22} color={tokens.color.neutral900} />,
+            label: t('profile.notifications'),
+            onPress: () => {},
+          },
         ]}
       />
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
@@ -425,7 +432,7 @@ export default function HomeScreen() {
                         borderColor: tokens.color.neutral200,
                       })}
                     >
-                      <Text style={{ fontSize: 24 }}>{d.icon}</Text>
+                      <Ionicons name={d.icon} size={26} color={tokens.color.brandPrimary} />
                       <Text
                         style={{
                           fontSize: 11,
@@ -453,6 +460,9 @@ export default function HomeScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`${t('browse.filterRegion')}: ${c}`}
                       style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
                         paddingHorizontal: tokens.space[3],
                         paddingVertical: tokens.space[1],
                         borderRadius: tokens.radius.full,
@@ -463,6 +473,11 @@ export default function HomeScreen() {
                         justifyContent: 'center',
                       })}
                     >
+                      <Ionicons
+                        name="location-outline"
+                        size={13}
+                        color={tokens.color.neutral700}
+                      />
                       <Text
                         style={{
                           fontSize: tokens.fontSize.labelSm,
@@ -470,7 +485,7 @@ export default function HomeScreen() {
                           color: tokens.color.neutral700,
                         }}
                       >
-                        📍 {c}
+                        {c}
                       </Text>
                     </Pressable>
                   ))}

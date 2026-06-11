@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { View, Text, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../Card';
 import { Badge } from '../Badge';
 import { tokens } from '../../theme/tokens';
@@ -102,7 +103,12 @@ export function RaceCard({
           ) : null}
           {race.isHighlight && (
             <View style={{ position: 'absolute', top: 12, left: 12 }}>
-              <Badge variant="brand">⭐ Nổi bật</Badge>
+              <Badge
+                variant="brand"
+                icon={<Ionicons name="star" size={12} color={tokens.color.brandPrimary} />}
+              >
+                Nổi bật
+              </Badge>
             </View>
           )}
         </View>
@@ -118,7 +124,10 @@ export function RaceCard({
             {race.title}
           </Text>
           <Text style={{ fontSize: tokens.fontSize.bodyMd, color: tokens.color.neutral600 }}>
-            📅 {fmtDate(race.startDate)} · 📍 {race.location ?? race.city ?? '—'}
+            <Ionicons name="calendar-outline" size={13} color={tokens.color.neutral600} />{' '}
+            {fmtDate(race.startDate)} ·{' '}
+            <Ionicons name="location-outline" size={13} color={tokens.color.neutral600} />{' '}
+            {race.location ?? race.city ?? '—'}
           </Text>
           {hasPrice && (
             <Text
@@ -175,16 +184,21 @@ export function RaceCard({
               {race.title}
             </Text>
             {race.isHighlight && (
-              <Text style={{ fontSize: 14 }} accessibilityLabel="Nổi bật">
-                ⭐
-              </Text>
+              <Ionicons
+                name="star"
+                size={14}
+                color={tokens.color.warning}
+                accessibilityLabel="Nổi bật"
+              />
             )}
           </View>
           <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
-            📅 {fmtDate(race.startDate)}
+            <Ionicons name="calendar-outline" size={12} color={tokens.color.neutral600} />{' '}
+            {fmtDate(race.startDate)}
           </Text>
           <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
-            📍 {race.location ?? race.city ?? '—'}
+            <Ionicons name="location-outline" size={12} color={tokens.color.neutral600} />{' '}
+            {race.location ?? race.city ?? '—'}
             {distances ? ` · ${distances}` : ''}
           </Text>
           {hasPrice && (
