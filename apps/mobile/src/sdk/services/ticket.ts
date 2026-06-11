@@ -92,16 +92,24 @@ export const ticket = {
   },
 
   /**
-   * GET /codes/skip-liability-code?code_value=X — fetch the disclaimer-skip
-   * token used when guardian signs on behalf of minor athlete.
-   * Returns secret code (format `3068-xxxxx...`).
+   * GET /codes/skip-liability-code?code_value=X — issue the waiver-signing
+   * secret for a ticket the BEARER owns. This is the authenticated shortcut
+   * web uses for "Ký miễn trừ" on ticket detail: the secret replaces the
+   * email-OTP step entirely (sign page = /pub/ticket-by-code/{secret} +
+   * POST /pub/aggree-skip-liability/{secret}).
+   *
+   * Response is DOUBLE-nested (verified live 2026-06-11 on ticket
+   * DTNT5610K-1061-TAXRR8JS): `{data:{data:"<athleteId>-<sha256>"}}`.
+   * Backend rejects with "Invalid code and user email" when the ticket
+   * isn't bound to the bearer's email.
    */
-  async getSkipLiabilityCode(codeValue: string): Promise<unknown> {
-    const raw = await network().get<{ data: unknown }>(
-      '/codes/skip-liability-code',
-      { params: { code_value: codeValue } },
-    );
-    return raw.data;
+  async getSkipLiabilityCode(codeValue: string): Promise<string> {
+    const raw = await network().get<{
+      data: { data?: string } | string | null;
+    }>('/codes/skip-liability-code', { params: { code_value: codeValue } });
+    const d = raw.data;
+    if (typeof d === 'string') return d;
+    return String(d?.data ?? '');
   },
 
   /**

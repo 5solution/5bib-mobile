@@ -270,16 +270,29 @@ export default function TicketDetailScreen() {
       transferred || cancelled || raceFinished
         ? undefined
         : () => router.push(`/tickets/${ticket.id}/transfer`),
+    // Authenticated waiver shortcut — web parity (ticket detail button.tsx):
+    // the bearer-issued skip-liability secret IS the auth, so the user goes
+    // STRAIGHT to the native sign screen. The /e-waiver OTP entry is only
+    // for logged-out users arriving from email links — routing a logged-in
+    // ticket owner through OTP was a flow bug (Danny 2026-06-11).
     EWAIVER: !ticket.disclaimerStatus
-      ? () =>
-          router.push({
-            pathname: '/e-waiver',
-            params: {
-              prefill_race: ticket.race?.id,
-              prefill_email: athlete?.email ?? ticket.receiptEmail,
-              skip_step1: 'true',
-            },
-          })
+      ? async () => {
+          try {
+            const secret = await ticketSdk.getSkipLiabilityCode(ticket.value);
+            if (!secret) throw new Error('empty skip-liability code');
+            router.push({
+              pathname: '/e-waiver/sign',
+              params: {
+                race_id: ticket.race?.id ?? '',
+                secret_code: secret,
+                athlete_name: fullName(athlete) ?? ticket.athleteName ?? '',
+                ticketId: ticket.id,
+              },
+            });
+          } catch {
+            toast.show({ variant: 'error', message: t('errors.generic') });
+          }
+        }
       : undefined,
     ROLLING_BIB: availableToRoll
       ? () => router.push(`/tickets/${ticket.id}/rolling-bib`)
