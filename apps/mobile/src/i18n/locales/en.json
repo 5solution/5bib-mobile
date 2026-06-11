@@ -258,6 +258,7 @@
     "athleteSearchPlaceholder": "Name or BIB number",
     "athleteRosterFailed": "Could not load athlete list",
     "loadMoreAthletes": "Show more",
+    "relatedEvents": "Events you may like",
     "viewResults": "View results",
     "register": "Register",
     "selectCourseToRegister": "Select a course",

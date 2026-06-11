@@ -34,6 +34,7 @@ import { Skeleton } from '../../src/components/Skeleton';
 import { Banner } from '../../src/components/ErrorState';
 import { AthleteRoster } from '../../src/components/domain/AthleteRoster';
 import { CourseCard } from '../../src/components/domain/CourseCard';
+import { RaceCard } from '../../src/components/domain/RaceCard';
 import { CountdownRing } from '../../src/components/domain/CountdownRing';
 import { FadeSlideIn, StaggerItem } from '../../src/components/motion';
 import { useOnline } from '../../src/hooks';
@@ -56,6 +57,7 @@ export default function EventDetailScreen() {
 
   const [race, setRace] = useState<Race | null>(null);
   const [courses, setCourses] = useState<RaceCourse[]>([]);
+  const [related, setRelated] = useState<Race[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -209,6 +211,32 @@ export default function EventDetailScreen() {
   useEffect(() => {
     fetchDetail();
   }, [fetchDetail]);
+
+  // Related events — web's "Sự kiện bạn có thể thích" footer carousel.
+  // Same query the web page makes: 6 open races sorted by status/date
+  // (src/app/.../events/[path]/page.tsx), current race filtered out
+  // client-side. Fail-soft: section simply doesn't render on error.
+  useEffect(() => {
+    if (!race?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await raceSdk.listRaces({
+          pageSize: 6,
+          status: 'GENERATED_CODE',
+          sortField: 'status,eventStartDate,checkinStartTime,racekitStartTime,id',
+        });
+        if (!cancelled) {
+          setRelated(r.items.filter((x) => x.id !== race.id).slice(0, 5));
+        }
+      } catch {
+        if (!cancelled) setRelated([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [race?.id]);
 
   const onShare = async () => {
     if (!race) return;
@@ -617,6 +645,26 @@ export default function EventDetailScreen() {
           <FadeSlideIn delay={360}>
             <AthleteRoster raceId={race.id} courses={courses} />
           </FadeSlideIn>
+
+          {/* Related events — web's "Sự kiện bạn có thể thích" (G-15).
+             Horizontal carousel of open races, current race excluded. */}
+          {related.length > 0 && (
+            <View style={{ gap: tokens.space[2] }}>
+              <SectionLabel label={t('browse.relatedEvents')} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: tokens.space[3] }}>
+                  {related.map((r) => (
+                    <View key={r.id} style={{ width: 280 }}>
+                      <RaceCard
+                        race={r}
+                        onPress={() => router.push(`/events/${r.slug}`)}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          )}
         </View>
       </Animated.ScrollView>
 
