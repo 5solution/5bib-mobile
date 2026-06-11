@@ -1,0 +1,74 @@
+# CI gate — typecheck + lint on every push/PR to main.
+#
+# Born from the 2026-06-01 retro: 8 motion commits shipped in a row with
+# zero automated verification; a hook-order crash and a native-deps drift
+# both reached Danny's device. This workflow is the floor: nothing lands
+# on main without compiling and linting. (Tests will join the matrix once
+# the first specs exist — see docs/PARITY_AUDIT_2026-06-01.md.)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      # Guard against the failure mode that burned us on 2026-05-29: a
+      # native dependency added to package.json without iOS Pods being
+      # regenerated. apps/mobile/ios/ is gitignored (local prebuild), so
+      # this check only enforces when the folder exists — in CI it prints
+      # a reminder instead. The real enforcement is local: after adding
+      # any native dep, run `npx pod-install && npx expo run:ios` before
+      # pushing.
+      - name: Native deps drift check
+        run: |
+          if [ ! -f ios/Podfile.lock ]; then
+            echo "ios/ not in repo (gitignored, prebuild-managed) — skipping drift check."
+            echo "Reminder: after adding native deps, rebuild the dev client locally."
+            exit 0
+          fi
+          MISSING=""
+          for dep in react-native-skia lottie-react-native; do
+            if grep -qi "$dep" package.json; then
+              case "$dep" in
+                react-native-skia) POD="react-native-skia" ;;
+                lottie-react-native) POD="lottie" ;;
+              esac
+              if ! grep -qi "$POD" ios/Podfile.lock; then
+                MISSING="$MISSING $dep"
+              fi
+            fi
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Native deps in package.json but NOT in ios/Podfile.lock:$MISSING"
+            exit 1
+          fi
+          echo "Native deps in sync with Podfile.lock ✓"

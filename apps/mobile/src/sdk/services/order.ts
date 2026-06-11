@@ -215,14 +215,20 @@ export const order = {
 
   /**
    * POST /order/fake-payment — DEV ONLY mark order as paid.
-   * 🚨 DO NOT SHIP TO PROD. Used by mobile dev for testing WebView flow
-   * without going through real gateway.
+   * 🚨 Hard-gated behind `__DEV__`: production bundles throw instead of
+   * calling the endpoint. The backend endpoint itself is still live on the
+   * API (backend team gone, can't remove server-side) — tracked in
+   * known-issues as a residual risk, but at least no production app code
+   * path can reach it.
    */
   async fakePayment(
     orderId: string,
     amount: number,
     email: string,
   ): Promise<void> {
+    if (!__DEV__) {
+      throw new Error('fakePayment is dev-only and disabled in production builds');
+    }
     await network().post('/order/fake-payment', null, {
       params: {
         order_id: orderId,

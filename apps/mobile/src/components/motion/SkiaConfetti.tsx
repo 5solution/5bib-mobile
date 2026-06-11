@@ -296,17 +296,29 @@ const ParticleView: React.FC<ParticleViewProps> = ({ index, particles }) => {
 // Main component
 // ---------------------------------------------------------------------------
 
-export const SkiaConfetti: React.FC<SkiaConfettiProps> = ({
+/**
+ * Public component. Wrapper exists so the Skia-availability early return
+ * lives in a component WITHOUT hooks — putting `return null` before hooks
+ * in the inner component violates rules-of-hooks (lint: react-hooks).
+ * SKIA_AVAILABLE is a module constant so the branch never flips at runtime,
+ * but the wrapper keeps us correct under Fast Refresh and honest with lint.
+ */
+export const SkiaConfetti: React.FC<SkiaConfettiProps> = (props) => {
+  // Skia native binding missing → render nothing. Caller still gets a
+  // working app, just no confetti. Once the dev client is rebuilt
+  // (`npx pod-install && npx expo run:ios`) the binding loads and the
+  // burst returns.
+  if (!SKIA_AVAILABLE) return null;
+  return <SkiaConfettiInner {...props} />;
+};
+
+const SkiaConfettiInner: React.FC<SkiaConfettiProps> = ({
   trigger,
   duration = 3000,
   particleCount = 80,
   origin,
   style,
 }) => {
-  // Skia native binding missing → render nothing. Caller still gets a
-  // working app, just no confetti. Once `npx expo prebuild --clean` +
-  // run:ios has been done, the binding loads and the burst returns.
-  if (!SKIA_AVAILABLE) return null;
   // Track the previous trigger value so we can fire only on the rising edge.
   const [prevTrigger, setPrevTrigger] = useState(false);
   // Whether the burst is currently animating. While false, the frame callback
