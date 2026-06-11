@@ -154,6 +154,12 @@ export function normalizeRace(raw: unknown): Race {
     paymentOptions: Array.isArray(ext.payment_options)
       ? (ext.payment_options as string[])
       : undefined,
+    racekitEditEnable:
+      r.racekit_edit_enable != null
+        ? Boolean(r.racekit_edit_enable)
+        : ext.racekit_edit_enable != null
+          ? Boolean(ext.racekit_edit_enable)
+          : undefined,
   };
 }
 

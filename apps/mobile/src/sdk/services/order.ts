@@ -11,6 +11,7 @@
  * ⚠️ NO idempotency-key — mobile MUST debounce double-tap on submit.
  */
 import { network } from '../core';
+import { toDDMMYYYY } from '../../utils/date';
 import type {
   Order,
   OrderCreateInput,
@@ -63,7 +64,10 @@ function mapAthleteToSubInfo(
     // the form display in Vietnamese. Backend tolerates "Vietnam".
     nationality: a.nationality === 'Việt Nam' ? 'Vietnam' : a.nationality,
     gender: toBackendGender(a.gender),
-    dob: a.dob,
+    // DD/MM/YYYY on the wire — matches web (formatDateToDDMMYYYY) so stored
+    // athlete_sub_info.dob is consistent across platforms. Order create
+    // tolerates ISO, but simple-edit's LocalDate DTO does not; keep one format.
+    dob: toDDMMYYYY(a.dob),
     tshirt_size: a.tshirtSize,
     racekit: a.racekit,
     address: a.address ?? '',

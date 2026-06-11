@@ -21,7 +21,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -32,8 +32,11 @@ import { Banner } from '../../../src/components/ErrorState';
 import { Skeleton } from '../../../src/components/Skeleton';
 import { FormLayout, FormSection } from '../../../src/components/FormLayout';
 import { BottomSheet } from '../../../src/components/BottomSheet';
+import { DateField } from '../../../src/components/DateField';
+import { SegmentedTabs } from '../../../src/components/domain/SegmentedTabs';
 import { useToast } from '../../../src/components/Toast';
 import { tokens } from '../../../src/theme/tokens';
+import { toDDMMYYYY, toIsoDate } from '../../../src/utils/date';
 import { useAuthStore } from '../../../src/stores/useAuthStore';
 import { ticket as ticketSdk } from '../../../src/sdk/services/ticket';
 import { athlete as athleteSdk } from '../../../src/sdk/services/athlete';
@@ -46,11 +49,12 @@ interface FormState {
   lastName: string;
   email: string;
   phone: string;
+  /** ISO YYYY-MM-DD in state — converted to DD/MM/YYYY at the wire. */
   dob: string;
   gender: 'male' | 'female' | 'other';
   nationality: string;
   idNumber: string;
-  tshirtSize: string;
+  /** Single size field — backend stores it as `racekit`; `tshirt_size` is dead. */
   racekit: string;
   nameOnBib: string;
   emergencyContactName: string;
@@ -71,8 +75,7 @@ const EMPTY: FormState = {
   gender: 'male',
   nationality: 'Vietnam',
   idNumber: '',
-  tshirtSize: 'M',
-  racekit: 'Tiêu chuẩn',
+  racekit: 'M',
   nameOnBib: '',
   emergencyContactName: '',
   emergencyContactPhone: '',
@@ -85,12 +88,17 @@ const EMPTY: FormState = {
 
 function fromAthlete(a: Athlete | null, fallbackEmail: string): FormState {
   if (!a) return { ...EMPTY, email: fallbackEmail };
+  // Some records carry only the composed `name` (no first/last split) —
+  // fall back to splitting it so required fields aren't blank in edit mode.
+  const nameParts = (a.name ?? '').trim().split(/\s+/);
+  const fallbackFirst = nameParts[0] ?? '';
+  const fallbackLast = nameParts.slice(1).join(' ');
   return {
-    firstName: a.firstName ?? '',
-    lastName: a.lastName ?? '',
+    firstName: a.firstName ?? fallbackFirst,
+    lastName: a.lastName ?? fallbackLast,
     email: a.email ?? fallbackEmail,
     phone: a.contactPhone ?? '',
-    dob: a.dob ?? '',
+    dob: toIsoDate(a.dob),
     gender:
       a.gender === 'MALE'
         ? 'male'
@@ -99,16 +107,15 @@ function fromAthlete(a: Athlete | null, fallbackEmail: string): FormState {
           : 'other',
     nationality: a.nationality ?? 'Vietnam',
     idNumber: a.idNumber ?? '',
-    tshirtSize: a.racekit ?? 'M',
-    racekit: a.racekit ?? 'Tiêu chuẩn',
+    racekit: a.racekit ?? 'M',
     nameOnBib: a.nameOnBib ?? '',
     // sosPhone packed as "phone-name" by SDK mapper.
     emergencyContactPhone: (a.sosPhone ?? '').split('-')[0] ?? '',
     emergencyContactName: (a.sosPhone ?? '').split('-').slice(1).join('-') ?? '',
-    bloodType: '',
+    bloodType: a.bloodType ?? '',
     medicalInformation: a.medicalInfo ?? '',
     currentMedication: a.currentMedication ?? '',
-    address: '',
+    address: a.address ?? '',
     club: a.club ?? '',
   };
 }
@@ -123,12 +130,11 @@ function fromProfile(p: Profile, fallbackEmail: string): FormState {
     lastName: rest.join(' '),
     email: p.email ?? fallbackEmail,
     phone: p.phoneNumber ?? '',
-    dob: get('dob'),
+    dob: toIsoDate(get('dob')),
     gender: (get('gender') as FormState['gender']) || 'male',
     nationality: get('nationality') || 'Vietnam',
     idNumber: get('idNumber') || get('id_number'),
-    tshirtSize: get('tshirtSize') || get('tshirt_size') || 'M',
-    racekit: get('racekit') || 'Tiêu chuẩn',
+    racekit: get('racekit') || get('tshirtSize') || get('tshirt_size') || 'M',
     nameOnBib: get('nameOnBib') || get('name_on_bib') || (first + ' ' + rest.join(' ')).toUpperCase(),
     emergencyContactName: get('emergencyContactName') || get('emergency_contact_name'),
     emergencyContactPhone: get('emergencyContactPhone') || get('emergency_contact_phone'),
@@ -146,11 +152,11 @@ function toCreatePayload(f: FormState): AthleteCreatePayload {
     lastName: f.lastName,
     email: f.email,
     phone: f.phone,
-    dob: f.dob,
+    dob: f.dob, // ISO here — the SDK register mapper converts to DD/MM/YYYY
     gender: f.gender,
     nationality: f.nationality,
     idNumber: f.idNumber,
-    tshirtSize: f.tshirtSize,
+    tshirtSize: f.racekit, // model compat — backend only reads `racekit`
     racekit: f.racekit,
     nameOnBib: f.nameOnBib,
     emergencyContactName: f.emergencyContactName,
@@ -163,17 +169,26 @@ function toCreatePayload(f: FormState): AthleteCreatePayload {
   };
 }
 
-/** Build the partial body used by simpleEdit — keys mirror backend snake_case. */
-function toSimpleEditBody(f: FormState): Record<string, unknown> {
-  return {
+/**
+ * Build the partial body used by simpleEdit — keys mirror backend snake_case.
+ *
+ * Wire rules verified live 2026-06-11 (athlete 11251):
+ *   - `dob` MUST be DD/MM/YYYY (Java LocalDate; ISO → 400 parse error)
+ *   - `racekit` MUST be omitted when the race has racekit_edit_enable=false
+ *     ("Cannot edit racekit for this race") — web gates the same way
+ *   - `tshirt_size` is a dead field backend never reads — dropped
+ */
+function toSimpleEditBody(
+  f: FormState,
+  racekitEditable: boolean,
+): Record<string, unknown> {
+  const body: Record<string, unknown> = {
     first_name: f.firstName,
     last_name: f.lastName,
     name: `${f.firstName} ${f.lastName}`.trim(),
     contact_phone: f.phone,
-    dob: f.dob,
+    dob: toDDMMYYYY(f.dob),
     gender: f.gender.toUpperCase(),
-    tshirt_size: f.tshirtSize,
-    racekit: f.racekit,
     name_on_bib: f.nameOnBib,
     sos_phone: `${f.emergencyContactPhone}-${f.emergencyContactName}`,
     sosPhone: `${f.emergencyContactPhone}-${f.emergencyContactName}`,
@@ -183,6 +198,8 @@ function toSimpleEditBody(f: FormState): Record<string, unknown> {
     club: f.club,
     address: f.address,
   };
+  if (racekitEditable) body.racekit = f.racekit;
+  return body;
 }
 
 export default function EditTicketScreen() {
@@ -264,6 +281,11 @@ export default function EditTicketScreen() {
     [existingAthlete],
   );
 
+  // Web parity: edit page only sends `racekit` when the race explicitly
+  // enables it (ticket?.race?.racekit_edit_enable). Backend rejects the whole
+  // payload otherwise ("Cannot edit racekit for this race").
+  const racekitEditable = ticket?.race?.racekitEditEnable === true;
+
   const submit = useCallback(async () => {
     if (!ticket?.value) return;
     setSubmitting(true);
@@ -275,18 +297,31 @@ export default function EditTicketScreen() {
         if (!existingAthlete?.id) throw new Error('missing athlete id');
         await athleteSdk.simpleEdit({
           athleteId: existingAthlete.id,
-          payload: toSimpleEditBody(form),
+          payload: toSimpleEditBody(form, racekitEditable),
         });
         toast.show({ variant: 'success', message: t('tickets.athleteRegister.successUpdate') });
       }
       router.back();
     } catch (e) {
       if (e instanceof FetcherError && e.status === 401) return;
-      toast.show({ variant: 'error', message: t('tickets.athleteRegister.failed') });
+      // Surface the backend's message (e.g. "Cannot edit racekit for this
+      // race") instead of the generic failure toast.
+      const backendMsg =
+        e instanceof FetcherError
+          ? (() => {
+              const r = e.response as Record<string, unknown> | undefined;
+              const errObj = (r?.error ?? r) as Record<string, unknown> | undefined;
+              return typeof errObj?.message === 'string' ? errObj.message : undefined;
+            })()
+          : undefined;
+      toast.show({
+        variant: 'error',
+        message: (backendMsg ?? t('tickets.athleteRegister.failed')).slice(0, 140),
+      });
     } finally {
       setSubmitting(false);
     }
-  }, [mode, form, ticket?.value, existingAthlete?.id, router, t, toast]);
+  }, [mode, form, ticket, existingAthlete?.id, racekitEditable, router, t, toast]);
 
   if (loading) {
     return (
@@ -389,20 +424,33 @@ export default function EditTicketScreen() {
             value={form.phone}
             onChangeText={(v) => set('phone', v)}
           />
-          <Input
+          <DateField
             label={t('profile.dob')}
             required
-            placeholder="YYYY-MM-DD"
             value={form.dob}
-            onChangeText={(v) => set('dob', v)}
+            onChange={(iso) => set('dob', iso)}
           />
-          <Input
-            label={t('profile.gender.label')}
-            required
-            placeholder="male | female | other"
-            value={form.gender}
-            onChangeText={(v) => set('gender', (v as FormState['gender']) || 'male')}
-          />
+          <View style={{ gap: 6 }}>
+            <Text
+              style={{
+                fontSize: tokens.fontSize.labelMd,
+                fontWeight: tokens.fontWeight.medium,
+                color: tokens.color.neutral700,
+              }}
+            >
+              {t('profile.gender.label')}
+              <Text style={{ color: tokens.color.error }}> *</Text>
+            </Text>
+            <SegmentedTabs
+              options={[
+                { id: 'male', label: t('profile.gender.male') },
+                { id: 'female', label: t('profile.gender.female') },
+                { id: 'other', label: t('profile.gender.other') },
+              ]}
+              value={form.gender}
+              onChange={(v) => set('gender', v as FormState['gender'])}
+            />
+          </View>
           <Input
             label={t('profile.nationality')}
             required
@@ -417,24 +465,22 @@ export default function EditTicketScreen() {
         </FormSection>
 
         <FormSection title="Trang phục">
-          <View style={{ flexDirection: 'row', gap: tokens.space[3] }}>
-            <View style={{ flex: 1 }}>
-              <Input
-                label={t('checkout.tshirtSize')}
-                required
-                value={form.tshirtSize}
-                onChangeText={(v) => set('tshirtSize', v)}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Input
-                label={t('checkout.bibRacekit')}
-                required
-                value={form.racekit}
-                onChangeText={(v) => set('racekit', v)}
-              />
-            </View>
-          </View>
+          {/* Single size field — backend stores the shirt size in `racekit`
+             (`tshirt_size` is a dead column, verified live 2026-06-11).
+             Read-only when the race forbids racekit edits, matching the
+             server rule that rejects the whole payload otherwise. */}
+          <Input
+            label={t('checkout.tshirtSize')}
+            required
+            readOnly={mode === 'edit' && !racekitEditable}
+            helper={
+              mode === 'edit' && !racekitEditable
+                ? 'Giải này không cho phép đổi size áo sau khi đăng ký'
+                : undefined
+            }
+            value={form.racekit}
+            onChangeText={(v) => set('racekit', v)}
+          />
           <Input
             label={t('checkout.nameOnBib')}
             required

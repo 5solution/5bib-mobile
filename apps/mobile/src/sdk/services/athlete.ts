@@ -9,6 +9,7 @@
  *         01-ba-prd-epic-5-result.md
  */
 import { network } from '../core';
+import { toDDMMYYYY, toIsoDate } from '../../utils/date';
 import type {
   Athlete,
   AthleteCreatePayload,
@@ -51,7 +52,10 @@ function mapAthleteToLegacy(
     idpp: a.idNumber, // backend accepts ID passport (or CCCD again)
     nationality: a.nationality,
     gender: toBackendGender(a.gender),
-    dob: a.dob,
+    // Wire format DD/MM/YYYY — backend's LocalDate pattern (verified live
+    // 2026-06-11: ISO → 400 "could not be parsed at index 2"). Web converts
+    // via formatDateToDDMMYYYY before every athlete write.
+    dob: toDDMMYYYY(a.dob),
     address: a.address ?? '',
     racekit: a.racekit,
     sosPhone: `${a.emergencyContactPhone}-${a.emergencyContactName}`,
@@ -71,28 +75,42 @@ function mapAthleteToLegacy(
 
 function normalizeAthlete(raw: unknown): Athlete {
   const r = (raw ?? {}) as Record<string, unknown>;
+  // ⚠️ Verified live 2026-06-11 (/athlete/by-ticket-code, athlete 11251):
+  // the EDITABLE record lives in nested `athlete_sub_info` — first_name,
+  // contact_phone, racekit (= t-shirt size), name_on_bib, club, medical_info,
+  // sos_phone, blood_type, address are ONLY there. The top level carries id,
+  // statuses, and an id-card copy of dob/gender. Read sub_info first.
+  const si = (r.athlete_sub_info ?? {}) as Record<string, unknown>;
+  const pick = (k: string) =>
+    (si[k] as string | undefined) ?? (r[k] as string | undefined);
   return {
+    // simple-edit wants the TOP-LEVEL athlete id (web: res_athlete.data.data.id).
     id: String(r.id ?? r.athlete_id ?? ''),
-    email: r.email as string | undefined,
-    name: r.name as string | undefined,
-    firstName: (r.first_name as string | undefined) ?? (r.firstName as string | undefined),
-    lastName: (r.last_name as string | undefined) ?? (r.lastName as string | undefined),
-    contactPhone: (r.contact_phone as string | undefined) ?? (r.contactPhone as string | undefined),
-    idNumber: (r.id_number as string | undefined) ?? (r.idNumber as string | undefined),
-    nationality: r.nationality as string | undefined,
-    cityProvince: (r.city_province as string | undefined) ?? (r.cityProvince as string | undefined),
-    gender: r.gender as Athlete['gender'],
-    dob: r.dob as string | undefined,
-    racekit: r.racekit as string | undefined,
-    sosPhone: (r.sosPhone as string | undefined) ?? (r.sos_phone as string | undefined),
-    club: r.club as string | undefined,
-    nameOnBib: (r.name_on_bib as string | undefined) ?? (r.nameOnBib as string | undefined),
-    medicalInfo: (r.medical_info as string | undefined) ?? (r.medicalInfo as string | undefined),
-    currentMedication:
-      (r.current_medication as string | undefined) ?? (r.currentMedication as string | undefined),
-    isRepresent: Boolean(r.is_represent ?? r.isRepresent ?? false),
-    bib: r.bib as string | undefined,
-    disclaimerStatus: r.disclaimer_status as boolean | undefined,
+    email: pick('email'),
+    name: pick('name'),
+    firstName: pick('first_name') ?? (r.firstName as string | undefined),
+    lastName: pick('last_name') ?? (r.lastName as string | undefined),
+    contactPhone: pick('contact_phone') ?? (r.contactPhone as string | undefined),
+    idNumber: pick('id_number') ?? (r.idpp as string | undefined),
+    nationality: pick('nationality'),
+    cityProvince: pick('city_province'),
+    gender: (si.gender ?? r.gender) as Athlete['gender'],
+    // Stored dob is a mixed bag: "09/08/1997" (web-created) vs "1997-08-09"
+    // (ISO). Canonicalize to ISO; screens re-format for display/wire.
+    dob: toIsoDate(pick('dob')) || undefined,
+    racekit: pick('racekit'),
+    sosPhone: pick('sosPhone') ?? pick('sos_phone'),
+    club: pick('club'),
+    nameOnBib: pick('name_on_bib') ?? (r.nameOnBib as string | undefined),
+    medicalInfo: pick('medical_info'),
+    currentMedication: pick('current_medication'),
+    bloodType: pick('blood_type'),
+    address: pick('address'),
+    isRepresent: Boolean(si.is_represent ?? r.is_represent ?? false),
+    bib: (r.bib ?? r.bib_number) as string | undefined,
+    disclaimerStatus: (si.disclaimer_status ?? r.disclaimer_status) as
+      | boolean
+      | undefined,
   };
 }
 

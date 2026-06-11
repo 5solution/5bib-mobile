@@ -190,6 +190,13 @@ export interface Race {
    * fall back to showing all UI options.
    */
   paymentOptions?: string[];
+  /**
+   * Whether athletes may edit their racekit (t-shirt size) after purchase.
+   * Backend top-level `racekit_edit_enable`; when false the simple-edit DTO
+   * rejects any payload containing `racekit` ("Cannot edit racekit for this
+   * race" — verified live 2026-06-11 on race 385).
+   */
+  racekitEditEnable?: boolean;
 }
 
 export interface Pagination {
@@ -450,13 +457,17 @@ export interface Athlete {
   nationality?: string;
   cityProvince?: string;
   gender?: 'MALE' | 'FEMALE' | 'UNKNOWN';
+  /** Canonical ISO YYYY-MM-DD — normalizer converts backend's mixed formats. */
   dob?: string;
+  /** T-shirt size (S/M/L/…). Backend field `racekit`; `tshirt_size` is dead. */
   racekit?: string;
   sosPhone?: string;
   club?: string;
   nameOnBib?: string;
   medicalInfo?: string;
   currentMedication?: string;
+  bloodType?: string;
+  address?: string;
   isRepresent?: boolean;
   bib?: string;
   disclaimerStatus?: boolean;

@@ -28,6 +28,7 @@ import {
   filterPaymentOptions,
 } from '../../src/components/PaymentMethodPicker';
 import { FormLayout, FormSection, SectionDivider } from '../../src/components/FormLayout';
+import { DateField } from '../../src/components/DateField';
 import { useToast } from '../../src/components/Toast';
 import { useOnline, useDraftPersist } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
@@ -388,7 +389,8 @@ export default function CheckoutScreen() {
       nationality: form.nationality,
       idNumber: form.idNumber,
       tshirtSize: form.tshirtSize,
-      racekit: form.racekit || form.tshirtSize,
+      // Backend's real size field is `racekit` — single UI input feeds both.
+      racekit: form.tshirtSize,
       nameOnBib: form.nameOnBib,
       emergencyContactName: form.emergencyContactName,
       emergencyContactPhone: normalizePhone(form.emergencyContactPhone),
@@ -636,12 +638,11 @@ export default function CheckoutScreen() {
               value={form.phone}
               onChangeText={(v) => setForm({ ...form, phone: v })}
             />
-            <Input
+            <DateField
               label={t('profile.dob')}
               required
-              placeholder="YYYY-MM-DD"
               value={form.dob}
-              onChangeText={(v) => setForm({ ...form, dob: v })}
+              onChange={(iso) => setForm({ ...form, dob: iso })}
             />
             <View style={{ gap: tokens.space[2] }}>
               <Text
@@ -694,26 +695,16 @@ export default function CheckoutScreen() {
           </FormSection>
 
           <FormSection title="Trang phục">
-            <View style={{ flexDirection: 'row', gap: tokens.space[3] }}>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label={t('checkout.tshirtSize')}
-                  required
-                  value={form.tshirtSize}
-                  onChangeText={(v) => setForm({ ...form, tshirtSize: v })}
-                  placeholder="M"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label={t('checkout.bibRacekit')}
-                  required
-                  value={form.racekit}
-                  onChangeText={(v) => setForm({ ...form, racekit: v })}
-                  placeholder="Tiêu chuẩn"
-                />
-              </View>
-            </View>
+            {/* Single size field — backend stores the shirt size in `racekit`
+               (`tshirt_size` is a dead column, verified live 2026-06-11). The
+               old second "Racekit" input duplicated this same BE field. */}
+            <Input
+              label={t('checkout.tshirtSize')}
+              required
+              value={form.tshirtSize}
+              onChangeText={(v) => setForm({ ...form, tshirtSize: v })}
+              placeholder="M"
+            />
             <Input
               label={t('checkout.nameOnBib')}
               required
