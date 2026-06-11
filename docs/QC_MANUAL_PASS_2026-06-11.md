@@ -77,3 +77,22 @@ end-to-end trên DEV sau các fix trong 2 phiên test hôm nay. Chặn release:
 2. F1 — guard URL ảnh (khối xám đập mặt ngay home)
 3. F5 — checkout cho chọn tier chưa mở bán (rủi ro đơn lỗi)
 Còn lại là polish, không chặn.
+
+## UPDATE 2026-06-11 (tối) — cả 3 blocker ĐÃ XỬ XONG → 🟢 PASS
+
+Commit `c07127b` (sau commit `684f454` xử Uỷ quyền + time-gates + waiver
+sign rebuild). Verified live trên simulator DEV:
+- **F20 ✅** màn `/profile/change-password` (row Settings) — validation
+  inline 8–20 ký tự chữ+số, khớp confirm, double-tap lock, lỗi BE dịch VN.
+  Lưu ý coverage: account seed `ceo@` bị BE từ chối đổi pass (hash không
+  khớp — backdoor login), success-path cần verify với account thật.
+- **F1 ✅** `asImageUrl()` guard — root cause thật là `race_extenstion.banner`
+  chứa CHUỖI JSON (race 257), không phải `images`. Home featured giờ render
+  CoverFallback gradient + logo.
+- **F5 ✅** checkout step-1 gate theo `valid_from/valid_to` + `is_show`
+  (badge Chưa mở/Đã đóng + ngày mở bán, hint cạnh Continue, re-check lúc
+  submit chống TOCTOU, clock tick 30s, auto-select tier mở đầu tiên).
+- **F23/F25-F29**: F29 (change-avatar X chết khi deep link) fixed cùng commit.
+- Review panel đối kháng 3-lens xác nhận + fix thêm: course toàn tier ẩn
+  vẫn mua được (P2 — đã chặn cả ở selectionBlocked lẫn subtotal/variantId
+  fallback), stale selection khi deep-link chéo race.
