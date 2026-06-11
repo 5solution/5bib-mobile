@@ -25,6 +25,7 @@ import { SuccessBurst, FadeSlideIn, SkiaConfetti, haptics } from '../../src/comp
 import { useToast } from '../../src/components/Toast';
 import { useCountdown, usePolling } from '../../src/hooks';
 import { order as orderService } from '../../src/sdk/services/order';
+import { ticket as ticketSdk } from '../../src/sdk/services/ticket';
 import type { Order } from '../../src/sdk/models';
 import { tokens } from '../../src/theme/tokens';
 
@@ -341,7 +342,9 @@ export default function CheckoutResultScreen() {
                     fontWeight: tokens.fontWeight.semibold,
                   }}
                 >
-                  #{order.orderNumber || order.id}
+                  {/* Backend order_number already starts with "#" — strip
+                     before re-prefixing or the screen shows "##…" (E2E). */}
+                  #{String(order.orderNumber || order.id).replace(/^#+/, '')}
                 </Text>
               </View>
               {order.raceName && (
@@ -434,9 +437,30 @@ export default function CheckoutResultScreen() {
               variant="primary"
               size="lg"
               fullWidth
-              onPress={() => {
-                const ticketId = order?.ticketId ?? orderId;
-                router.replace(`/tickets/${ticketId}`);
+              onPress={async () => {
+                // E2E 2026-06-11: `order.ticketId` never exists on this
+                // backend, and the old `?? orderId` fallback routed into a
+                // guaranteed-broken ticket page ("Could not load ticket
+                // data"). Resolve the real ticket by matching order_id in
+                // the newest tickets; fall back to the tickets LIST, which
+                // always works.
+                if (order?.ticketId) {
+                  router.replace(`/tickets/${order.ticketId}`);
+                  return;
+                }
+                try {
+                  const r = await ticketSdk.listMyTickets({
+                    athleteStatus: 'ALL',
+                    codeStatuses: 'ACTIVE',
+                    pageNo: 1,
+                  });
+                  const mine = r.items.find(
+                    (tk) => String(tk.orderId ?? '') === String(orderId),
+                  );
+                  router.replace(mine ? `/tickets/${mine.id}` : '/tickets');
+                } catch {
+                  router.replace('/tickets');
+                }
               }}
             >
               {t('payment.result.success.viewTicket')}

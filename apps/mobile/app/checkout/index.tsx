@@ -438,7 +438,16 @@ export default function CheckoutScreen() {
     try {
       const input = buildOrderInput();
       const created = await order.createOrder(input);
-      await order.fakePayment(created.orderId, total, input.athlete.email);
+      // ⚠️ Use the SERVER's order total, not the client-computed one — found
+      // live in E2E 2026-06-11: backend created the order at 925.056đ while
+      // the UI math said 934.400đ ("Amount must be 925.056" → fake payment
+      // failed silently 3× and left zombie pending orders). The client/server
+      // total drift itself is tracked as a separate finding.
+      await order.fakePayment(
+        created.orderId,
+        created.totalAmount || total,
+        input.athlete.email,
+      );
       await draft.clear();
       router.push({
         pathname: '/checkout/result',

@@ -12,9 +12,8 @@
  */
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
 import { tokens } from '../theme/tokens';
 import { toDDMMYYYY, toIsoDate } from '../utils/date';
@@ -197,8 +196,52 @@ export function DateField({
         <Ionicons name="calendar-outline" size={18} color={tokens.color.neutral500} />
       </Pressable>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title={label ?? 'Chọn ngày'}>
-        <View style={{ padding: tokens.space[4], gap: tokens.space[4] }}>
+      {/* Plain RN Modal, NOT the project BottomSheet: that one wraps
+         @gorhom's non-modal sheet, which only works mounted at screen root —
+         nested inside a form ScrollView it collapses into a broken strip
+         (found live in E2E 2026-06-11). Modal portals to the window, so the
+         field works anywhere. */}
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setOpen(false)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: tokens.color.surfaceOverlay }}
+          onPress={() => setOpen(false)}
+          accessibilityLabel="Đóng"
+        />
+        <View
+          style={{
+            backgroundColor: tokens.color.surfaceCard,
+            borderTopLeftRadius: tokens.radius.xl,
+            borderTopRightRadius: tokens.radius.xl,
+            padding: tokens.space[4],
+            paddingBottom: tokens.space[7],
+            gap: tokens.space[4],
+          }}
+        >
+          <View style={{ alignItems: 'center' }}>
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: tokens.color.neutral300,
+              }}
+            />
+          </View>
+          <Text
+            style={{
+              fontSize: tokens.fontSize.h3,
+              fontWeight: tokens.fontWeight.semibold,
+              color: tokens.color.neutral900,
+              textAlign: 'center',
+            }}
+          >
+            {label ?? 'Chọn ngày'}
+          </Text>
           {/* Column headers */}
           <View style={{ flexDirection: 'row', gap: tokens.space[2] }}>
             {['Ngày', 'Tháng', 'Năm'].map((h) => (
@@ -241,7 +284,7 @@ export function DateField({
             {confirmLabel}
           </Button>
         </View>
-      </BottomSheet>
+      </Modal>
     </View>
   );
 }

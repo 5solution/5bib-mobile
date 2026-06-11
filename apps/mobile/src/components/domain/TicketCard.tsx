@@ -64,9 +64,13 @@ function ticketStatusBadge(t: Ticket): { variant: 'success' | 'info' | 'default'
     return { variant: 'default', label: aStatus };
   }
 
-  // Normalise to the 8-status enum. Backend variant CHECK_IN folds to CHECKED_IN.
+  // Normalise to the 8-status enum. Backend variants CHECK_IN and CHECKEDIN
+  // (fetch-by-user returns the no-underscore form — seen live in E2E
+  // 2026-06-11, where it fell through to the "—" badge) fold to CHECKED_IN.
   const normalised =
-    aStatus === 'CHECK_IN' ? 'CHECKED_IN' : (aStatus as AthleteStatus);
+    aStatus === 'CHECK_IN' || aStatus === 'CHECKEDIN'
+      ? 'CHECKED_IN'
+      : (aStatus as AthleteStatus);
 
   if (normalised in ATHLETE_STATUS_LABELS) {
     return {

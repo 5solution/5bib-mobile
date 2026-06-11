@@ -141,15 +141,30 @@ export const eWaiver = {
 
   /**
    * GET /pub/race-skip-all-liability-html?race_id=X — waiver HTML template.
-   * Returns full legal HTML for WebView display before user signs.
+   *
+   * ⚠️ Verified live 2026-06-11 (race 257): response is DOUBLE-nested and
+   * carries an S3 *URL*, not inline HTML:
+   *   {data:{data:"https://...s3.../xxx.html"}}
+   * The real template must be fetched from that URL. The inline-string
+   * shape is tolerated too in case other races/envs return HTML directly —
+   * the old code assumed inline-only and crashed NativeSignFlow with
+   * "html.replace is not a function".
    */
   async getWaiverTemplate(raceId: string): Promise<string> {
-    const raw = await network().get<{ data: string } | string>(
-      '/pub/race-skip-all-liability-html',
-      { params: { race_id: raceId } },
-    );
-    if (typeof raw === 'string') return raw;
-    return raw.data ?? '';
+    const raw = await network().get<
+      { data: string | { data?: string } } | string
+    >('/pub/race-skip-all-liability-html', { params: { race_id: raceId } });
+    let v: unknown = typeof raw === 'string' ? raw : raw.data;
+    if (v && typeof v === 'object') {
+      v = (v as { data?: string }).data ?? '';
+    }
+    if (typeof v !== 'string' || !v) return '';
+    if (/^https?:\/\//i.test(v)) {
+      const res = await fetch(v);
+      if (!res.ok) throw new Error(`waiver template fetch ${res.status}`);
+      return await res.text();
+    }
+    return v;
   },
 
   /**

@@ -126,15 +126,26 @@ export const order = {
     };
 
     const raw = await network().post<{
-      data: { order_id: string | number; total?: number; total_amount?: number };
+      data: {
+        order_id?: string | number;
+        id?: string | number;
+        total?: number;
+        total_amount?: number;
+        /** Real field on the created order (verified live 2026-06-11):
+         *  the amount the gateway will charge — line items minus any
+         *  server-side discount (race 257 auto-applies 1%). */
+        total_price?: number;
+      };
     }>('/order/create', body, {
       params: { race_id: input.raceId },
       noRetry: true,
     });
 
     return {
-      orderId: String(raw.data.order_id),
-      totalAmount: Number(raw.data.total ?? raw.data.total_amount ?? 0),
+      orderId: String(raw.data.order_id ?? raw.data.id ?? ''),
+      totalAmount: Number(
+        raw.data.total_price ?? raw.data.total ?? raw.data.total_amount ?? 0,
+      ),
       status: 'pending',
     };
   },
