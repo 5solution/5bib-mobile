@@ -26,7 +26,9 @@
     "yes": "Ja",
     "no": "Nein",
     "discardTitle": "Änderungen verwerfen?",
-    "discardMsg": "Nicht gespeicherte Änderungen gehen verloren."
+    "discardMsg": "Nicht gespeicherte Änderungen gehen verloren.",
+    "fullName": "Vollständiger Name",
+    "phone": "Telefonnummer"
   },
   "permissions": {
     "cameraTitle": "Kamerazugriff erforderlich",
@@ -554,7 +556,22 @@
       "failed": "Registrierung fehlgeschlagen, bitte erneut versuchen"
     },
     "changeCourseSuccess": "Strecke erfolgreich geändert",
-    "changeFee": "Streckenwechselgebühr"
+    "changeFee": "Streckenwechselgebühr",
+    "editTimeOver": "Der Zeitraum zum Bearbeiten der Ticketdaten ist abgelaufen",
+    "transferClosed": "Der Übertragungszeitraum ist abgelaufen",
+    "transferNotOpen": "Übertragungen sind noch nicht geöffnet",
+    "editNotAllowed": "Dieser Ticketstatus erlaubt keine Bearbeitung",
+    "delegate": {
+      "addTitle": "Racekit-Abholvollmacht hinzufügen",
+      "editTitle": "Racekit-Abholvollmacht ändern",
+      "desc": "Die bevollmächtigte Person kann Ihr Racekit bei der Veranstaltung abholen.",
+      "name": "Name der bevollmächtigten Person",
+      "email": "E-Mail der bevollmächtigten Person",
+      "phone": "Telefonnummer der bevollmächtigten Person",
+      "cccd": "Ausweisnummer der bevollmächtigten Person",
+      "saved": "Vollmachtsdaten erfolgreich aktualisiert",
+      "sectionTitle": "Informationen zur bevollmächtigten Person"
+    }
   },
   "orders": {
     "tabTitle": "Bestellungen",
@@ -631,7 +648,18 @@
     "restartWithEmail": "Mit anderer E-Mail",
     "allSigned": "🎉 Alle Waiver unterzeichnet",
     "exitConfirm": "Waiver-Vorgang beenden?",
-    "signSuccess": "Erfolgreich unterzeichnet"
+    "signSuccess": "Erfolgreich unterzeichnet",
+    "alreadyCheckedIn": "Dieses Ticket ist bereits eingecheckt",
+    "checkinClosed": "Das Check-in-Fenster für dieses Rennen ist geschlossen",
+    "participantInfo": "Teilnehmerinformationen",
+    "disclaimerHeading": "Haftungsverzicht",
+    "receiveQuestion": "Wer holt das Racekit ab?",
+    "receiveSelf": "Teilnehmer holt das Racekit ab",
+    "receiveDelegate": "Jemand anderen bevollmächtigen",
+    "eSignature": "E-Signatur",
+    "eSignatureNote": "Bitte mit dem Finger im Feld unten unterschreiben",
+    "emptySignature": "Die Unterschrift darf nicht leer sein",
+    "readCarefully": "Bitte lesen Sie den Verzicht vor dem Unterschreiben sorgfältig"
   },
   "payment": {
     "vnpay": "VNPay",

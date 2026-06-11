@@ -26,7 +26,9 @@
     "yes": "Yes",
     "no": "No",
     "discardTitle": "Discard changes?",
-    "discardMsg": "Unsaved changes will be lost."
+    "discardMsg": "Unsaved changes will be lost.",
+    "fullName": "Full name",
+    "phone": "Phone number"
   },
   "permissions": {
     "cameraTitle": "Camera permission required",
@@ -554,7 +556,22 @@
       "failed": "Registration failed, please try again"
     },
     "changeCourseSuccess": "Course changed successfully",
-    "changeFee": "Change-course fee"
+    "changeFee": "Change-course fee",
+    "editTimeOver": "The window for editing ticket info has closed",
+    "transferClosed": "The transfer window has closed",
+    "transferNotOpen": "Transfers have not opened yet",
+    "editNotAllowed": "This ticket status does not allow editing info",
+    "delegate": {
+      "addTitle": "Add racekit pickup delegate",
+      "editTitle": "Change racekit pickup delegate",
+      "desc": "The delegate can pick up your racekit at the event on your behalf.",
+      "name": "Delegate's full name",
+      "email": "Delegate's email",
+      "phone": "Delegate's phone number",
+      "cccd": "Delegate's ID number",
+      "saved": "Delegate info updated successfully",
+      "sectionTitle": "Delegate information"
+    }
   },
   "orders": {
     "tabTitle": "Orders",
@@ -631,7 +648,18 @@
     "restartWithEmail": "Try a different email",
     "allSigned": "🎉 All waivers signed",
     "exitConfirm": "Exit waiver flow?",
-    "signSuccess": "Signed successfully"
+    "signSuccess": "Signed successfully",
+    "alreadyCheckedIn": "This ticket is already checked in",
+    "checkinClosed": "The check-in / waiver window for this race has closed",
+    "participantInfo": "Participant information",
+    "disclaimerHeading": "Liability waiver",
+    "receiveQuestion": "Who will receive the racekit?",
+    "receiveSelf": "Participant receives the racekit",
+    "receiveDelegate": "Authorize someone else to receive it",
+    "eSignature": "E-signature",
+    "eSignatureNote": "Please sign with your finger in the box below",
+    "emptySignature": "Signature cannot be empty",
+    "readCarefully": "Please read the waiver carefully before signing"
   },
   "payment": {
     "vnpay": "VNPay",

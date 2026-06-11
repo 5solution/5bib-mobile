@@ -56,7 +56,10 @@ export type AthleteAction =
  * since that's the registration completion path.
  */
 export const ATHLETE_STATUS_ACTIONS: Record<AthleteStatus, AthleteAction[]> = {
-  NEW: ['REGISTER_FORM', 'TRANSFER', 'CHANGE_COURSE'],
+  // CHANGE_COURSE removed from NEW 2026-06-11: web's ChangeCourseButton only
+  // renders when status === Register (button.tsx) — the 2026-05-29 audit note
+  // was misled by web's always-truthy branch bug.
+  NEW: ['REGISTER_FORM', 'TRANSFER'],
   TRANSFERRING: [], // status banner only, no actions
   REGISTER: ['EDIT_INFO', 'CHANGE_COURSE', 'TRANSFER', 'SHARE_BIB', 'ROLLING_BIB'],
   REMIND_CHECK_IN: ['EWAIVER', 'TRANSFER', 'SHARE_BIB'],

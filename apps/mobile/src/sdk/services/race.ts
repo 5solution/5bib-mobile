@@ -160,6 +160,20 @@ export function normalizeRace(raw: unknown): Race {
         : ext.racekit_edit_enable != null
           ? Boolean(ext.racekit_edit_enable)
           : undefined,
+    registrationEndTime:
+      (r.registration_end_time as string | undefined) ??
+      (r.registrationEndTime as string | undefined),
+    reassignStartTime: r.reassign_start_time as string | undefined,
+    reassignEndTime: r.reassign_end_time as string | undefined,
+    checkinEndTime: r.checkin_end_time as string | undefined,
+    changeCourseEnable:
+      ext.change_course_enable != null
+        ? Boolean(ext.change_course_enable)
+        : undefined,
+    delegationEnable:
+      ext.enable_delegation_skip_liabilty != null
+        ? Boolean(ext.enable_delegation_skip_liabilty)
+        : undefined,
   };
 }
 

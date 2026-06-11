@@ -26,7 +26,9 @@
     "yes": "Có",
     "no": "Không",
     "discardTitle": "Bỏ thay đổi?",
-    "discardMsg": "Các chỉnh sửa chưa lưu sẽ bị mất."
+    "discardMsg": "Các chỉnh sửa chưa lưu sẽ bị mất.",
+    "fullName": "Họ tên",
+    "phone": "Số điện thoại"
   },
   "permissions": {
     "cameraTitle": "Cần quyền camera",
@@ -554,7 +556,22 @@
       "failed": "Đăng ký thất bại, vui lòng thử lại"
     },
     "changeCourseSuccess": "Đổi cự ly thành công",
-    "changeFee": "Phí đổi cự ly"
+    "changeFee": "Phí đổi cự ly",
+    "editTimeOver": "Đã qua thời gian thay đổi thông tin vé",
+    "transferClosed": "Đã qua thời gian chuyển nhượng vé",
+    "transferNotOpen": "Chưa đến thời gian chuyển nhượng vé",
+    "editNotAllowed": "Vé ở trạng thái hiện tại không thể thay đổi thông tin",
+    "delegate": {
+      "addTitle": "Thêm ủy quyền nhận racekit",
+      "editTitle": "Thay đổi ủy quyền nhận racekit",
+      "desc": "Người được ủy quyền có thể thay bạn nhận racekit tại sự kiện.",
+      "name": "Tên người được uỷ quyền",
+      "email": "Email người được uỷ quyền",
+      "phone": "Số điện thoại người được uỷ quyền",
+      "cccd": "CCCD người được uỷ quyền",
+      "saved": "Cập nhật thông tin người được uỷ quyền thành công",
+      "sectionTitle": "Thông tin người được uỷ quyền"
+    }
   },
   "orders": {
     "tabTitle": "Đơn hàng",
@@ -631,7 +648,18 @@
     "restartWithEmail": "Làm lại với email khác",
     "allSigned": "🎉 Đã ký waiver đầy đủ",
     "exitConfirm": "Thoát ký waiver?",
-    "signSuccess": "Ký thành công"
+    "signSuccess": "Ký thành công",
+    "alreadyCheckedIn": "Vé này đã được check-in",
+    "checkinClosed": "Đã hết thời gian check-in / ký miễn trừ cho giải này",
+    "participantInfo": "Thông tin người tham gia",
+    "disclaimerHeading": "Miễn trừ trách nhiệm",
+    "receiveQuestion": "Ai sẽ nhận racekit?",
+    "receiveSelf": "Người tham gia nhận racekit",
+    "receiveDelegate": "Ủy quyền nhận racekit",
+    "eSignature": "Chữ ký điện tử",
+    "eSignatureNote": "Vui lòng dùng ngón tay ký vào khung bên dưới",
+    "emptySignature": "Chữ ký không được để trống",
+    "readCarefully": "Vui lòng đọc kỹ nội dung cam kết trước khi ký"
   },
   "payment": {
     "vnpay": "VNPay",

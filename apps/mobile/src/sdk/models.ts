@@ -197,6 +197,20 @@ export interface Race {
    * race" — verified live 2026-06-11 on race 385).
    */
   racekitEditEnable?: boolean;
+  /**
+   * BE-configured action windows (verified live 2026-06-11, /codes/get race 573).
+   * Web parity: EditTicket gates on registration_end_time; transfer window is
+   * reassign_start/end_time; waiver/check-in closes at checkin_end_time.
+   */
+  registrationEndTime?: string;
+  reassignStartTime?: string;
+  reassignEndTime?: string;
+  checkinEndTime?: string;
+  /** `race_extenstion.change_course_enable` — web hides Đổi cự ly when false. */
+  changeCourseEnable?: boolean;
+  /** `race_extenstion.enable_delegation_skip_liabilty` (sic) — racekit
+   *  delegation option in the check-in/waiver flow. */
+  delegationEnable?: boolean;
 }
 
 export interface Pagination {
@@ -471,6 +485,12 @@ export interface Athlete {
   isRepresent?: boolean;
   bib?: string;
   disclaimerStatus?: boolean;
+  /** Racekit pickup delegation (uỷ quyền nhận racekit) — lives in
+   *  `athlete_sub_info.delegator_*`; saved via the same simple-edit endpoint. */
+  delegatorName?: string;
+  delegatorEmail?: string;
+  delegatorPhone?: string;
+  delegatorCccd?: string;
 }
 
 export interface SigningTicket {

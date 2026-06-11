@@ -107,6 +107,10 @@ function normalizeAthlete(raw: unknown): Athlete {
     bloodType: pick('blood_type'),
     address: pick('address'),
     isRepresent: Boolean(si.is_represent ?? r.is_represent ?? false),
+    delegatorName: pick('delegator_name'),
+    delegatorEmail: pick('delegator_email'),
+    delegatorPhone: pick('delegator_phone'),
+    delegatorCccd: pick('delegator_cccd'),
     bib: (r.bib ?? r.bib_number) as string | undefined,
     disclaimerStatus: (si.disclaimer_status ?? r.disclaimer_status) as
       | boolean

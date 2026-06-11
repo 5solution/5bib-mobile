@@ -264,16 +264,48 @@ export default function TicketDetailScreen() {
   const rule = stripHtml(ticket.race?.rule);
   const schedule = ticket.race?.schedule ?? [];
 
+  // ── BE-configured action windows (Danny 2026-06-11: "việc sửa thông tin
+  // và chuyển nhượng và thay đổi cự ly phụ thuộc vào thời gian cho phép được
+  // cấu hình trong BE"). Verified live on /codes/get:
+  //   - edit info     : race.registration_end_time   (web EditTicket toast)
+  //   - transfer      : race.reassign_start/end_time
+  //   - change course : race_extenstion.change_course_enable (web hides)
+  const now = Date.now();
+  const regEnd = ticket.race?.registrationEndTime
+    ? new Date(ticket.race.registrationEndTime).getTime()
+    : null;
+  const editTimeOver = regEnd != null && now > regEnd;
+  const reassignStart = ticket.race?.reassignStartTime
+    ? new Date(ticket.race.reassignStartTime).getTime()
+    : null;
+  const reassignEnd = ticket.race?.reassignEndTime
+    ? new Date(ticket.race.reassignEndTime).getTime()
+    : null;
+  const transferNotOpen = reassignStart != null && now < reassignStart;
+  const transferClosed = reassignEnd != null && now > reassignEnd;
+  const changeCourseAllowed =
+    ticket.availableToChangeCourse && ticket.race?.changeCourseEnable !== false;
+
   const handlers: StatusActionHandlers = {
-    EDIT_INFO: () => router.push(`/tickets/${ticket.id}/edit`),
-    REGISTER_FORM: () => router.push(`/tickets/${ticket.id}/edit`),
-    CHANGE_COURSE: ticket.availableToChangeCourse
+    // Web parity: button stays visible, pressing past the window explains why
+    // ("Đã qua thời gian thay đổi thông tin vé") instead of navigating.
+    EDIT_INFO: editTimeOver
+      ? () => toast.show({ variant: 'warning', message: t('tickets.editTimeOver') })
+      : () => router.push(`/tickets/${ticket.id}/edit`),
+    REGISTER_FORM: editTimeOver
+      ? () => toast.show({ variant: 'warning', message: t('tickets.editTimeOver') })
+      : () => router.push(`/tickets/${ticket.id}/edit`),
+    CHANGE_COURSE: changeCourseAllowed
       ? () => router.push(`/tickets/${ticket.id}/change-course`)
       : undefined,
     TRANSFER:
       transferred || cancelled || raceFinished
         ? undefined
-        : () => router.push(`/tickets/${ticket.id}/transfer`),
+        : transferNotOpen
+          ? () => toast.show({ variant: 'warning', message: t('tickets.transferNotOpen') })
+          : transferClosed
+            ? () => toast.show({ variant: 'warning', message: t('tickets.transferClosed') })
+            : () => router.push(`/tickets/${ticket.id}/transfer`),
     // Authenticated waiver shortcut — web parity (ticket detail button.tsx):
     // the bearer-issued skip-liability secret IS the auth, so the user goes
     // STRAIGHT to the native sign screen. The /e-waiver OTP entry is only
@@ -302,7 +334,9 @@ export default function TicketDetailScreen() {
       ? () => router.push(`/tickets/${ticket.id}/rolling-bib`)
       : undefined,
     SHARE_BIB: share,
-    DELEGATE_RACEKIT: () => router.push(`/tickets/${ticket.id}/edit?focus=delegate`),
+    // Dedicated delegator form (web DelegatorModal) — NOT the athlete edit
+    // screen. Checked-in tickets can't edit info anymore, only delegate pickup.
+    DELEGATE_RACEKIT: () => router.push(`/tickets/${ticket.id}/delegate`),
     VIEW_RESULT: () => router.push(`/result/race-history`),
     CONTACT_SUPPORT: () => router.push('/profile'),
     VIEW_ORDER: ticket.orderId ? () => router.push(`/orders/${ticket.orderId}`) : undefined,
@@ -534,6 +568,59 @@ export default function TicketDetailScreen() {
                   online={online}
                 />
               </QRPulseRing>
+            </FadeSlideIn>
+          )}
+
+          {/* 4.5 — Racekit delegate card (web parity: "Thông tin người được
+             uỷ quyền" card on ticket detail when a delegator exists). */}
+          {!!athlete?.delegatorName && (
+            <FadeSlideIn delay={170}>
+              <View
+                style={{
+                  backgroundColor: tokens.color.surfaceCard,
+                  borderRadius: tokens.radius.xl,
+                  padding: tokens.space[4],
+                  gap: tokens.space[2],
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
+                  <Ionicons name="gift-outline" size={18} color={tokens.color.info} />
+                  <Text
+                    style={{
+                      fontSize: tokens.fontSize.bodyMd,
+                      fontWeight: tokens.fontWeight.bold,
+                      color: tokens.color.neutral900,
+                    }}
+                  >
+                    {t('tickets.delegate.sectionTitle')}
+                  </Text>
+                </View>
+                {(
+                  [
+                    [t('tickets.delegate.name'), athlete.delegatorName],
+                    [t('tickets.delegate.phone'), athlete.delegatorPhone],
+                    [t('tickets.delegate.cccd'), athlete.delegatorCccd],
+                    [t('tickets.delegate.email'), athlete.delegatorEmail],
+                  ] as const
+                ).map(([label, value]) => (
+                  <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: tokens.space[3] }}>
+                    <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral500, flexShrink: 0 }}>
+                      {label}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: tokens.fontSize.bodySm,
+                        color: tokens.color.neutral900,
+                        fontWeight: tokens.fontWeight.medium,
+                        flexShrink: 1,
+                        textAlign: 'right',
+                      }}
+                    >
+                      {value || '—'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </FadeSlideIn>
           )}
 

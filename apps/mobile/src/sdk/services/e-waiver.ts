@@ -13,6 +13,86 @@
 import { network } from '../core';
 import type { SigningRace, SigningTicket } from '../models';
 
+/** Sign-screen context distilled from /pub/ticket-by-code/{secret}. */
+export interface WaiverSignContext {
+  codeValue: string;
+  /** `code_athlete_status` — backend uses CHECKEDIN (no underscore) here. */
+  status: string;
+  checkinEndTime?: string;
+  delegationEnabled: boolean;
+  raceTitle: string;
+  courseName: string;
+  qrImage?: string;
+  bib?: string;
+  athlete: {
+    name: string;
+    email: string;
+    gender: string;
+    dob: string;
+    contactPhone: string;
+    sosPhone: string;
+    idNumber: string;
+    nationality: string;
+    racekit: string;
+    address: string;
+    medicalInfo: string;
+  };
+  guardian?: {
+    name: string;
+    email: string;
+    dob: string;
+    relationship: string;
+    phone: string;
+    cardId: string;
+  };
+}
+
+/**
+ * Replace waiver-template merge tags with athlete data — EXACT web parity
+ * (check-in read-html.tsx replaceAll list). The filled HTML is what gets
+ * POSTed to the sign endpoint; backend renders it to the S3 PDF, so missing
+ * replacement = raw `*|tag|*` artifacts in the legal document.
+ *
+ * `eSign` is the uploaded signature image URL + timestamp; web embeds
+ * `<img width=200 height=200 src=…/>` + the ISO timestamp under it.
+ */
+export function fillWaiverTemplate(
+  template: string,
+  ctx: WaiverSignContext,
+  eSign?: { url: string; signedAtIso: string },
+): string {
+  const sig = eSign
+    ? `<img width=200 height=200 src=${eSign.url} /><br /><span style="font-size:12px;color:#475467;">${eSign.signedAtIso}</span>`
+    : '';
+  const a = ctx.athlete;
+  const g = ctx.guardian;
+  const rep = (s: string, tag: string, value: string | undefined) =>
+    s.split(`*|${tag}|*`).join(value ?? '');
+  let out = template;
+  out = rep(out, 'registerName', a.name);
+  out = rep(out, 'email', a.email);
+  out = rep(out, 'distance', ctx.courseName);
+  out = rep(out, 'gender', a.gender);
+  out = rep(out, 'sos', a.sosPhone);
+  out = rep(out, 'idpp', a.idNumber);
+  out = rep(out, 'dob', a.dob);
+  out = rep(out, 'phone', a.contactPhone);
+  out = rep(out, 'sosPhone', a.sosPhone);
+  out = rep(out, 'e-sign', `${sig} `);
+  out = rep(out, 'national', a.nationality);
+  out = rep(out, 'address', a.address);
+  out = rep(out, 'racekit', a.racekit);
+  out = rep(out, 'medical', a.medicalInfo);
+  out = rep(out, 'bib', ctx.bib);
+  out = rep(out, 'guardianName', g?.name);
+  out = rep(out, 'guardianEmail', g?.email);
+  out = rep(out, 'guardianDob', g?.dob);
+  out = rep(out, 'guardianRelationship', g?.relationship);
+  out = rep(out, 'guardianPhone', g?.phone);
+  out = rep(out, 'guardianId', g?.cardId);
+  return out;
+}
+
 interface LegacySigningRace {
   race_id: number;
   title: string;
@@ -176,6 +256,65 @@ export const eWaiver = {
       `/pub/ticket-by-code/${secretCode}`,
     );
     return raw.data;
+  },
+
+  /**
+   * Typed context for the native sign screen, built from
+   * GET /pub/ticket-by-code/{secret} (verified live 2026-06-11, race 575).
+   *
+   * Carries everything the web check-in flow uses:
+   *   - athlete_basic_info.athlete_sub_info → merge-tag data + prefill
+   *   - athlete_basic_info.code_athlete_status → CHECKEDIN early-exit
+   *   - race.checkin_end_time → time gate (web: ConnectTimeOut screen)
+   *   - race_extenstion.enable_delegation_skip_liabilty → delegation radio
+   */
+  async getSignContext(secretCode: string): Promise<WaiverSignContext> {
+    const raw = await network().get<{ data: Record<string, any> }>(
+      `/pub/ticket-by-code/${secretCode}`,
+    );
+    const d = raw.data ?? {};
+    const abi = d.athlete_basic_info ?? {};
+    const sub = abi.athlete_sub_info ?? {};
+    const rep = abi.athlete_represent ?? {};
+    const race = d.race ?? {};
+    const ext = race.race_extenstion ?? race.race_extension ?? {};
+    const basic = d.basic_info ?? {};
+    return {
+      codeValue: String(d.value ?? basic.value ?? ''),
+      status: String(abi.code_athlete_status ?? d.athlete_status ?? ''),
+      checkinEndTime: race.checkin_end_time as string | undefined,
+      delegationEnabled: Boolean(ext.enable_delegation_skip_liabilty ?? false),
+      raceTitle: String(race.title ?? basic.race_name ?? ''),
+      courseName: String(basic.course_name ?? ''),
+      qrImage: d.qr_image as string | undefined,
+      bib: abi.bib != null ? String(abi.bib) : undefined,
+      athlete: {
+        name:
+          sub.first_name && sub.last_name
+            ? `${sub.first_name} ${sub.last_name}`
+            : (sub.name ?? ''),
+        email: sub.email ?? d.receipt_email ?? '',
+        gender: sub.gender ?? '',
+        dob: sub.dob ?? '',
+        contactPhone: sub.contact_phone ?? '',
+        sosPhone: sub.sos_phone ?? '',
+        idNumber: sub.id_number ?? '',
+        nationality: sub.nationality ?? '',
+        racekit: sub.racekit ?? '',
+        address: sub.address ?? '',
+        medicalInfo: sub.medical_info ?? '',
+      },
+      guardian: rep?.guardian_name
+        ? {
+            name: rep.guardian_name ?? '',
+            email: rep.guardian_email ?? '',
+            dob: rep.guardian_dob ?? '',
+            relationship: rep.guardian_relationship ?? '',
+            phone: rep.guardian_phone_number ?? '',
+            cardId: rep.guardian_card_id ?? '',
+          }
+        : undefined,
+    };
   },
 
   /**

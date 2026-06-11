@@ -341,6 +341,44 @@ export default function EditTicketScreen() {
     );
   }
 
+  // ── Guard (Danny 2026-06-11): editing is status- AND time-gated by BE
+  // config. Web parity: EditTicket renders only for REGISTER/REMIND_CHECK_IN
+  // and toasts "Đã qua thời gian thay đổi thông tin vé" past
+  // race.registration_end_time. Screen-level guard also covers deep links —
+  // a CHECKED_IN ticket must never reach this form.
+  const statusRaw = String(ticket?.athleteStatus ?? '').toUpperCase();
+  const statusEditable =
+    mode === 'register' ||
+    statusRaw === 'REGISTER' ||
+    statusRaw === 'REMIND_CHECK_IN' ||
+    statusRaw === 'NEW';
+  const regEndRaw = ticket?.race?.registrationEndTime;
+  const editTimeOver =
+    !!regEndRaw && Date.now() > new Date(regEndRaw).getTime();
+
+  if (ticket && (!statusEditable || editTimeOver)) {
+    return (
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+        <Header
+          title={t('tickets.editAthlete')}
+          leading="close"
+          onLeadingPress={() => router.back()}
+        />
+        <Banner
+          variant="warning"
+          message={
+            editTimeOver ? t('tickets.editTimeOver') : t('tickets.editNotAllowed')
+          }
+        />
+        <View style={{ padding: tokens.space[4] }}>
+          <Button variant="outline" fullWidth onPress={() => router.back()}>
+            {t('common.back')}
+          </Button>
+        </View>
+      </View>
+    );
+  }
+
   const canSubmit = dirty && !submitting && !!form.firstName && !!form.lastName && !!form.email;
 
   return (
