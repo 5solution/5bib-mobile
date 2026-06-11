@@ -67,7 +67,11 @@ function asAthleteStatus(s: string | undefined): AthleteStatus {
     case 'CANCELLED':
       return v;
     // Backend variants — fold into closest equivalent in our constants matrix.
+    // ⚠️ CHECKEDIN (no underscore) is what /codes/get + fetch-by-user actually
+    // return — missing it sent checked-in tickets to the REMIND default:
+    // wrong chip, wrong actions, NO QR (manual pass 2026-06-11, F23).
     case 'CHECK_IN':
+    case 'CHECKEDIN':
       return 'CHECKED_IN';
     case 'FINISH':
       return 'RACEKIT_RECEIVED'; // post-race: show share/view-result actions
