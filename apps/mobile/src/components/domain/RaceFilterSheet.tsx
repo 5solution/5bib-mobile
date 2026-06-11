@@ -44,7 +44,24 @@ const STATUS_OPTIONS: { value: RaceStatus | 'ALL'; key: string }[] = [
   { value: 'FINISHED', key: 'finished' },
 ];
 
-const RACE_TYPES = ['ALL', 'MARATHON', 'TRAIL', 'TRIATHLON', 'CHALLENGE'];
+/**
+ * Real backend race_type enum + display labels — copied from the deployed
+ * web's filter sidebar (dev.5bib.com/vi/events?rt=...). The previous list
+ * (MARATHON/TRAIL/TRIATHLON/CHALLENGE) was invented and never matched a
+ * single backend value, so the filter silently did nothing.
+ */
+export const RACE_TYPES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'ALL', label: '' }, // label resolved via t('browse.filterAll')
+  { value: 'ROAD_MARATHON', label: 'Marathon' },
+  { value: 'ROAD_HALF_MARATHON', label: 'Half Marathon' },
+  { value: 'TRAIL_RACE', label: 'Trail' },
+  { value: 'ULTRA_RAIL_RACE', label: 'Ultra Trail' }, // sic — backend typo "RAIL"
+  { value: 'ULTRA_ROAD_RACE', label: 'Ultra Road' },
+  { value: 'HILLROAD_RACE', label: 'Hill Road' },
+  { value: 'EKIDEN_RACE', label: 'Ekiden' },
+  { value: 'ULTRA_LOOP', label: 'Ultra Loop' },
+  { value: 'VIRTUAL', label: 'Virtual' },
+];
 
 export function RaceFilterSheet({ open, onClose, onApply }: RaceFilterSheetProps) {
   const { t } = useTranslation();
@@ -119,11 +136,11 @@ export function RaceFilterSheet({ open, onClose, onApply }: RaceFilterSheetProps
           <SectionLabel label={t('browse.filterType')} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.space[2] }}>
             {RACE_TYPES.map((rt) => {
-              const active = draft.raceType === rt;
+              const active = draft.raceType === rt.value;
               return (
                 <Pressable
-                  key={rt}
-                  onPress={() => setDraft((d) => ({ ...d, raceType: rt }))}
+                  key={rt.value}
+                  onPress={() => setDraft((d) => ({ ...d, raceType: rt.value }))}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
                   style={{
@@ -144,7 +161,7 @@ export function RaceFilterSheet({ open, onClose, onApply }: RaceFilterSheetProps
                       fontWeight: tokens.fontWeight.medium,
                     }}
                   >
-                    {rt === 'ALL' ? t('browse.filterAll') : rt}
+                    {rt.value === 'ALL' ? t('browse.filterAll') : rt.label}
                   </Text>
                 </Pressable>
               );

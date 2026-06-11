@@ -30,7 +30,7 @@ import { Input } from '../../src/components/Input';
 import { RaceCard } from '../../src/components/domain/RaceCard';
 import { FilterChip } from '../../src/components/domain/FilterChip';
 import { StaggerItem } from '../../src/components/motion';
-import { RaceFilterSheet } from '../../src/components/domain/RaceFilterSheet';
+import { RaceFilterSheet, RACE_TYPES } from '../../src/components/domain/RaceFilterSheet';
 import { useOnline, useDebouncedValue } from '../../src/hooks';
 import { useBrowseFilterStore } from '../../src/stores/useBrowseFilterStore';
 import { useToast } from '../../src/components';
@@ -171,7 +171,10 @@ export default function AllEventsScreen() {
     if (filterStore.raceType !== 'ALL') {
       chips.push({
         id: 'raceType',
-        label: filterStore.raceType,
+        // Display label, not the raw enum (ROAD_MARATHON → "Marathon").
+        label:
+          RACE_TYPES.find((rt) => rt.value === filterStore.raceType)?.label ||
+          filterStore.raceType,
         clear: () => filterStore.setFilter('raceType', 'ALL'),
       });
     }
