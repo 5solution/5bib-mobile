@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { tokens } from '../theme/tokens';
+import type { PaymentGateway } from '../sdk/models';
 
 export type PaymentMethodId =
   | 'PAYX_QR'
@@ -157,4 +158,51 @@ export function PaymentMethodPicker({ options, value, onChange }: PaymentMethodP
       ))}
     </View>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Shared payment routing (moved out of checkout/index.tsx 2026-06-11 so the
+// paid change-course flow can reuse the same picker + gateway mapping).
+// ---------------------------------------------------------------------------
+
+/** Picker option id → backend gateway slug. */
+export const PICKER_TO_GATEWAY: Record<PaymentMethodId, PaymentGateway> = {
+  PAYX_QR: 'payx',
+  PAYX_ATM: 'payx',
+  VNPAY_QR: 'vnpay',
+  NAPAS: 'vnpay',
+  VISA_VNPAY: 'vnpay',
+  ONEPAY_INTL: 'onepay',
+  PAYOO_WALLET: 'payoo',
+};
+
+/** Default UI option set (filtered per-race via filterPaymentOptions). */
+export const PAYMENT_OPTIONS: PaymentMethodOption[] = [
+  { id: 'VNPAY_QR', label: 'VNPay', description: 'QR / ATM / Visa', logoText: 'VNPay' },
+  { id: 'PAYX_QR', label: 'PayX', description: 'Quét QR · 24/7', logoText: 'PayX' },
+  { id: 'PAYOO_WALLET', label: 'Payoo', description: 'Ví điện tử', logoText: 'Payoo' },
+  { id: 'ONEPAY_INTL', label: 'OnePay', description: 'Thẻ quốc tế', logoText: 'OnePay' },
+];
+
+/**
+ * Filter picker options by the race's race_extenstion.payment_options
+ * allow-list (see checkout for the full behavioural notes; race 305 is the
+ * canonical mismatch example).
+ */
+export function filterPaymentOptions(
+  all: PaymentMethodOption[],
+  allowed: string[] | undefined,
+): PaymentMethodOption[] {
+  if (!allowed || allowed.length === 0) return all;
+  return all.filter((opt) => {
+    const gw = PICKER_TO_GATEWAY[opt.id]?.toUpperCase() ?? '';
+    return allowed.some((a) => {
+      const norm = a.toUpperCase();
+      return (
+        norm === opt.id ||
+        norm.startsWith(gw) ||
+        opt.id.startsWith(norm.split('_')[0] ?? '')
+      );
+    });
+  });
 }

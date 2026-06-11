@@ -410,7 +410,8 @@
     "errors": {
       "createOrderFailed": "Could not create order. Please try again.",
       "discountInvalid": "Invalid or expired code"
-    }
+    },
+    "paymentMethod": "Payment method"
   },
   "tickets": {
     "tabTitle": "My tickets",
@@ -550,7 +551,8 @@
       "successRegister": "Athlete registered",
       "successUpdate": "Updated",
       "failed": "Registration failed, please try again"
-    }
+    },
+    "changeCourseSuccess": "Course changed successfully"
   },
   "orders": {
     "tabTitle": "Orders",

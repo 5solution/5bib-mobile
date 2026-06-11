@@ -23,18 +23,16 @@ import { CourseCard } from '../../src/components/domain/CourseCard';
 import {
   PaymentMethodPicker,
   PaymentMethodId,
-  PaymentMethodOption,
+  PICKER_TO_GATEWAY,
+  PAYMENT_OPTIONS,
+  filterPaymentOptions,
 } from '../../src/components/PaymentMethodPicker';
 import { FormLayout, FormSection, SectionDivider } from '../../src/components/FormLayout';
 import { useToast } from '../../src/components/Toast';
 import { useOnline, useDraftPersist } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
 import { raceCourse, priceRule, order, race as raceSdk } from '../../src/sdk';
-import type {
-  RaceCourse,
-  OrderCreateInput,
-  PaymentGateway,
-} from '../../src/sdk/models';
+import type { RaceCourse, OrderCreateInput } from '../../src/sdk/models';
 import { useCheckoutStore } from '../../src/stores/useCheckoutStore';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -77,63 +75,10 @@ interface AthleteForm {
 }
 
 /** Map UI picker id → backend payment gateway (URL path slug). */
-const PICKER_TO_GATEWAY: Record<PaymentMethodId, PaymentGateway> = {
-  PAYX_QR: 'payx',
-  PAYX_ATM: 'payx',
-  VNPAY_QR: 'vnpay',
-  NAPAS: 'vnpay',
-  VISA_VNPAY: 'vnpay',
-  ONEPAY_INTL: 'onepay',
-  PAYOO_WALLET: 'payoo',
-};
-
-const PAYMENT_OPTIONS: PaymentMethodOption[] = [
-  { id: 'VNPAY_QR', label: 'VNPay', description: 'QR / ATM / Visa', logoText: 'VNPay' },
-  { id: 'PAYX_QR', label: 'PayX', description: 'Quét QR · 24/7', logoText: 'PayX' },
-  { id: 'PAYOO_WALLET', label: 'Payoo', description: 'Ví điện tử', logoText: 'Payoo' },
-  { id: 'ONEPAY_INTL', label: 'OnePay', description: 'Thẻ quốc tế', logoText: 'OnePay' },
-];
-
 function fmtVnd(n: number): string {
   return n.toLocaleString('vi-VN') + 'đ';
 }
 
-/**
- * Filter the rendered payment-method picker by the race's
- * `race_extenstion.payment_options` allow-list. Backend may publish e.g.
- * `["VNPAY_QR","PAYX_DOMESTIC_CARD"]` while mobile UI hard-codes 4 options;
- * showing the unsupported ones produces "Failed to load payment page" /
- * gateway-config-missing errors at the WebView step. Race 305 is the
- * canonical example (verified 2026-05-28).
- *
- * Behavior:
- *   - `allowed=undefined` (still loading or race fetch failed) → show all
- *     options so we don't accidentally render an empty picker.
- *   - `allowed=[]` (race explicitly publishes no enabled gateway) → show
- *     all options + let the WebView fail loudly. Probably misconfigured race
- *     and worth surfacing rather than silently breaking the flow.
- *   - `allowed=[…]` → keep options whose `id` matches any allowed entry
- *     OR whose mapped gateway matches. Match is permissive on substring so
- *     `PAYX_DOMESTIC_CARD` accepts both `PAYX_QR` and `PAYX_ATM` (we group
- *     them under one UI logo).
- */
-function filterPaymentOptions(
-  all: PaymentMethodOption[],
-  allowed: string[] | undefined,
-): PaymentMethodOption[] {
-  if (!allowed || allowed.length === 0) return all;
-  return all.filter((opt) => {
-    const gw = PICKER_TO_GATEWAY[opt.id]?.toUpperCase() ?? '';
-    return allowed.some((a) => {
-      const norm = a.toUpperCase();
-      return (
-        norm === opt.id ||
-        norm.startsWith(gw) ||
-        opt.id.startsWith(norm.split('_')[0] ?? '')
-      );
-    });
-  });
-}
 
 export default function CheckoutScreen() {
   const { t } = useTranslation();

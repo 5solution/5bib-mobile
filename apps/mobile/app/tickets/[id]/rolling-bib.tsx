@@ -123,11 +123,36 @@ export default function RollingBibScreen() {
     return Math.max(0, Math.floor((validUntilEpoch - Date.now()) / 1000));
   }, [validUntilEpoch, phase]);
 
-  const { seconds: liveSeconds } = useCountdown(secondsLeft, phase === 'confirm');
+  const { seconds: liveSeconds, restart: restartCountdown } = useCountdown(
+    secondsLeft,
+    phase === 'confirm',
+  );
+
+  // P0 fix (review 2026-06-11): useCountdown freezes its initialSeconds at
+  // MOUNT (useState initializer), and this screen mounts with
+  // validUntilEpoch=null → the hook was permanently stuck at 0. The moment
+  // phase flipped to 'confirm' the expiry effect saw liveSeconds<=0 and
+  // bounced the user out with "expired" — the whole feature self-destructed
+  // instantly. Restart the countdown with the REAL remaining seconds when
+  // we enter confirm.
+  useEffect(() => {
+    if (phase === 'confirm' && validUntilEpoch) {
+      restartCountdown(
+        Math.max(0, Math.floor((validUntilEpoch - Date.now()) / 1000)),
+      );
+    }
+  }, [phase, validUntilEpoch, restartCountdown]);
 
   useEffect(() => {
-    // TC-TICKETS-24: countdown expired during confirm → auto-back + toast
-    if (phase === 'confirm' && validUntilEpoch && liveSeconds <= 0) {
+    // TC-TICKETS-24: countdown expired during confirm → auto-back + toast.
+    // Double-check against the wall clock: liveSeconds can be a stale 0 for
+    // one render between entering confirm and the restart effect landing.
+    if (
+      phase === 'confirm' &&
+      validUntilEpoch &&
+      liveSeconds <= 0 &&
+      validUntilEpoch - Date.now() <= 0
+    ) {
       toast.show({ variant: 'warning', message: t('tickets.rollingBib.expired') });
       router.replace(`/tickets/${ticketId}`);
     }

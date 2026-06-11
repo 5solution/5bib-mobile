@@ -410,7 +410,8 @@
     "errors": {
       "createOrderFailed": "Bestellung konnte nicht erstellt werden. Bitte erneut versuchen.",
       "discountInvalid": "Ungültiger oder abgelaufener Code"
-    }
+    },
+    "paymentMethod": "Zahlungsmethode"
   },
   "tickets": {
     "tabTitle": "Meine Tickets",
@@ -550,7 +551,8 @@
       "successRegister": "Athlet registriert",
       "successUpdate": "Aktualisiert",
       "failed": "Registrierung fehlgeschlagen, bitte erneut versuchen"
-    }
+    },
+    "changeCourseSuccess": "Strecke erfolgreich geändert"
   },
   "orders": {
     "tabTitle": "Bestellungen",

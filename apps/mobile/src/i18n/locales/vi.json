@@ -410,7 +410,8 @@
     "errors": {
       "createOrderFailed": "Không tạo được đơn hàng. Vui lòng thử lại.",
       "discountInvalid": "Mã không hợp lệ hoặc đã hết hạn"
-    }
+    },
+    "paymentMethod": "Phương thức thanh toán"
   },
   "tickets": {
     "tabTitle": "Vé của tôi",
@@ -550,7 +551,8 @@
       "successRegister": "Đăng ký VĐV thành công",
       "successUpdate": "Cập nhật thành công",
       "failed": "Đăng ký thất bại, vui lòng thử lại"
-    }
+    },
+    "changeCourseSuccess": "Đổi cự ly thành công"
   },
   "orders": {
     "tabTitle": "Đơn hàng",

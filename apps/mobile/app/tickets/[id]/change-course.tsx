@@ -6,11 +6,13 @@
  *    Strategy: try estimate immediately on mount — if it 4xx/5xx the whole
  *    feature, render an "unavailable" placeholder and let the user back out.
  *
- * On success path:
- *   - Step 0 only (MVP): list alternative courses → estimate per pick → commit.
- *   - Fee > 0 → bounce to /checkout for delta payment (cannot fully reuse
- *     EPIC-3 yet; tracked as deferred).
- *   - Fee ≤ 0 → commit directly via `ticketSdk.changeCourse`.
+ * On success path (web contract — selling-web payment-screen.tsx):
+ *   - Step 0: list alternative courses → estimate per pick.
+ *   - PUT /codes/change-course performs the change AND (when fee > 0)
+ *     creates a delta-fee order server-side, returned as `data.id`.
+ *   - Fee > 0 → user picks a gateway here, then we route to
+ *     /checkout/payment-webview with that delta order id.
+ *   - Fee ≤ 0 → change is complete after the PUT; back to ticket detail.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -24,16 +26,64 @@ import { Card } from '../../../src/components/Card';
 import { Banner } from '../../../src/components/ErrorState';
 import { FormLayout, FormSection } from '../../../src/components/FormLayout';
 import { CourseCard } from '../../../src/components/domain/CourseCard';
+import {
+  PaymentMethodPicker,
+  PICKER_TO_GATEWAY,
+  PAYMENT_OPTIONS,
+  filterPaymentOptions,
+  type PaymentMethodId,
+} from '../../../src/components/PaymentMethodPicker';
 import { Spinner } from '../../../src/components/Skeleton';
 import { useToast } from '../../../src/components/Toast';
 import { tokens } from '../../../src/theme/tokens';
 import { ticket as ticketSdk } from '../../../src/sdk/services/ticket';
 import { raceCourse as raceCourseSdk } from '../../../src/sdk/services/race-course';
+import { athlete as athleteSdk } from '../../../src/sdk/services/athlete';
 import { FetcherError } from '../../../src/sdk/core';
-import type { EstimateChangeResponse, RaceCourse, Ticket } from '../../../src/sdk/models';
+import type {
+  Athlete,
+  EstimateChangeResponse,
+  RaceCourse,
+  Ticket,
+} from '../../../src/sdk/models';
 
 const fmtVnd = (n: number) =>
   (n < 0 ? '-' : '') + Math.abs(n).toLocaleString('vi-VN') + 'đ';
+
+/**
+ * Mobile Athlete → wire payload for PUT /codes/change-course.
+ *
+ * Mirrors web's `AthleteProfile.formDataToPayloadOrder` (selling-web
+ * src/services/athlete/local.ts): snake_case keys, `idpp` duplicated from
+ * id_number, `name` recomposed. Fields mobile doesn't track (address,
+ * blood_type, achievements, customize fields) are omitted — backend treats
+ * them as optional; web also omits them when the profile lacks values.
+ */
+function buildAthletePayload(a: Athlete | null): Record<string, unknown> {
+  if (!a) return {};
+  const name =
+    a.name ?? [a.firstName, a.lastName].filter(Boolean).join(' ').trim();
+  return {
+    email: a.email,
+    name,
+    first_name: a.firstName,
+    last_name: a.lastName,
+    contact_phone: a.contactPhone,
+    id_number: a.idNumber,
+    idpp: a.idNumber,
+    nationality: a.nationality,
+    city_province: a.cityProvince,
+    gender: a.gender,
+    dob: a.dob,
+    racekit: a.racekit,
+    sosPhone: a.sosPhone,
+    sos_phone: a.sosPhone,
+    club: a.club,
+    name_on_bib: a.nameOnBib,
+    medical_info: a.medicalInfo,
+    current_medication: a.currentMedication,
+  };
+}
 
 export default function ChangeCourseScreen() {
   const { t } = useTranslation();
@@ -52,6 +102,11 @@ export default function ChangeCourseScreen() {
   const [estimate, setEstimate] = useState<EstimateChangeResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Paid-change support: the PUT payload carries the athlete's info (web
+  // parity) and the user must pick a gateway before committing a fee > 0.
+  const [athlete, setAthlete] = useState<Athlete | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId | null>(null);
+
   // Load ticket + sibling courses + probe live.
   useEffect(() => {
     if (!id) return;
@@ -61,6 +116,18 @@ export default function ChangeCourseScreen() {
         const tk = await ticketSdk.getTicketById(id);
         if (cancelled) return;
         setTicket(tk);
+
+        // Athlete record — required for the change-course PUT payload.
+        // Fail-soft: a NEW ticket may have no athlete yet; payload falls
+        // back to {} which matches the old behaviour for free changes.
+        if (tk.value) {
+          try {
+            const a = await athleteSdk.getAthleteByTicketCode(tk.value);
+            if (!cancelled) setAthlete(a);
+          } catch {
+            // non-fatal
+          }
+        }
 
         // Sibling courses (exclude current).
         const raceId = tk.race?.id;
@@ -127,20 +194,38 @@ export default function ChangeCourseScreen() {
 
   const submit = useCallback(async () => {
     if (!selected || !estimate || !ticket?.value) return;
+    const fee = estimate.changeCourseFee;
+    // Paid change requires a gateway pick (mirrors web's PaymentScreen step).
+    if (fee > 0 && !paymentMethod) {
+      toast.show({ variant: 'warning', message: t('checkout.selectPaymentMethod') });
+      return;
+    }
     setSubmitting(true);
     try {
-      if (estimate.changeCourseFee > 0) {
-        // Top-up payment flow not wired end-to-end yet — direct user to checkout.
-        toast.show({ variant: 'info', message: 'Chuyển sang thanh toán...' });
-        router.push(`/checkout?race_id=${ticket.race?.id ?? ''}&course_id=${selected}`);
-        return;
-      }
-      await ticketSdk.changeCourse({
+      // P0 fix (review 2026-06-11): the old paid path pushed the user into
+      // the NORMAL checkout — which creates a brand-new full-price order for
+      // the target course and never touches the existing ticket. The web
+      // contract (payment-screen.tsx) is: PUT /codes/change-course performs
+      // the change AND returns a delta-fee order id → pay THAT order.
+      const { orderId } = await ticketSdk.changeCourse({
         codeValue: ticket.value,
         toCourseId: selected,
-        payload: {},
+        payload: buildAthletePayload(athlete),
       });
-      toast.show({ variant: 'success', message: 'Đổi cự ly thành công' });
+      if (fee > 0) {
+        if (!orderId) {
+          // Backend didn't return the fee order — surface instead of guessing.
+          toast.show({ variant: 'error', message: t('errors.generic') });
+          return;
+        }
+        const gateway = PICKER_TO_GATEWAY[paymentMethod!];
+        router.replace({
+          pathname: '/checkout/payment-webview',
+          params: { order_id: orderId, gateway },
+        });
+        return;
+      }
+      toast.show({ variant: 'success', message: t('tickets.changeCourseSuccess') });
       router.replace(`/tickets/${id}`);
     } catch (e) {
       if (e instanceof FetcherError && e.status === 401) return;
@@ -152,7 +237,7 @@ export default function ChangeCourseScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [selected, estimate, ticket, id, router, t, toast]);
+  }, [selected, estimate, ticket, athlete, paymentMethod, id, router, t, toast]);
 
   // ------------------------------------------------------------------
   // Render
@@ -213,7 +298,7 @@ export default function ChangeCourseScreen() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={!selected || !estimate || submitting}
+            disabled={!selected || !estimate || submitting || (fee > 0 && !paymentMethod)}
             loading={submitting}
             onPress={submit}
           >
@@ -273,6 +358,18 @@ export default function ChangeCourseScreen() {
                 {estimate.note}
               </Text>
             )}
+          </FormSection>
+        )}
+
+        {/* Gateway pick — only when the change costs money. Options filtered
+           by the race's payment_options allow-list, same as checkout. */}
+        {estimate && fee > 0 && (
+          <FormSection title={t('checkout.paymentMethod')}>
+            <PaymentMethodPicker
+              options={filterPaymentOptions(PAYMENT_OPTIONS, ticket?.race?.paymentOptions)}
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+            />
           </FormSection>
         )}
       </FormLayout>

@@ -136,17 +136,29 @@ export const ticket = {
    * ⚠️ PROBE LIVE: see estimate above.
    * BR-CHECKOUT-26: validate new course min_age vs athlete dob at event date.
    */
+  /**
+   * PUT /codes/change-course — performs the course change AND, when there is
+   * a fee gap, creates a delta-fee ORDER server-side (web contract verified
+   * in selling-web payment-screen.tsx: `orderId = res.data.data.id` →
+   * getCheckoutURL(orderId) → gateway redirect). Returns that orderId so the
+   * caller can route to payment; null when backend returns no order (free
+   * change).
+   */
   async changeCourse(input: {
     codeValue: string;
     toCourseId: string;
     payload: Record<string, unknown>;
-  }): Promise<void> {
-    await network().put('/codes/change-course', input.payload, {
+  }): Promise<{ orderId: string | null }> {
+    const raw = await network().put<{
+      data?: { id?: number | string } | null;
+    }>('/codes/change-course', input.payload, {
       params: {
         code_value: input.codeValue,
         to_course_id: input.toCourseId,
       },
       noRetry: true,
     });
+    const oid = raw?.data?.id;
+    return { orderId: oid != null ? String(oid) : null };
   },
 };
