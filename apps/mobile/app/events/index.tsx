@@ -20,7 +20,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
@@ -59,6 +59,20 @@ export default function AllEventsScreen() {
   const { show: showToast } = useToast();
   const filterStore = useBrowseFilterStore();
 
+  // Deep-link pre-seeding: home discovery rows push
+  // `/events?raceType=TRAIL_RACE` or `/events?city=Hà Nội`. Seed the store
+  // once per param change so the list arrives already filtered.
+  const seedParams = useLocalSearchParams<{ raceType?: string; city?: string }>();
+  useEffect(() => {
+    if (seedParams.raceType) {
+      filterStore.setFilter('raceType', String(seedParams.raceType));
+    }
+    if (seedParams.city) {
+      filterStore.setFilter('city', String(seedParams.city));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedParams.raceType, seedParams.city]);
+
   const [races, setRaces] = useState<Race[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -84,6 +98,10 @@ export default function AllEventsScreen() {
           pageSize: PAGE_SIZE,
           status: filterStore.status === 'ALL' ? undefined : (filterStore.status as RaceStatus),
           raceType: filterStore.raceType === 'ALL' ? undefined : filterStore.raceType,
+          // Server-side, same param the web sends. Replaces the old
+          // client-side filter that could only see the loaded page (a
+          // Hanoi race on page 2 never showed up).
+          province: filterStore.city === 'ALL' ? undefined : filterStore.city,
           title: titleParam,
           sortField: sortFieldToBackend(filterStore.sortField),
           sortDirection: filterStore.sortDirection === 'asc' ? 'ASC' : 'DESC',
@@ -100,6 +118,7 @@ export default function AllEventsScreen() {
       debouncedSearch,
       filterStore.status,
       filterStore.raceType,
+      filterStore.city,
       filterStore.sortField,
       filterStore.sortDirection,
       showToast,
@@ -117,15 +136,13 @@ export default function AllEventsScreen() {
         if (mode === 'initial') setLoading(false);
         return;
       }
-      // Client-side city filter (backend doesn't support city query param per API_REFERENCE)
-      const items = applyCityFilter(res.items, filterStore.city);
-      setRaces(items);
+      setRaces(res.items);
       setPage(1);
       setTotalPages(res.pagination.totalPages ?? 1);
-      setTotalCount(res.pagination.totalCount ?? items.length);
+      setTotalCount(res.pagination.totalCount ?? res.items.length);
       if (mode === 'initial') setLoading(false);
     },
-    [fetchPage, filterStore.city],
+    [fetchPage],
   );
 
   useEffect(() => {
@@ -150,8 +167,7 @@ export default function AllEventsScreen() {
     const next = page + 1;
     const res = await fetchPage(next);
     if (res) {
-      const items = applyCityFilter(res.items, filterStore.city);
-      setRaces((prev) => [...prev, ...items]);
+      setRaces((prev) => [...prev, ...res.items]);
       setPage(next);
       setTotalPages(res.pagination.totalPages ?? next);
     }
@@ -356,11 +372,6 @@ export default function AllEventsScreen() {
       />
     </View>
   );
-}
-
-function applyCityFilter(items: Race[], city: string | 'ALL'): Race[] {
-  if (city === 'ALL') return items;
-  return items.filter((r) => r.city === city || r.location === city);
 }
 
 function statusChipLabel(s: RaceStatus | string, t: (k: string) => string): string {

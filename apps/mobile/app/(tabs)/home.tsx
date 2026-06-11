@@ -15,6 +15,7 @@ import {
   View,
   Text,
   FlatList,
+  Pressable,
   RefreshControl,
   useWindowDimensions,
   ScrollView,
@@ -40,6 +41,35 @@ import type { Race } from '../../src/sdk/models';
 
 type LoadState = 'loading' | 'loaded' | 'error' | 'empty';
 const PAGE_SIZE = 10;
+
+/**
+ * Discovery shortcuts on the home header — web home parity. Race types use
+ * the real backend enum (same list as RaceFilterSheet); cities mirror the
+ * web home's chip row. Both deep-link into /events with the filter
+ * pre-seeded via route params.
+ */
+const DISCOVER_TYPES: ReadonlyArray<{ value: string; label: string; icon: string }> = [
+  { value: 'ROAD_MARATHON', label: 'Marathon', icon: '🏃' },
+  { value: 'ROAD_HALF_MARATHON', label: 'Half Marathon', icon: '🏃‍♀️' },
+  { value: 'TRAIL_RACE', label: 'Trail', icon: '⛰️' },
+  { value: 'ULTRA_RAIL_RACE', label: 'Ultra Trail', icon: '🌄' },
+  { value: 'EKIDEN_RACE', label: 'Ekiden', icon: '🤝' },
+  { value: 'VIRTUAL', label: 'Virtual', icon: '📱' },
+];
+
+/**
+ * Backend matches province as a contains-filter, so values must align with
+ * stored province names. Verified live 2026-06-11 (matches on DEV):
+ * Hà Nội 4+, Hồ Chí Minh 15, Đà Nẵng 14, Quảng Bình 14. Web home also
+ * lists Đà Lạt, but that's a city inside Lâm Đồng province → 0 matches,
+ * so we swap it for Quảng Bình which actually has data.
+ */
+const DISCOVER_CITIES: ReadonlyArray<string> = [
+  'Hà Nội',
+  'Hồ Chí Minh',
+  'Đà Nẵng',
+  'Quảng Bình',
+];
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -350,6 +380,97 @@ export default function HomeScreen() {
                 </View>
               </View>
             )}
+
+            {/* Discovery rows — web home parity (G-03 race-type categories,
+               G-04 city chips). Each chip deep-links into the events list
+               with the filter pre-seeded via route params. */}
+            <View style={{ gap: tokens.space[2], marginTop: tokens.space[2] }}>
+              <Text
+                style={{
+                  fontSize: tokens.fontSize.h3,
+                  fontWeight: tokens.fontWeight.semibold,
+                  color: tokens.color.neutral900,
+                }}
+                accessibilityRole="header"
+              >
+                {t('browse.discoverByType')}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: tokens.space[2] }}>
+                  {DISCOVER_TYPES.map((d) => (
+                    <Pressable
+                      key={d.value}
+                      onPress={() =>
+                        router.push({ pathname: '/events', params: { raceType: d.value } })
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={d.label}
+                      style={({ pressed }) => ({
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        width: 92,
+                        paddingVertical: tokens.space[3],
+                        borderRadius: tokens.radius.lg,
+                        backgroundColor: pressed
+                          ? tokens.color.brandPrimaryLight
+                          : tokens.color.neutral50,
+                        borderWidth: 1,
+                        borderColor: tokens.color.neutral200,
+                      })}
+                    >
+                      <Text style={{ fontSize: 24 }}>{d.icon}</Text>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: tokens.fontWeight.medium,
+                          color: tokens.color.neutral800,
+                          textAlign: 'center',
+                        }}
+                        numberOfLines={1}
+                      >
+                        {d.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: tokens.space[2] }}>
+                  {DISCOVER_CITIES.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() =>
+                        router.push({ pathname: '/events', params: { city: c } })
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={`${t('browse.filterRegion')}: ${c}`}
+                      style={({ pressed }) => ({
+                        paddingHorizontal: tokens.space[3],
+                        paddingVertical: tokens.space[1],
+                        borderRadius: tokens.radius.full,
+                        backgroundColor: pressed
+                          ? tokens.color.brandPrimaryLight
+                          : tokens.color.neutral100,
+                        minHeight: 32,
+                        justifyContent: 'center',
+                      })}
+                    >
+                      <Text
+                        style={{
+                          fontSize: tokens.fontSize.labelSm,
+                          fontWeight: tokens.fontWeight.medium,
+                          color: tokens.color.neutral700,
+                        }}
+                      >
+                        📍 {c}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
 
             <Text
               style={{

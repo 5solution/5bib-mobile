@@ -19,6 +19,14 @@ export interface ListRacesParams {
   raceType?: string;
   isHighlight?: boolean;
   bibSetUp?: boolean;
+  /**
+   * Province / city filter — server-side, contains-style match. Verified
+   * live 2026-06-11: `province=Hà Nội` matches races whose province is
+   * "Thành phố Hà Nội". This is what the web sends (`params.province = l`);
+   * the earlier "backend doesn't support city" note in events/index.tsx
+   * was wrong.
+   */
+  province?: string;
 }
 
 interface LegacyListRacesParams {
@@ -46,6 +54,9 @@ function toLegacyListParams(p: ListRacesParams): Record<string, unknown> {
   if (p.raceType !== undefined) out.race_type = p.raceType;
   if (p.isHighlight !== undefined) out.is_highlight = p.isHighlight;
   if (p.bibSetUp !== undefined) out.bib_set_up = p.bibSetUp;
+  // Note: `province` stays as-is on the wire — backend accepts it verbatim
+  // (web sends the same), unlike the snake_cased params above.
+  if (p.province !== undefined) out.province = p.province;
   return out;
 }
 
