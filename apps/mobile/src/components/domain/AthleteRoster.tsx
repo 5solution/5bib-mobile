@@ -55,6 +55,11 @@ export function AthleteRoster({ raceId, courses }: AthleteRosterProps) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [errored, setErrored] = useState(false);
+  // Organizer-level config: some PROD races disable the public roster and
+  // the endpoint 400s with "Public Athlete Basic Info is not available".
+  // That's permanent for the race — hide the whole section (web only shows
+  // the tab when enabled) instead of rendering a useless retry box.
+  const [unavailable, setUnavailable] = useState(false);
 
   const fetchPage = useCallback(
     async (pageNo: number, append: boolean) => {
@@ -71,7 +76,15 @@ export function AthleteRoster({ raceId, courses }: AthleteRosterProps) {
         setTotalPages(r.pagination.totalPages || 1);
         setPage(pageNo);
         setErrored(false);
-      } catch {
+      } catch (e) {
+        const msg =
+          e && typeof e === 'object' && 'response' in e
+            ? JSON.stringify((e as { response?: unknown }).response ?? '')
+            : '';
+        if (msg.toLowerCase().includes('not available')) {
+          setUnavailable(true);
+          return;
+        }
         // Roster is a nice-to-have section — fail soft, show retry inline,
         // never block the rest of the detail screen.
         setErrored(true);
@@ -99,7 +112,7 @@ export function AthleteRoster({ raceId, courses }: AthleteRosterProps) {
   // filter is active (a filtered-to-zero list should still show the chips).
   const nothingAtAll =
     !loading && !errored && items.length === 0 && !debouncedSearch && !courseId;
-  if (nothingAtAll) return null;
+  if (unavailable || nothingAtAll) return null;
 
   return (
     <View style={{ gap: tokens.space[3] }}>

@@ -12,6 +12,7 @@
  */
 import { network } from '../core';
 import { toDDMMYYYY } from '../../utils/date';
+import { isProductionApi } from '../../adapters/sdk-init';
 import type {
   Order,
   OrderCreateInput,
@@ -219,11 +220,14 @@ export const order = {
 
   /**
    * POST /order/fake-payment — DEV ONLY mark order as paid.
-   * 🚨 Hard-gated behind `__DEV__`: production bundles throw instead of
-   * calling the endpoint. The backend endpoint itself is still live on the
-   * API (backend team gone, can't remove server-side) — tracked in
-   * known-issues as a residual risk, but at least no production app code
-   * path can reach it.
+   * 🚨 Double-gated:
+   *   1. `__DEV__` — production bundles throw instead of calling.
+   *   2. API host — a Metro dev client pointed at api.5bib.com still has
+   *      __DEV__=true; firing this against prod would mark a REAL order as
+   *      paid with no money moving. Host check closes that hole.
+   * The backend endpoint itself is still live on the API (backend team
+   * gone, can't remove server-side) — tracked in known-issues as residual
+   * risk, but no app code path can reach it anymore.
    */
   async fakePayment(
     orderId: string,
@@ -232,6 +236,9 @@ export const order = {
   ): Promise<void> {
     if (!__DEV__) {
       throw new Error('fakePayment is dev-only and disabled in production builds');
+    }
+    if (isProductionApi()) {
+      throw new Error('fakePayment is disabled against the PRODUCTION API');
     }
     await network().post('/order/fake-payment', null, {
       params: {

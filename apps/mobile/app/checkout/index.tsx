@@ -35,6 +35,7 @@ import { tokens } from '../../src/theme/tokens';
 import { raceCourse, priceRule, order, race as raceSdk } from '../../src/sdk';
 import type { RaceCourse, OrderCreateInput } from '../../src/sdk/models';
 import { useCheckoutStore } from '../../src/stores/useCheckoutStore';
+import { isProductionApi } from '../../src/adapters/sdk-init';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // VN mobile phone — accepts:
@@ -780,7 +781,9 @@ export default function CheckoutScreen() {
                   ? t('checkout.creatingOrder')
                   : t('checkout.payWithAmountFmt', { amount: fmtVnd(total) })}
               </Button>
-              {__DEV__ && (
+              {/* Host-gated on top of __DEV__: a dev client pointed at
+                 api.5bib.com must NOT offer fake payment (real orders). */}
+              {__DEV__ && !isProductionApi() && (
                 <Button
                   variant="outline"
                   size="lg"

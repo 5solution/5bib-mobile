@@ -19,9 +19,30 @@ export interface SdkInitOptions {
   resultURL?: string;
 }
 
+/** Resolved at init — single source of truth for "which backend am I on". */
+let resolvedBaseURL = 'https://dapi.5bib.com';
+
+/** The base URL the SDK was initialized with. */
+export function getApiBaseUrl(): string {
+  return resolvedBaseURL;
+}
+
+/**
+ * True when pointed at the PRODUCTION backend (api.5bib.com).
+ *
+ * Used to hard-disable dev-only escape hatches regardless of `__DEV__`:
+ * a dev client (Metro, __DEV__=true) pointed at prod via
+ * EXPO_PUBLIC_API_URL must NOT expose fake-payment — it would mark real
+ * orders as paid without money moving.
+ */
+export function isProductionApi(): boolean {
+  return /(^|\.)api\.5bib\.com/i.test(resolvedBaseURL);
+}
+
 export async function initSdk(opts: SdkInitOptions = {}): Promise<void> {
   const baseURL =
     opts.baseURL ?? process.env.EXPO_PUBLIC_API_URL ?? 'https://dapi.5bib.com';
+  resolvedBaseURL = baseURL;
 
   if (!process.env.EXPO_PUBLIC_API_URL && !opts.baseURL) {
     // eslint-disable-next-line no-console
