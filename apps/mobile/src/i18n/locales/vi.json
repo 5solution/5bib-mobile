@@ -442,6 +442,12 @@
     "ticketCancelled": "Đã huỷ",
     "bibLabel": "BIB",
     "bibNotAssigned": "Chưa cấp",
+    "detailCta": "Chi tiết vé",
+    "section": {
+      "about": "Giới thiệu giải chạy",
+      "schedule": "Lịch trình sự kiện",
+      "rules": "Điều lệ giải"
+    },
     "emptyUpcoming": "Bạn chưa có vé sắp tới",
     "emptyUpcomingCta": "Tìm giải đấu",
     "emptyCheckedIn": "Chưa có race nào đã hoàn thành",

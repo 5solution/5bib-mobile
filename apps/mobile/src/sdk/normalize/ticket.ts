@@ -10,6 +10,7 @@
  * lives in `constants/athlete-status.ts`.
  */
 import type { Ticket } from '../models';
+import { normalizeRace } from '../services/race';
 
 export function normalizeTicket(raw: unknown): Ticket {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -60,8 +61,11 @@ export function normalizeTicket(raw: unknown): Ticket {
     availableToChangeCourse: Boolean(
       r.available_to_change_course ?? r.availableToChangeCourse ?? false,
     ),
-    // TODO: implement race normalizer and apply here when r.race present
-    race: r.race as Ticket['race'],
+    // Embedded race goes through the real race normalizer so screens get
+    // coverImageUrl/description/rule/schedule etc. — the raw pass-through
+    // left those snake_cased and the ticket detail couldn't render the
+    // web-style banner + accordion sections.
+    race: r.race ? normalizeRace(r.race) : undefined,
     basicInfo: Object.keys(basicInfoRaw).length
       ? {
           value: String(basicInfoRaw.value ?? ''),

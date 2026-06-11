@@ -1,9 +1,26 @@
 /**
  * apps/mobile/src/components/domain/TicketCard.tsx
+ *
+ * Redesigned 2026-06-11 per Danny review ("UI vớ vẩn như app sinh viên") to
+ * mirror the dev.5bib.com mobile ticket card:
+ *
+ *   ┌──────────────────────────────────────────┐
+ *   │ LÀO CAI MARATHON 2026...     [Registered]│
+ *   │ 👤 NGUYỄN BÌNH MINH                       │
+ *   │ 🎫 8989 – 21km                            │
+ *   │ ↔ 21KM                                    │
+ *   │                          [Chi tiết vé]   │
+ *   └──────────────────────────────────────────┘
+ *
+ * Dropped: the old 60×60 grey "QR placeholder" square (the thing that made
+ * it look like a student project). The whole card is pressable; the
+ * "Chi tiết vé" outline button matches the web affordance and triggers the
+ * same navigation.
  */
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { View, Text, Pressable } from 'react-native';
 import { Card } from '../Card';
 import { Badge } from '../Badge';
 import { tokens } from '../../theme/tokens';
@@ -57,95 +74,126 @@ function ticketStatusBadge(t: Ticket): { variant: 'success' | 'info' | 'default'
     };
   }
 
-  // Unknown / blank — neutral placeholder rather than the previous "Sẵn sàng"
-  // which over-promised readiness for tickets still missing an athlete record.
+  // Unknown / blank — neutral placeholder rather than over-promising.
   return { variant: 'default', label: '—' };
 }
 
-function fmtDate(iso?: string) {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '';
-    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-  } catch {
-    return '';
-  }
+/** Icon + text row, matching the web card's icon-led info lines. */
+function InfoRow({
+  icon,
+  children,
+  mono,
+}: {
+  icon: string;
+  children: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
+      <Text style={{ fontSize: 13, width: 18, textAlign: 'center' }}>{icon}</Text>
+      <Text
+        style={{
+          fontSize: tokens.fontSize.bodySm,
+          color: tokens.color.neutral700,
+          fontFamily: mono ? 'Menlo' : undefined,
+          flexShrink: 1,
+        }}
+        numberOfLines={1}
+      >
+        {children}
+      </Text>
+    </View>
+  );
 }
 
 export function TicketCard({ ticket, onPress }: TicketCardProps) {
+  const { t } = useTranslation();
   const sb = ticketStatusBadge(ticket);
   const bibRaw = ticket.bib ?? ticket.basicInfo?.bib;
   const hasBib = bibRaw != null && bibRaw !== '';
-  const bib = hasBib ? String(bibRaw) : '—';
-  // Trim — backend race titles often have trailing spaces (e.g. "TEKO RUNNING CLUB ").
+  // Trim — backend race titles often have trailing spaces.
   const raceName = (ticket.race?.title ?? ticket.basicInfo?.raceName ?? '—').trim();
-  const distance = ticket.basicInfo?.courseDistance ?? ticket.raceCourseDistance ?? '';
-  const startDate = fmtDate(ticket.race?.startDate);
-  // Join distance + date with "·" only when both present, else show whichever
-  // exists. Avoids the awkward "12 · —" when backend leaves startDate null.
-  // Distance may arrive as bare "12" OR pre-suffixed "10km" depending on
-  // backend course. Strip trailing "km" before re-adding to avoid "10km km".
-  const distText = distance
-    ? `${String(distance).replace(/\s*km\s*$/i, '')} km`
+  const athleteName = (ticket.athleteName ?? '').trim();
+  const courseName = (ticket.basicInfo?.courseName ?? ticket.raceCourseName ?? '').trim();
+  const distanceRaw = ticket.basicInfo?.courseDistance ?? ticket.raceCourseDistance ?? '';
+  // Distance arrives as bare "12" OR pre-suffixed "10km" — normalise once.
+  const distance = distanceRaw
+    ? `${String(distanceRaw).replace(/\s*km\s*$/i, '')}KM`
     : '';
-  const subtitle = [distText, startDate].filter(Boolean).join(' · ');
+
   return (
     <Card
       onPress={onPress}
-      accessibilityLabel={`Vé ${raceName}, ${distance}, BIB ${bib}, ${sb.label}`}
+      accessibilityLabel={`Vé ${raceName}${hasBib ? `, BIB ${bibRaw}` : ''}, ${sb.label}`}
     >
-      <View style={{ flexDirection: 'row', gap: tokens.space[3] }}>
-        {/* QR thumbnail placeholder — in real app, render mini QR */}
+      <View style={{ gap: tokens.space[2] }}>
+        {/* Title row: race name (left, wraps to 2 lines) + status badge */}
         <View
           style={{
-            width: 60,
-            height: 60,
-            borderRadius: tokens.radius.sm,
-            backgroundColor: tokens.color.neutral100,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: tokens.color.neutral200,
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: tokens.space[2],
           }}
         >
-          <Text style={{ fontSize: 28 }} accessibilityElementsHidden>
-            ▦
-          </Text>
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
           <Text
             style={{
+              flex: 1,
               fontSize: tokens.fontSize.bodyLg,
-              fontWeight: tokens.fontWeight.semibold,
+              fontWeight: tokens.fontWeight.bold,
               color: tokens.color.neutral900,
+              textTransform: 'uppercase',
             }}
-            numberOfLines={1}
+            numberOfLines={2}
           >
             {raceName}
           </Text>
-          {!!subtitle && (
-            <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>
-              {subtitle}
-            </Text>
-          )}
-          {hasBib && (
+          <Badge variant={sb.variant}>{sb.label}</Badge>
+        </View>
+
+        {/* Info lines — same order as the web card. */}
+        {!!athleteName && <InfoRow icon="👤">{athleteName}</InfoRow>}
+        {hasBib ? (
+          <InfoRow icon="🎫" mono>
+            <Text style={{ fontWeight: tokens.fontWeight.bold }}>{String(bibRaw)}</Text>
+            {courseName ? ` – ${courseName}` : ''}
+          </InfoRow>
+        ) : (
+          <InfoRow icon="🎫">
+            <Text style={{ color: tokens.color.neutral500 }}>{t('tickets.bibNotAssigned')}</Text>
+          </InfoRow>
+        )}
+        {!!distance && <InfoRow icon="↔️">{distance}</InfoRow>}
+
+        {/* Web-style CTA — same navigation as tapping the card. */}
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+          <Pressable
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('tickets.detailCta')} ${raceName}`}
+            hitSlop={6}
+            style={({ pressed }) => ({
+              paddingHorizontal: tokens.space[4],
+              paddingVertical: tokens.space[2],
+              borderRadius: tokens.radius.md,
+              borderWidth: 1,
+              borderColor: tokens.color.brandPrimary,
+              backgroundColor: pressed
+                ? tokens.color.brandPrimaryLight
+                : tokens.color.surfaceCard,
+            })}
+          >
             <Text
               style={{
-                fontSize: tokens.fontSize.monoMd,
-                fontFamily: 'Menlo',
-                color: tokens.color.neutral700,
+                color: tokens.color.brandPrimary,
+                fontSize: tokens.fontSize.labelMd,
                 fontWeight: tokens.fontWeight.semibold,
               }}
             >
-              BIB: {bib}
+              {t('tickets.detailCta')}
             </Text>
-          )}
-          <View style={{ marginTop: 4 }}>
-            <Badge variant={sb.variant}>{sb.label}</Badge>
-          </View>
+          </Pressable>
         </View>
-        <Text style={{ color: tokens.color.neutral400, fontSize: 18 }}>›</Text>
       </View>
     </Card>
   );

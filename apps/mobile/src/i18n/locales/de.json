@@ -442,6 +442,12 @@
     "ticketCancelled": "Storniert",
     "bibLabel": "BIB",
     "bibNotAssigned": "Noch nicht zugewiesen",
+    "detailCta": "Ticketdetails",
+    "section": {
+      "about": "Über das Rennen",
+      "schedule": "Veranstaltungsplan",
+      "rules": "Rennregeln"
+    },
     "emptyUpcoming": "Keine bevorstehenden Tickets",
     "emptyUpcomingCta": "Rennen finden",
     "emptyCheckedIn": "Noch keine abgeschlossenen Rennen",

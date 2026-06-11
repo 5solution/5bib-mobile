@@ -176,6 +176,8 @@ export interface Race {
   courses?: RaceCourse[];
   schedule?: { time: string; description: string }[];
   racekitImages?: string[];
+  /** Race regulations HTML ("Điều lệ giải" accordion on web ticket detail). */
+  rule?: string;
   latitude?: number;
   longitude?: number;
   /**

@@ -89,7 +89,8 @@ function toLegacyListParams(p: ListRacesParams): Record<string, unknown> {
  * consumers should treat `unknown` fields with optional access (`race.xyz?.`).
  * TODO: tighten Race model fields as screens are built.
  */
-function normalizeRace(raw: unknown): Race {
+/** Exported for normalize/ticket.ts — tickets embed a full raw race object. */
+export function normalizeRace(raw: unknown): Race {
   const r = (raw ?? {}) as Record<string, unknown>;
   // Real backend shape (verified 2026-05-27 via /pub/by-slug):
   //   - Cover image: top-level `images` (string URL) OR `logo_url` OR
@@ -146,6 +147,7 @@ function normalizeRace(raw: unknown): Race {
     courses: r.courses as Race['courses'],
     schedule: r.schedule as Race['schedule'],
     racekitImages: r.racekit_images as string[] | undefined,
+    rule: (r.rule as string | undefined) ?? undefined,
     latitude: (r.latitude as number | undefined) ?? (r.event_lat as number | undefined),
     longitude: (r.longitude as number | undefined) ?? (r.event_lng as number | undefined),
     // Payment allow-list is nested in race_extenstion (sic — backend typo).

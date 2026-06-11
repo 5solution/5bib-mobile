@@ -1,25 +1,43 @@
 /**
  * apps/mobile/app/tickets/[id].tsx — S-TICKETS-02 Ticket Detail
  *
+ * Redesigned 2026-06-11 per Danny review to mirror dev.5bib.com ticket
+ * detail (reference: LÀO CAI MARATHON screenshot):
+ *
+ *   1. Race banner image
+ *   2. Header: race title · date · location · code · status badge
+ *   3. BLUE BIB HERO CARD — "BIB" + course chip, giant BIB number, race
+ *      name, then the full athlete dossier inside the card (name, email,
+ *      shirt size, DOB, gender, distance, name-on-BIB, nationality, club,
+ *      ID, health, phone, emergency contact)
+ *   4. QR card — only for live statuses (CHECKED_IN / RACEKIT_RECEIVED)
+ *   5. Accordions: Giới thiệu giải chạy / Lịch trình sự kiện / Điều lệ giải
+ *   6. Actions (primary CTA + tile grid)
+ *
  * Real SDK wiring: sdk.ticket.getTicketById + sdk.athlete.getAthleteByTicketCode
  * + sdk.athlete.getBibImage (share). Renders StatusActionButtons per BR-TICKETS-01b.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Share } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, Share, Image, useWindowDimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 
 import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
 import { Button } from '../../src/components/Button';
+import { Badge } from '../../src/components/Badge';
 import { Skeleton } from '../../src/components/Skeleton';
+import { Collapsible } from '../../src/components/Collapsible';
 import { QRDisplayCard } from '../../src/components/QRDisplayCard';
 import { StatusActionButtons } from '../../src/components/domain/StatusActionButtons';
 import { FadeSlideIn, QRPulseRing } from '../../src/components/motion';
 import type { StatusActionHandlers } from '../../src/components/domain/StatusActionButtons';
 import {
   shouldShowTicketQR,
+  ATHLETE_STATUS_LABELS,
+  ATHLETE_STATUS_VARIANT,
   type AthleteStatus,
 } from '../../src/sdk/constants/athlete-status';
 import { useToast } from '../../src/components/Toast';
@@ -76,13 +94,8 @@ function bibLabel(b: unknown, fallback: string): string {
   return b != null && b !== '' ? String(b) : fallback;
 }
 
-/** Distance + date as "12 km · 30/08/2029" or just one side if the other
- *  is missing. Avoids the awkward "12 · —" placeholder we used to render
- *  when the backend left startDate null. */
+/** Distance + date as "12 km · 30/08/2029", dropping missing sides. */
 function joinCourseAndDate(distance?: string, dateIso?: string): string {
-  // Strip trailing "km" from backend value before re-suffixing — race courses
-  // come down as "12" on some endpoints and "10km" on others, double-suffix
-  // would render "10km km".
   const dist = distance
     ? `${String(distance).replace(/\s*km\s*$/i, '')} km`
     : '';
@@ -97,11 +110,29 @@ function fullName(a: Athlete | null): string | undefined {
   return combo || undefined;
 }
 
+/** Crude HTML → text for description/rule accordions (same approach as
+ *  events/[path]). Web renders rich HTML; mobile flattens to readable text. */
+function stripHtml(html?: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<li[^>]*>/gi, '\n• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export default function TicketDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const online = useOnline();
   const toast = useToast();
+  const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -181,9 +212,10 @@ export default function TicketDetailScreen() {
           onLeadingPress={() => router.back()}
         />
         <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[4] }}>
-          <Skeleton height={400} />
-          <Skeleton height={120} />
-          <Skeleton height={200} />
+          <Skeleton height={150} />
+          <Skeleton height={380} />
+          <Skeleton height={56} />
+          <Skeleton height={56} />
         </ScrollView>
       </View>
     );
@@ -212,6 +244,20 @@ export default function TicketDetailScreen() {
   const raceFinished = ticket.race?.status === 'FINISHED' || ticket.race?.status === 'CLOSED';
   const aStatus = asAthleteStatus(ticket.athleteStatus);
   const availableToRoll = ticket.basicInfo?.availableToRoll === true;
+  const statusVariant = ATHLETE_STATUS_VARIANT[aStatus];
+  const statusLabel = ATHLETE_STATUS_LABELS[aStatus];
+
+  const raceName = (ticket.race?.title ?? ticket.basicInfo?.raceName ?? '—').trim();
+  const bannerUrl = ticket.race?.coverImageUrl ?? null;
+  const bibValue = bibLabel(ticket.bib ?? ticket.basicInfo?.bib, '');
+  const distanceRaw =
+    ticket.basicInfo?.courseDistance ?? ticket.raceCourseDistance ?? '';
+  const courseChip = distanceRaw
+    ? String(distanceRaw).replace(/\s*km\s*$/i, '')
+    : '';
+  const description = stripHtml(ticket.race?.description);
+  const rule = stripHtml(ticket.race?.rule);
+  const schedule = ticket.race?.schedule ?? [];
 
   const handlers: StatusActionHandlers = {
     EDIT_INFO: () => router.push(`/tickets/${ticket.id}/edit`),
@@ -244,6 +290,35 @@ export default function TicketDetailScreen() {
     VIEW_ORDER: ticket.orderId ? () => router.push(`/orders/${ticket.orderId}`) : undefined,
   };
 
+  // Athlete dossier rows inside the blue hero card — same fields, same
+  // order as the web's blue BIB card.
+  const dossier: Array<{ label: string; value: string; wide?: boolean }> = [
+    { label: t('tickets.field.fullName'), value: fullName(athlete) ?? ticket.athleteName ?? '—', wide: true },
+    { label: t('tickets.field.email'), value: athlete?.email ?? ticket.receiptEmail ?? '—', wide: true },
+    { label: t('tickets.field.tshirtSize'), value: athlete?.racekit ?? '—' },
+    { label: t('tickets.field.dob'), value: athlete?.dob ? fmtDate(athlete.dob) : '—' },
+    {
+      label: t('tickets.field.gender'),
+      value:
+        athlete?.gender === 'MALE'
+          ? t('profile.gender.male')
+          : athlete?.gender === 'FEMALE'
+            ? t('profile.gender.female')
+            : '—',
+    },
+    {
+      label: t('tickets.field.distance'),
+      value: distanceRaw ? `${courseChip} km` : '—',
+    },
+    { label: t('tickets.field.nameOnBib'), value: athlete?.nameOnBib ?? '—' },
+    { label: t('tickets.field.nationality'), value: athlete?.nationality ?? '—' },
+    { label: t('tickets.field.club'), value: athlete?.club ?? '—' },
+    { label: t('tickets.field.idNumber'), value: athlete?.idNumber ?? '—' },
+    { label: t('tickets.field.medical'), value: athlete?.medicalInfo ?? '—' },
+    { label: t('tickets.field.phone'), value: athlete?.contactPhone ?? '—' },
+    { label: t('tickets.field.sosPhone'), value: athlete?.sosPhone ?? '—', wide: true },
+  ];
+
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
       <Header
@@ -261,261 +336,260 @@ export default function TicketDetailScreen() {
       {!online && <Banner variant="info" message={t('errors.offlineCached')} />}
       {transferred && <Banner variant="warning" message={t('tickets.transferredBanner')} />}
 
-      <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[5] }}>
-        {/*
-         * QR card visible only in CHECKED_IN / RACEKIT_RECEIVED per web parity.
-         * Other statuses get a static summary card without the scannable QR —
-         * the BIB hasn't been assigned for race-day check-in yet, or the ticket
-         * is no longer actionable (CANCELLED, TRANSFERRING).
-         *
-         * Motion prototype (FEATURE-004 candidate, 2026-05-29):
-         *   - FadeSlideIn staggers each section so the page assembles instead
-         *     of slamming in flat.
-         *   - QRPulseRing wraps the QR with a breathing accent ring when the
-         *     ticket is live (CHECKED_IN / RACEKIT_RECEIVED) — telegraphs
-         *     "scan me" at the gate without a single string of copy.
-         */}
-        <FadeSlideIn delay={0}>
-          {shouldShowTicketQR(aStatus) ? (
-            <QRPulseRing color={tokens.color.brandPrimary} style={{ borderRadius: tokens.radius.xl }}>
-              <QRDisplayCard
-                value={ticket.value}
-                bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
-                raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
-                courseAndDate={joinCourseAndDate(
-                  ticket.basicInfo?.courseDistance,
-                  ticket.race?.startDate,
-                )}
-                online={online}
-              />
-            </QRPulseRing>
-          ) : (
-            <TicketSummaryCard
-              code={ticket.value}
-              bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
-              raceName={ticket.race?.title?.trim() ?? ticket.basicInfo?.raceName ?? '—'}
-              courseAndDate={joinCourseAndDate(
-                ticket.basicInfo?.courseDistance,
-                ticket.race?.startDate,
-              )}
-            />
-          )}
-        </FadeSlideIn>
-
-        <FadeSlideIn delay={90}>
-        <Section title={t('tickets.athleteInfoSection')}>
-          {/* Matches web `/vi/tickets/{id}` sidebar — 13 fields verified 2026-05-29 */}
-          <KV label={t('tickets.field.fullName')} value={fullName(athlete) ?? ticket.athleteName ?? '—'} />
-          <KV label={t('tickets.field.email')} value={athlete?.email ?? ticket.receiptEmail ?? '—'} />
-          <KV label={t('tickets.field.tshirtSize')} value={athlete?.racekit ?? '—'} />
-          <KV label={t('tickets.field.dob')} value={athlete?.dob ? fmtDate(athlete.dob) : '—'} />
-          <KV
-            label={t('tickets.field.gender')}
-            value={
-              athlete?.gender === 'MALE'
-                ? t('profile.gender.male')
-                : athlete?.gender === 'FEMALE'
-                  ? t('profile.gender.female')
-                  : '—'
-            }
+      <ScrollView contentContainerStyle={{ paddingBottom: tokens.space[8] }}>
+        {/* 1 — Race banner (web shows the event artwork on top). */}
+        {bannerUrl ? (
+          <Image
+            source={{ uri: bannerUrl }}
+            style={{ width, height: width * 0.42, backgroundColor: tokens.color.neutral200 }}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
           />
-          <KV
-            label={t('tickets.field.distance')}
-            value={
-              ticket.basicInfo?.courseDistance
-                ? `${String(ticket.basicInfo.courseDistance).replace(/\s*km\s*$/i, '')} km`
-                : '—'
-            }
-          />
-          <KV label={t('tickets.field.nameOnBib')} value={athlete?.nameOnBib ?? '—'} />
-          <KV label={t('tickets.field.nationality')} value={athlete?.nationality ?? '—'} />
-          <KV label={t('tickets.field.club')} value={athlete?.club ?? '—'} />
-          <KV label={t('tickets.field.idNumber')} value={athlete?.idNumber ?? '—'} />
-          <KV label={t('tickets.field.medical')} value={athlete?.medicalInfo ?? '—'} />
-          <KV label={t('tickets.field.phone')} value={athlete?.contactPhone ?? '—'} />
-          <KV label={t('tickets.field.sosPhone')} value={athlete?.sosPhone ?? '—'} />
-        </Section>
-        </FadeSlideIn>
+        ) : null}
 
-        {/* Delegated person info — only if isRepresent=true on athlete */}
-        {athlete?.isRepresent && (
-          <FadeSlideIn delay={150}>
-          <Section title={t('tickets.delegatedSection')}>
-            <KV
-              label={t('tickets.field.delegatedName')}
-              value={
-                (athlete as Athlete & { delegateName?: string }).delegateName ??
-                '—'
-              }
-            />
-            <KV
-              label={t('tickets.field.delegatedPhone')}
-              value={
-                (athlete as Athlete & { delegatePhone?: string }).delegatePhone ??
-                '—'
-              }
-            />
-            <KV
-              label={t('tickets.field.delegatedId')}
-              value={
-                (athlete as Athlete & { delegateIdNumber?: string }).delegateIdNumber ??
-                '—'
-              }
-            />
-            <KV
-              label={t('tickets.field.delegatedEmail')}
-              value={
-                (athlete as Athlete & { delegateEmail?: string }).delegateEmail ??
-                '—'
-              }
-            />
-          </Section>
+        <View style={{ padding: tokens.space[4], gap: tokens.space[4] }}>
+          {/* 2 — Header block: title / date / location / code / status */}
+          <FadeSlideIn delay={0}>
+            <View style={{ gap: 4 }}>
+              <Text
+                style={{
+                  fontSize: tokens.fontSize.h2,
+                  fontWeight: tokens.fontWeight.bold,
+                  color: tokens.color.neutral900,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {raceName}
+              </Text>
+              <Text style={{ color: tokens.color.neutral600 }}>
+                {[fmtDate(ticket.race?.startDate), ticket.race?.location]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: tokens.space[2],
+                  marginTop: 2,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: 'Menlo',
+                    fontSize: tokens.fontSize.bodySm,
+                    color: tokens.color.neutral500,
+                    flexShrink: 1,
+                  }}
+                  numberOfLines={1}
+                >
+                  {ticket.value}
+                </Text>
+                <Badge variant={statusVariant}>{statusLabel}</Badge>
+              </View>
+            </View>
           </FadeSlideIn>
-        )}
 
-        <FadeSlideIn delay={athlete?.isRepresent ? 210 : 180}>
-        <Section title={t('tickets.raceDetailSection')}>
-          <Text
-            style={{
-              fontSize: tokens.fontSize.bodyLg,
-              fontWeight: tokens.fontWeight.semibold,
-            }}
-          >
-            {ticket.race?.title ?? ticket.basicInfo?.raceName}
-          </Text>
-          <Text style={{ color: tokens.color.neutral600 }}>
-            {ticket.basicInfo?.courseDistance} · {fmtDate(ticket.race?.startDate)}
-          </Text>
-          {!!ticket.race?.location && (
-            <Text style={{ color: tokens.color.neutral600 }}>📍 {ticket.race.location}</Text>
-          )}
-          {ticket.race?.slug && (
-            <Button
-              variant="ghost"
-              size="md"
-              onPress={() => router.push(`/events/${ticket.race?.slug}`)}
+          {/* 3 — Blue BIB hero card (web parity). */}
+          <FadeSlideIn delay={80}>
+            <LinearGradient
+              colors={[tokens.color.brandPrimary, tokens.color.brandPrimaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                borderRadius: tokens.radius.xl,
+                padding: tokens.space[5],
+                gap: tokens.space[3],
+                ...tokens.elevation[2],
+              }}
             >
-              {t('tickets.viewRaceDetail')} →
-            </Button>
+              {/* BIB header row */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: tokens.fontSize.bodyLg,
+                    fontWeight: tokens.fontWeight.bold,
+                    letterSpacing: 2,
+                  }}
+                >
+                  BIB
+                </Text>
+                {!!courseChip && (
+                  <View
+                    style={{
+                      backgroundColor: 'rgba(255,255,255,0.18)',
+                      borderRadius: tokens.radius.md,
+                      paddingHorizontal: tokens.space[3],
+                      paddingVertical: 4,
+                    }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontWeight: tokens.fontWeight.bold }}>
+                      {courseChip}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Giant BIB number */}
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: bibValue ? 56 : tokens.fontSize.h2,
+                  fontWeight: tokens.fontWeight.bold,
+                  textAlign: 'center',
+                  fontFamily: 'Menlo',
+                  letterSpacing: 2,
+                }}
+              >
+                {bibValue || t('tickets.bibNotAssigned')}
+              </Text>
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.85)',
+                  textAlign: 'center',
+                  fontWeight: tokens.fontWeight.semibold,
+                  textTransform: 'uppercase',
+                  fontSize: tokens.fontSize.bodySm,
+                  letterSpacing: 1,
+                }}
+              >
+                {raceName}
+              </Text>
+
+              {/* Divider */}
+              <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+
+              {/* Athlete dossier — 2-col grid, wide rows span full width. */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: tokens.space[3] }}>
+                {dossier.map((f) => (
+                  <View key={f.label} style={{ width: f.wide ? '100%' : '50%', paddingRight: tokens.space[2] }}>
+                    <Text
+                      style={{
+                        color: 'rgba(255,255,255,0.6)',
+                        fontSize: 11,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.4,
+                        marginBottom: 1,
+                      }}
+                    >
+                      {f.label}
+                    </Text>
+                    <Text
+                      style={{
+                        color: '#FFFFFF',
+                        fontSize: tokens.fontSize.bodyMd,
+                        fontWeight: tokens.fontWeight.semibold,
+                      }}
+                      numberOfLines={2}
+                    >
+                      {f.value}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </LinearGradient>
+          </FadeSlideIn>
+
+          {/* 4 — QR (live statuses only, per web behaviour). */}
+          {shouldShowTicketQR(aStatus) && (
+            <FadeSlideIn delay={140}>
+              <QRPulseRing color={tokens.color.brandPrimary} style={{ borderRadius: tokens.radius.xl }}>
+                <QRDisplayCard
+                  value={ticket.value}
+                  bib={bibLabel(ticket.bib ?? ticket.basicInfo?.bib, t('tickets.bibNotAssigned'))}
+                  raceName={raceName}
+                  courseAndDate={joinCourseAndDate(
+                    ticket.basicInfo?.courseDistance,
+                    ticket.race?.startDate,
+                  )}
+                  online={online}
+                />
+              </QRPulseRing>
+            </FadeSlideIn>
           )}
-        </Section>
-        </FadeSlideIn>
 
-        <FadeSlideIn delay={athlete?.isRepresent ? 270 : 240}>
-        <Section title={t('tickets.actionsSection')}>
-          <StatusActionButtons
-            status={aStatus}
-            handlers={handlers}
-            rollingBibAvailable={availableToRoll}
-          />
-        </Section>
-        </FadeSlideIn>
+          {/* 5 — Accordion sections (web parity). Render only when the race
+             actually carries content — empty accordions are noise. */}
+          <FadeSlideIn delay={200}>
+            <View style={{ gap: tokens.space[3] }}>
+              {!!description && (
+                <Collapsible title={t('tickets.section.about')} initiallyOpen>
+                  <Text
+                    style={{
+                      color: tokens.color.neutral700,
+                      fontSize: tokens.fontSize.bodyMd,
+                      lineHeight: tokens.lineHeight.bodyMd,
+                    }}
+                  >
+                    {description}
+                  </Text>
+                </Collapsible>
+              )}
+              {schedule.length > 0 && (
+                <Collapsible title={t('tickets.section.schedule')}>
+                  <View style={{ gap: tokens.space[2] }}>
+                    {schedule.map((s, i) => (
+                      <View key={i} style={{ flexDirection: 'row', gap: tokens.space[3] }}>
+                        <Text
+                          style={{
+                            fontFamily: 'Menlo',
+                            fontWeight: tokens.fontWeight.semibold,
+                            color: tokens.color.neutral700,
+                            width: 52,
+                          }}
+                        >
+                          {s.time}
+                        </Text>
+                        <Text style={{ flex: 1, color: tokens.color.neutral700 }}>
+                          {s.description}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </Collapsible>
+              )}
+              {!!rule && (
+                <Collapsible title={t('tickets.section.rules')}>
+                  <Text
+                    style={{
+                      color: tokens.color.neutral700,
+                      fontSize: tokens.fontSize.bodyMd,
+                      lineHeight: tokens.lineHeight.bodyMd,
+                    }}
+                  >
+                    {rule}
+                  </Text>
+                </Collapsible>
+              )}
+              {ticket.race?.slug ? (
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onPress={() => router.push(`/events/${ticket.race?.slug}`)}
+                >
+                  {t('tickets.viewRaceDetail')} →
+                </Button>
+              ) : null}
+            </View>
+          </FadeSlideIn>
+
+          {/* 6 — Actions */}
+          <FadeSlideIn delay={260}>
+            <StatusActionButtons
+              status={aStatus}
+              handlers={handlers}
+              rollingBibAvailable={availableToRoll}
+            />
+          </FadeSlideIn>
+        </View>
       </ScrollView>
-    </View>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={{ gap: tokens.space[2] }}>
-      <Text
-        style={{
-          fontSize: tokens.fontSize.labelSm,
-          fontWeight: tokens.fontWeight.semibold,
-          color: tokens.color.neutral500,
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
-        }}
-      >
-        {title}
-      </Text>
-      <View style={{ gap: tokens.space[2] }}>{children}</View>
-    </View>
-  );
-}
-
-/**
- * Static summary card for ticket statuses where the QR isn't meaningful
- * (NEW, REGISTER, REMIND_CHECK_IN, TRANSFERRING, RACEKIT_NOT_RECEIVED,
- * CANCELLED). Shows the same race / BIB / code identifiers as the QR card
- * but without the scan target, matching the web detail layout.
- */
-function TicketSummaryCard({
-  code,
-  bib,
-  raceName,
-  courseAndDate,
-}: {
-  code: string;
-  bib: string;
-  raceName: string;
-  courseAndDate: string;
-}) {
-  return (
-    <View
-      style={{
-        backgroundColor: tokens.color.surfaceCard,
-        borderRadius: tokens.radius.lg,
-        padding: tokens.space[4],
-        gap: tokens.space[2],
-        ...tokens.elevation[1],
-      }}
-    >
-      <Text
-        style={{
-          fontFamily: 'Menlo',
-          fontSize: tokens.fontSize.monoMd,
-          color: tokens.color.neutral500,
-        }}
-      >
-        {code}
-      </Text>
-      <Text
-        style={{
-          fontSize: tokens.fontSize.h3,
-          fontWeight: tokens.fontWeight.semibold,
-          color: tokens.color.neutral900,
-        }}
-        numberOfLines={2}
-      >
-        {raceName}
-      </Text>
-      {!!courseAndDate && (
-        <Text style={{ color: tokens.color.neutral600 }}>{courseAndDate}</Text>
-      )}
-      <Text
-        style={{
-          fontSize: tokens.fontSize.monoMd,
-          fontFamily: 'Menlo',
-          color: tokens.color.neutral800,
-          fontWeight: tokens.fontWeight.semibold,
-          marginTop: tokens.space[2],
-        }}
-      >
-        BIB: {bib}
-      </Text>
-    </View>
-  );
-}
-
-function KV({ label, value }: { label: string; value: string }) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 4,
-      }}
-    >
-      <Text style={{ color: tokens.color.neutral600 }}>{label}</Text>
-      <Text
-        style={{
-          color: tokens.color.neutral900,
-          fontWeight: tokens.fontWeight.medium,
-        }}
-      >
-        {value}
-      </Text>
     </View>
   );
 }

@@ -442,6 +442,12 @@
     "ticketCancelled": "Cancelled",
     "bibLabel": "BIB",
     "bibNotAssigned": "Not yet assigned",
+    "detailCta": "Ticket detail",
+    "section": {
+      "about": "About the race",
+      "schedule": "Event schedule",
+      "rules": "Race regulations"
+    },
     "emptyUpcoming": "No upcoming tickets",
     "emptyUpcomingCta": "Find races",
     "emptyCheckedIn": "No completed races yet",
