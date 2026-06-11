@@ -373,6 +373,12 @@ export default function ProfileScreen() {
             accessibilityLabel={t('profile.changeAvatar')}
           />
           <ListItem
+            leading={<Ionicons name="lock-closed-outline" size={20} color={tokens.color.neutral600} />}
+            title={t('profile.changePassword.title')}
+            onPress={() => router.push('/profile/change-password')}
+            accessibilityLabel={t('profile.changePassword.title')}
+          />
+          <ListItem
             leading={<Ionicons name="log-out-outline" size={20} color={tokens.color.error} />}
             title={t('auth.logout')}
             onPress={onLogout}

@@ -62,7 +62,10 @@
     "selectGender": "Vui lòng chọn giới tính",
     "selectNationality": "Vui lòng chọn quốc tịch",
     "idNumberInvalid": "Số giấy tờ không hợp lệ",
-    "nameOnBibTooLong": "Tên trên BIB tối đa 15 ký tự"
+    "nameOnBibTooLong": "Tên trên BIB tối đa 15 ký tự",
+    "required": "Trường này là bắt buộc",
+    "passwordSameAsOld": "Mật khẩu mới phải khác mật khẩu hiện tại",
+    "passwordRule8to20": "Mật khẩu 8–20 ký tự, gồm chữ và số"
   },
   "auth": {
     "welcomeBack": "Chào mừng trở lại",
@@ -238,6 +241,13 @@
       "success": "Tài khoản đã được xóa",
       "failed": "Xóa tài khoản thất bại, vui lòng thử lại",
       "wrongPassword": "Mật khẩu không đúng"
+    },
+    "changePassword": {
+      "title": "Đổi mật khẩu",
+      "desc": "Nhập mật khẩu hiện tại và mật khẩu mới để cập nhật.",
+      "current": "Mật khẩu hiện tại",
+      "success": "Cập nhật mật khẩu thành công",
+      "wrongCurrent": "Mật khẩu hiện tại không đúng"
     }
   },
   "browse": {
@@ -414,7 +424,9 @@
       "createOrderFailed": "Không tạo được đơn hàng. Vui lòng thử lại.",
       "discountInvalid": "Mã không hợp lệ hoặc đã hết hạn"
     },
-    "paymentMethod": "Phương thức thanh toán"
+    "paymentMethod": "Phương thức thanh toán",
+    "selectionBlockedHint": "Hạng vé này chưa mở bán hoặc đã đóng — vui lòng chọn hạng vé khác",
+    "tierNoLongerAvailable": "Hạng vé vừa đóng bán hoặc hết vé. Vui lòng chọn lại."
   },
   "tickets": {
     "tabTitle": "Vé của tôi",

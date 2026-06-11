@@ -45,6 +45,7 @@ import { tokens } from '../../src/theme/tokens';
 import { race as raceSdk } from '../../src/sdk/services/race';
 import { raceCourse as raceCourseSdk } from '../../src/sdk/services/race-course';
 import { FetcherError } from '../../src/sdk/core';
+import { resolveSaleState, type SaleState } from '../../src/utils/sale-state';
 import type { Race, RaceCourse } from '../../src/sdk/models';
 
 export default function EventDetailScreen() {
@@ -72,7 +73,6 @@ export default function EventDetailScreen() {
    * can't buy higher tiers. For courses with no ticket_types data, emit a
    * single row keyed by courseId so single-tier races still work.
    */
-  type SaleState = 'open' | 'notYetOpen' | 'closed';
   type PickerRow = {
     key: string; // `${courseId}:${ticketTypeId}` or just courseId
     courseId: string;
@@ -88,21 +88,6 @@ export default function EventDetailScreen() {
     saleOpensAt?: string;
   };
 
-  /** Resolve a ticket type's sale window against the current clock.
-   *  Missing dates fail open (sellable) — matches web behaviour where
-   *  phases without windows are always purchasable. */
-  function resolveSaleState(validFrom?: string, validTo?: string): SaleState {
-    const now = Date.now();
-    if (validFrom) {
-      const from = new Date(validFrom).getTime();
-      if (Number.isFinite(from) && now < from) return 'notYetOpen';
-    }
-    if (validTo) {
-      const to = new Date(validTo).getTime();
-      if (Number.isFinite(to) && now > to) return 'closed';
-    }
-    return 'open';
-  }
   /**
    * Tier label resolution (verified 2026-05-28 via web compare):
    *   - When course has MULTIPLE ticket_types → use ticket_type.type_name

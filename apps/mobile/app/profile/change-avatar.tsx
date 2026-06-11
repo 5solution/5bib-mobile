@@ -52,7 +52,12 @@ export default function ChangeAvatarScreen() {
   const user = useAuthStore((s) => s.user);
   const hasAvatar = !!user?.avatar;
 
-  const dismiss = () => router.back();
+  // F29: bare router.back() is a no-op when deep-linked (no parent stack) —
+  // X/Cancel were dead. Fall back to the profile tab.
+  const dismiss = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/profile');
+  };
 
   // --------------------------------------------------------------------------
   // Permission helpers

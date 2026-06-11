@@ -62,7 +62,10 @@
     "selectGender": "Please select gender",
     "selectNationality": "Please select nationality",
     "idNumberInvalid": "Invalid ID number",
-    "nameOnBibTooLong": "Max 15 characters for name on BIB"
+    "nameOnBibTooLong": "Max 15 characters for name on BIB",
+    "required": "This field is required",
+    "passwordSameAsOld": "New password must differ from the current one",
+    "passwordRule8to20": "Password must be 8–20 characters with letters and numbers"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -238,7 +241,14 @@
       "failed": "Failed to delete account, please try again",
       "wrongPassword": "Wrong password"
     },
-    "genderLabel": "Gender"
+    "genderLabel": "Gender",
+    "changePassword": {
+      "title": "Change password",
+      "desc": "Enter your current password and a new password to update.",
+      "current": "Current password",
+      "success": "Password updated successfully",
+      "wrongCurrent": "Current password is incorrect"
+    }
   },
   "browse": {
     "homeGreeting": "Hi, {{name}}",
@@ -414,7 +424,9 @@
       "createOrderFailed": "Could not create order. Please try again.",
       "discountInvalid": "Invalid or expired code"
     },
-    "paymentMethod": "Payment method"
+    "paymentMethod": "Payment method",
+    "selectionBlockedHint": "This tier is not on sale yet or has closed — please pick another tier",
+    "tierNoLongerAvailable": "This tier just closed or sold out. Please pick again."
   },
   "tickets": {
     "tabTitle": "My tickets",

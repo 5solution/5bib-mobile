@@ -84,6 +84,33 @@ function toLegacyListParams(p: ListRacesParams): Record<string, unknown> {
 }
 
 /**
+ * F1 guard: only http(s) strings may become image URLs. Backend image fields
+ * are polluted — race 257 (DEV) stores the structured banner config as a JSON
+ * STRING in `race_extenstion.banner`:
+ *   '{"banner_header_event":{"img_url":null,...},"pop_up":{...}}'
+ * which previously won the candidate chain and rendered as a dead grey
+ * <Image>. Non-URL values → null so CoverFallback (logo-on-gradient) kicks
+ * in. JSON-string blobs get one recovery attempt via banner_header_event.
+ */
+function asImageUrl(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(s) as {
+        banner_header_event?: { img_url?: string | null };
+      };
+      const u = parsed?.banner_header_event?.img_url;
+      if (typeof u === 'string' && /^https?:\/\//i.test(u)) return u;
+    } catch {
+      // not valid JSON — fall through to null
+    }
+  }
+  return null;
+}
+
+/**
  * Pass-through normalize: backend race shape is rich and partially camelCase
  * already. We coerce id to string and surface common alias fields. Mobile
  * consumers should treat `unknown` fields with optional access (`race.xyz?.`).
@@ -110,19 +137,21 @@ export function normalizeRace(raw: unknown): Race {
     title: String(r.title ?? r.name ?? ''),
     description: r.description as string | undefined,
     coverImageUrl:
-      (r.banner_url as string | null | undefined) ??
-      (r.bannerUrl as string | null | undefined) ??
-      (r.cover_image_url as string | null | undefined) ??
-      (r.coverImageUrl as string | null | undefined) ??
-      (r.images as string | null | undefined) ??
-      // ext.banner is sometimes a STRING URL (race 305) and sometimes a
-      // structured object (race 257: { banner_header_event: { img_url } }).
-      // Handle both.
-      (typeof ext.banner === 'string' ? (ext.banner as string) : null) ??
-      ((ext.banner as { banner_header_event?: { img_url?: string } } | null)
-        ?.banner_header_event?.img_url ?? null) ??
-      (ext.detail_img as string | null | undefined) ??
-      (r.logo_url as string | null | undefined) ??
+      asImageUrl(r.banner_url) ??
+      asImageUrl(r.bannerUrl) ??
+      asImageUrl(r.cover_image_url) ??
+      asImageUrl(r.coverImageUrl) ??
+      asImageUrl(r.images) ??
+      // ext.banner is sometimes a STRING URL (race 305), sometimes a JSON
+      // string (race 257 — asImageUrl recovers banner_header_event.img_url),
+      // and sometimes a structured object. Handle all three.
+      asImageUrl(ext.banner) ??
+      asImageUrl(
+        (ext.banner as { banner_header_event?: { img_url?: string } } | null)
+          ?.banner_header_event?.img_url,
+      ) ??
+      asImageUrl(ext.detail_img) ??
+      asImageUrl(r.logo_url) ??
       null,
     startDate: String(
       r.event_start_date ??
@@ -146,7 +175,11 @@ export function normalizeRace(raw: unknown): Race {
     raceType: (r.race_type as string | undefined) ?? (r.raceType as string | undefined),
     courses: r.courses as Race['courses'],
     schedule: r.schedule as Race['schedule'],
-    racekitImages: r.racekit_images as string[] | undefined,
+    racekitImages: Array.isArray(r.racekit_images)
+      ? (r.racekit_images as unknown[])
+          .map(asImageUrl)
+          .filter((u): u is string => !!u)
+      : undefined,
     rule: (r.rule as string | undefined) ?? undefined,
     latitude: (r.latitude as number | undefined) ?? (r.event_lat as number | undefined),
     longitude: (r.longitude as number | undefined) ?? (r.event_lng as number | undefined),

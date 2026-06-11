@@ -8,7 +8,7 @@
  * and navigates to /checkout/payment-webview after successful order creation.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -35,6 +35,7 @@ import { tokens } from '../../src/theme/tokens';
 import { raceCourse, priceRule, order, race as raceSdk } from '../../src/sdk';
 import type { RaceCourse, OrderCreateInput } from '../../src/sdk/models';
 import { useCheckoutStore } from '../../src/stores/useCheckoutStore';
+import { resolveSaleState } from '../../src/utils/sale-state';
 import { isProductionApi } from '../../src/adapters/sdk-init';
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -190,16 +191,34 @@ export default function CheckoutScreen() {
         const list = await raceCourse.listCoursesByRace(raceId);
         if (cancelled) return;
         setCourses(list);
-        // Auto-select course + first available ticket_type if user arrived
-        // without specifying them via query params.
+        // Auto-select course + first PURCHASABLE ticket_type if user arrived
+        // without specifying them via query params — or with params that
+        // don't belong to THIS race (stale state when the screen is re-used
+        // across deep links). Blindly taking ticketTypes[0] could pre-select
+        // a tier that isn't on sale (F5).
         if (list.length > 0) {
           const initialCourse =
             list.find((c) => c.id === selectedCourseId) ?? list[0]!;
-          if (!selectedCourseId) {
+          if (!list.some((c) => c.id === selectedCourseId)) {
             setSelectedCourseId(initialCourse.id);
           }
-          if (!selectedTicketTypeId && initialCourse.ticketTypes?.length) {
-            setSelectedTicketTypeId(initialCourse.ticketTypes[0]!.id);
+          const ttKnown = (initialCourse.ticketTypes ?? []).some(
+            (tt) => tt.id === selectedTicketTypeId,
+          );
+          if (!ttKnown && initialCourse.ticketTypes?.length) {
+            const visible = initialCourse.ticketTypes.filter(
+              (tt) => tt.isShow !== false,
+            );
+            const firstOpen = visible.find(
+              (tt) =>
+                resolveSaleState(tt.validFrom, tt.validTo) === 'open' &&
+                (tt.remainedTicket == null || tt.remainedTicket > 0),
+            );
+            // No purchasable tier → select NOTHING. Falling back to a gated
+            // tier rendered a contradictory selected-but-disabled card the
+            // user couldn't even deselect (CourseCard kills onPress when
+            // gated). Empty selection blocks Continue just the same.
+            setSelectedTicketTypeId(firstOpen?.id ?? '');
           }
         }
       } catch {
@@ -297,6 +316,42 @@ export default function CheckoutScreen() {
     }
   }, [discountCode, subtotalEarly, checkoutStore, t, toast]);
 
+  // F5 — step-1 must not let a non-purchasable tier through: outside its
+  // valid_from/valid_to window, out of stock, or admin-hidden (web parity:
+  // gated tiers get a badge instead of a quantity stepper and never enter
+  // the cart). Plain function (not just a memo) so submitOrder can re-check
+  // with a FRESH clock right before createOrder — the sale window can close
+  // while the user fills the 3-step form (TOCTOU; backend accepts closed-
+  // phase orders, client gate is the only enforcement).
+  // NOTE: hooks here must stay ABOVE the early returns below — hooks order.
+  const computeSelectionBlocked = useCallback(() => {
+    const c = (courses ?? []).find((x) => x.id === selectedCourseId);
+    if (!c) return true;
+    const visible = (c.ticketTypes ?? []).filter((tt) => tt.isShow !== false);
+    const tt = visible.find((x) => x.id === selectedTicketTypeId);
+    // Fail open ONLY for true legacy courses with no ticket_type rows at
+    // all. Rows-exist-but-none-selected (incl. ALL tiers hidden) = blocked —
+    // otherwise an admin-hidden tier could still be ordered via the
+    // unfiltered variantId fallback.
+    if (!tt) return (c.ticketTypes?.length ?? 0) > 0;
+    const noStock = tt.remainedTicket != null && tt.remainedTicket <= 0;
+    return resolveSaleState(tt.validFrom, tt.validTo) !== 'open' || noStock;
+  }, [courses, selectedCourseId, selectedTicketTypeId]);
+  // Re-evaluate every 30s while picking — resolveSaleState reads the clock,
+  // so without a tick a tier opening/closing while the user sits on step 0
+  // would never update the gate (flash-sale openings are exactly this case).
+  const [saleClock, setSaleClock] = useState(0);
+  useEffect(() => {
+    if (step !== 0) return;
+    const id = setInterval(() => setSaleClock((c) => c + 1), 30_000);
+    return () => clearInterval(id);
+  }, [step]);
+  const selectionBlocked = useMemo(
+    () => computeSelectionBlocked(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [computeSelectionBlocked, saleClock],
+  );
+
   // Loading / empty-state guard — shows spinner until courses load.
   if (!courses) {
     return (
@@ -330,13 +385,19 @@ export default function CheckoutScreen() {
 
   // Once courses are populated, fall back to first if selection is empty/stale.
   const activeCourse: RaceCourse = selectedCourse ?? courses[0]!;
+  // Fallbacks below must skip admin-hidden tiers — pricing/ordering against
+  // an is_show=false tier was possible when every tier of a course was
+  // hidden (review finding 2026-06-11).
+  const firstVisibleTier = (activeCourse.ticketTypes ?? []).filter(
+    (tt) => tt.isShow !== false,
+  )[0];
   // Prefer the selected ticket_type's price (per-tier) over the course's
   // headline price — same precedence as `subtotalEarly` above. Without this,
   // multi-tier races would compute subtotal from ticketTypes[0] even when
   // the user picked a different tier, and total would be wrong (or 0).
   const subtotal =
     selectedTicketType?.price ??
-    activeCourse.ticketTypes?.[0]?.price ??
+    firstVisibleTier?.price ??
     activeCourse.price;
   const insuranceFee = includeInsurance ? 0 : 0; // Fee TBD by backend; UI flag only for now.
   const total = Math.max(0, subtotal + insuranceFee - (discountApplied?.amount ?? 0));
@@ -375,8 +436,8 @@ export default function CheckoutScreen() {
     ...(selectedTicketTypeId ? { ticketTypeId: selectedTicketTypeId } : {}),
     ...(selectedTicketType?.variantId
       ? { variantId: selectedTicketType.variantId }
-      : activeCourse.ticketTypes?.[0]?.variantId
-        ? { variantId: activeCourse.ticketTypes[0]!.variantId! }
+      : firstVisibleTier?.variantId
+        ? { variantId: firstVisibleTier.variantId }
         : {}),
     athlete: {
       firstName: form.firstName.trim(),
@@ -408,6 +469,17 @@ export default function CheckoutScreen() {
       toast.show({ variant: 'error', message: t('errors.network') });
       return;
     }
+    // Belt-and-braces: re-check the sale window with a fresh clock — the
+    // tier may have closed/sold out while the user filled the form, and the
+    // backend would accept the order anyway (event-detail has the same guard).
+    if (computeSelectionBlocked()) {
+      toast.show({
+        variant: 'warning',
+        message: t('checkout.tierNoLongerAvailable'),
+      });
+      setStep(0);
+      return;
+    }
     submitLock.current = true;
     setSubmitting(true);
     try {
@@ -433,6 +505,14 @@ export default function CheckoutScreen() {
   // DEV-only: bypass real gateway, mark order paid via fake-payment endpoint.
   const submitFakePayment = async () => {
     if (submitLock.current) return;
+    if (computeSelectionBlocked()) {
+      toast.show({
+        variant: 'warning',
+        message: t('checkout.tierNoLongerAvailable'),
+      });
+      setStep(0);
+      return;
+    }
     submitLock.current = true;
     setSubmitting(true);
     try {
@@ -492,15 +572,31 @@ export default function CheckoutScreen() {
       {step === 0 && (
         <FormLayout
           stickyBottom={
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              disabled={!selectedCourseId}
-              onPress={() => setStep(1)}
-            >
-              {t('common.continue')}
-            </Button>
+            <View style={{ gap: tokens.space[2] }}>
+              {selectionBlocked && (
+                <Text
+                  style={{
+                    fontSize: tokens.fontSize.bodySm,
+                    color: tokens.color.neutral600,
+                    textAlign: 'center',
+                  }}
+                >
+                  {t('checkout.selectionBlockedHint')}
+                </Text>
+              )}
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                disabled={!selectedCourseId || selectionBlocked}
+                onPress={() => {
+                  if (selectionBlocked) return;
+                  setStep(1);
+                }}
+              >
+                {t('common.continue')}
+              </Button>
+            </View>
           }
         >
           <FormSection title={t('checkout.selectedCourse')}>
@@ -509,7 +605,12 @@ export default function CheckoutScreen() {
                Regular), else course.name as a distinguishing label (race 305
                pattern where all ticket_types share type_name="ELB"). */}
             {courses.flatMap((c) => {
-              const tts = c.ticketTypes ?? [];
+              // F5: hidden tiers (is_show=false) never render; tiers outside
+              // their sale window render disabled with "Chưa mở"/"Đã đóng"
+              // badges via CourseCard.saleState — same gating as event detail.
+              const tts = (c.ticketTypes ?? []).filter(
+                (tt) => tt.isShow !== false,
+              );
               if (tts.length > 1) {
                 return tts.map((tt) => (
                   <CourseCard
@@ -520,6 +621,9 @@ export default function CheckoutScreen() {
                       tierName: tt.typeName || undefined,
                       price: tt.price,
                       availableSlots: tt.remainedTicket ?? undefined,
+                      saleState: resolveSaleState(tt.validFrom, tt.validTo),
+                      saleOpenAt: tt.validFrom,
+                      saleCloseAt: tt.validTo,
                     }}
                     selected={
                       selectedCourseId === c.id &&
@@ -546,6 +650,11 @@ export default function CheckoutScreen() {
                     price: tt?.price ?? c.price,
                     availableSlots:
                       tt?.remainedTicket ?? c.availableSlots ?? undefined,
+                    saleState: tt
+                      ? resolveSaleState(tt.validFrom, tt.validTo)
+                      : undefined,
+                    saleOpenAt: tt?.validFrom,
+                    saleCloseAt: tt?.validTo,
                   }}
                   selected={
                     selectedCourseId === c.id &&

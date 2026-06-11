@@ -62,7 +62,10 @@
     "selectGender": "Bitte Geschlecht wählen",
     "selectNationality": "Bitte Nationalität wählen",
     "idNumberInvalid": "Ungültige Ausweisnummer",
-    "nameOnBibTooLong": "Max. 15 Zeichen auf BIB"
+    "nameOnBibTooLong": "Max. 15 Zeichen auf BIB",
+    "required": "Dieses Feld ist erforderlich",
+    "passwordSameAsOld": "Das neue Passwort muss sich vom aktuellen unterscheiden",
+    "passwordRule8to20": "Passwort muss 8–20 Zeichen mit Buchstaben und Zahlen haben"
   },
   "auth": {
     "welcomeBack": "Willkommen zurück",
@@ -238,7 +241,14 @@
       "failed": "Konto löschen fehlgeschlagen, bitte erneut versuchen",
       "wrongPassword": "Falsches Passwort"
     },
-    "genderLabel": "Geschlecht"
+    "genderLabel": "Geschlecht",
+    "changePassword": {
+      "title": "Passwort ändern",
+      "desc": "Geben Sie Ihr aktuelles und ein neues Passwort ein.",
+      "current": "Aktuelles Passwort",
+      "success": "Passwort erfolgreich aktualisiert",
+      "wrongCurrent": "Aktuelles Passwort ist falsch"
+    }
   },
   "browse": {
     "homeGreeting": "Hallo, {{name}}",
@@ -414,7 +424,9 @@
       "createOrderFailed": "Bestellung konnte nicht erstellt werden. Bitte erneut versuchen.",
       "discountInvalid": "Ungültiger oder abgelaufener Code"
     },
-    "paymentMethod": "Zahlungsmethode"
+    "paymentMethod": "Zahlungsmethode",
+    "selectionBlockedHint": "Diese Kategorie ist noch nicht oder nicht mehr im Verkauf — bitte eine andere wählen",
+    "tierNoLongerAvailable": "Diese Kategorie wurde gerade geschlossen oder ist ausverkauft. Bitte erneut wählen."
   },
   "tickets": {
     "tabTitle": "Meine Tickets",
