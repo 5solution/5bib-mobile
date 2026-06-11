@@ -32,6 +32,7 @@ import { Button } from '../../src/components/Button';
 import { Badge } from '../../src/components/Badge';
 import { Skeleton } from '../../src/components/Skeleton';
 import { Banner } from '../../src/components/ErrorState';
+import { AthleteRoster } from '../../src/components/domain/AthleteRoster';
 import { CourseCard } from '../../src/components/domain/CourseCard';
 import { CountdownRing } from '../../src/components/domain/CountdownRing';
 import { FadeSlideIn, StaggerItem } from '../../src/components/motion';
@@ -610,6 +611,12 @@ export default function EventDetailScreen() {
             </View>
             </FadeSlideIn>
           )}
+
+          {/* Public athlete roster — web's "Danh sách vận động viên" tab
+             (G-12). Self-contained: own search/chips/load-more state. */}
+          <FadeSlideIn delay={360}>
+            <AthleteRoster raceId={race.id} courses={courses} />
+          </FadeSlideIn>
         </View>
       </Animated.ScrollView>
 

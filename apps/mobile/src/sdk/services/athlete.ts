@@ -300,4 +300,68 @@ export const athlete = {
       noRetry: true,
     });
   },
+
+  /**
+   * GET /pub/athlete/basic/adv — public registered-athletes roster for an
+   * event (web parity: "Danh sách vận động viên" tab, G-12).
+   *
+   * No auth required. Verified live 2026-06-11 on race 257 (574 athletes):
+   *   - `name` filters by athlete name (web search box "Tên hoặc số BIB")
+   *   - `course_ids` filters by course (web's 12KM/21km/42KM chips)
+   *   - camelCase pageNo/pageSize (same convention as /order, /codes/me)
+   *   - response: { totalPages, currentPage, totalItems, list: [...] }
+   */
+  async listPublicRoster(input: {
+    raceId: string;
+    courseId?: string;
+    name?: string;
+    pageNo?: number;
+    pageSize?: number;
+  }): Promise<{ items: PublicRosterAthlete[]; pagination: Pagination }> {
+    const { raceId, courseId, name, pageNo = 1, pageSize = 10 } = input;
+    const raw = await network().get<{
+      data: {
+        list: unknown[];
+        totalPages: number;
+        currentPage: number;
+        totalItems?: number;
+      };
+    }>('/pub/athlete/basic/adv', {
+      params: {
+        race_id: raceId,
+        ...(courseId ? { course_ids: courseId } : {}),
+        ...(name ? { name } : {}),
+        pageNo,
+        pageSize,
+      },
+    });
+    const items = (raw.data.list ?? []).map((r): PublicRosterAthlete => {
+      const a = (r ?? {}) as Record<string, unknown>;
+      return {
+        name: String(a.name ?? ''),
+        bibNumber: a.bib_number != null ? String(a.bib_number) : '',
+        gender: String(a.gender ?? ''),
+        courseName: String(a.course_name ?? ''),
+        nationality: String(a.nationality ?? ''),
+      };
+    });
+    return {
+      items,
+      pagination: {
+        currentPage: raw.data.currentPage,
+        totalPages: raw.data.totalPages,
+        pageSize,
+        totalCount: raw.data.totalItems,
+      },
+    };
+  },
 };
+
+/** One row of the public event roster — deliberately minimal (public data). */
+export interface PublicRosterAthlete {
+  name: string;
+  bibNumber: string;
+  gender: string;
+  courseName: string;
+  nationality: string;
+}
