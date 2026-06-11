@@ -80,8 +80,15 @@ export default function LoginScreen() {
         const inner = resp?.error?.error ?? resp?.error;
         const msg = inner?.message;
         let userMsg = t('errors.generic');
-        if (msg === 'handleBaseException') {
-          userMsg = 'Tài khoản chưa kích hoạt. Kiểm tra email để verify.';
+        // Verified live 2026-06-11 against dapi:
+        //   wrong password (existing account) → 400 "handleBaseException"
+        //   nonexistent email                → "Invalid credential"
+        // Both mean BAD CREDENTIALS. The old mapping showed "Tài khoản chưa
+        // kích hoạt" for handleBaseException, which misled users into
+        // hunting for a verification email when they just typo'd a password.
+        if (msg === 'handleBaseException' || msg === 'Invalid credential') {
+          userMsg = t('auth.loginError401');
+          setPassword('');
         } else if (typeof msg === 'string' && msg.length < 200) {
           userMsg = msg;
         }
