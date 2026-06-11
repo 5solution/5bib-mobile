@@ -41,14 +41,20 @@ import type { Race, RaceStatus } from '../../src/sdk/models';
 
 const PAGE_SIZE = 10;
 
+/**
+ * Map store sort keys → backend sortField values. These are JPA entity
+ * property names, NOT column names — verified live: `eventStartDate`
+ * sorts, `start_date`/`startDate` are silently ignored. Default is the
+ * web's composite (status first, then soonest event).
+ */
 function sortFieldToBackend(field: string): string {
   switch (field) {
     case 'date':
-      return 'start_date';
+      return 'status,eventStartDate,checkinStartTime,racekitStartTime,id';
     case 'name':
       return 'title';
     default:
-      return 'start_date';
+      return 'status,eventStartDate,checkinStartTime,racekitStartTime,id';
   }
 }
 

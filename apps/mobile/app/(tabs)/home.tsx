@@ -139,11 +139,16 @@ export default function HomeScreen() {
         //     6 races on DEV (incl. 5BIB Find Your New Experience id=305).
         //     Without this filter the home shows only the first 10 COMPLETE
         //     races — user can never find an active race to register for.
-        // Until backend fixes pagination we fetch ACTIVE races only.
+        // Pagination works now that the SDK sends camelCase pageNo/pageSize
+        // (the old snake_case page_no was silently ignored — infinite scroll
+        // re-appended page 1 forever). Sort matches the web home: status
+        // first, then soonest event.
         const res = await raceSdk.listRaces({
           pageNo,
           pageSize: PAGE_SIZE,
           status: 'GENERATED_CODE',
+          sortField: 'status,eventStartDate,checkinStartTime,racekitStartTime,id',
+          sortDirection: 'DESC',
         });
         return { items: res.items, totalPages: res.pagination.totalPages ?? 1 };
       } catch (err) {
