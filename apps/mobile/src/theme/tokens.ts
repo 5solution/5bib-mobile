@@ -14,10 +14,13 @@
 // ---------------------------------------------------------------------------
 
 export const palette = {
-  // Brand (PAUSE-brand: confirm với Danny khi có logo chính thức)
-  brandPrimary: '#0066FF',
-  brandPrimaryDark: '#0052CC',
-  brandPrimaryLight: '#E6F0FF',
+  // Brand — locked to the OFFICIAL logo palette 2026-06-11 (Danny delivered
+  // the real wordmark; path data in src/components/BrandLogo.tsx).
+  // #2563EB = the logo blue (Tailwind blue-600, same as web). The old
+  // #0066FF was a pre-logo placeholder that made every CTA subtly off-brand.
+  brandPrimary: '#2563EB',
+  brandPrimaryDark: '#1D4ED8',
+  brandPrimaryLight: '#DBEAFE',
   brandSecondary: '#FF6B35',
   brandAccent: '#FFB800',
 
@@ -51,8 +54,9 @@ export const palette = {
   surfaceElevated: '#FFFFFF',
   surfaceOverlay: 'rgba(0,0,0,0.5)',
 
-  // Race-day accent (5BIB family magenta — used sparingly: LIVE state, hover flash)
-  magenta: '#FF0E65',
+  // Race-day accent — the official logo's pink flag (#F30C60). Used
+  // sparingly: LIVE state, the BIB-flag wink, hover flash.
+  magenta: '#F30C60',
 } as const;
 
 // ---------------------------------------------------------------------------

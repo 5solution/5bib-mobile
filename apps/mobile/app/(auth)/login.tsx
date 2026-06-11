@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { Button } from '../../src/components/Button';
+import { BrandLogo } from '../../src/components/BrandLogo';
 import { Input } from '../../src/components/Input';
 import { Banner } from '../../src/components/ErrorState';
 import { useToast } from '../../src/components/Toast';
@@ -173,29 +174,9 @@ export default function LoginScreen() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Logo */}
+        {/* Logo — official wordmark (replaces the old blue "5" square). */}
         <View style={{ alignItems: 'center', marginBottom: tokens.space[6] }}>
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 16,
-              backgroundColor: tokens.color.brandPrimary,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: tokens.space[4],
-            }}
-          >
-            <Text
-              style={{
-                color: tokens.color.neutral0,
-                fontSize: 32,
-                fontWeight: tokens.fontWeight.bold,
-              }}
-            >
-              5
-            </Text>
-          </View>
+          <BrandLogo width={132} style={{ marginBottom: tokens.space[5] }} />
           <Text
             style={{
               fontSize: tokens.fontSize.h1,

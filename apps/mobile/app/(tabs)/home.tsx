@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 
 import { Header } from '../../src/components/Header';
+import { BrandLogo } from '../../src/components/BrandLogo';
 import { Banner } from '../../src/components/ErrorState';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Skeleton } from '../../src/components/Skeleton';
@@ -222,7 +223,7 @@ export default function HomeScreen() {
   if (state === 'loading') {
     return (
       <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
-        <Header title="5BIB" titleAlign="left" leading="none" actions={[]} />
+        <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} actions={[]} />
         <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[4] }}>
           <Skeleton height={180} borderRadius={tokens.radius.lg} />
           <Skeleton width={200} height={20} />
@@ -255,7 +256,7 @@ export default function HomeScreen() {
   if (state === 'empty') {
     return (
       <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
-        <Header title="5BIB" titleAlign="left" leading="none" />
+        <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} />
         {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
         <EmptyState
           icon={<Text style={{ fontSize: 32 }}>🏃</Text>}
@@ -268,7 +269,7 @@ export default function HomeScreen() {
   if (state === 'error') {
     return (
       <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
-        <Header title="5BIB" titleAlign="left" leading="none" />
+        <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} />
         {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
         <EmptyState
           icon={<Text style={{ fontSize: 32 }}>⚠️</Text>}
