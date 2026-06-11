@@ -68,6 +68,7 @@ export default function EventDetailScreen() {
    * can't buy higher tiers. For courses with no ticket_types data, emit a
    * single row keyed by courseId so single-tier races still work.
    */
+  type SaleState = 'open' | 'notYetOpen' | 'closed';
   type PickerRow = {
     key: string; // `${courseId}:${ticketTypeId}` or just courseId
     courseId: string;
@@ -76,7 +77,28 @@ export default function EventDetailScreen() {
     tierName?: string;
     price: number;
     availableSlots: number | null;
+    /** Phase gating per ticket_type.valid_from/valid_to — web parity G-13.
+     *  Rows outside their sale window render disabled with "Chưa mở"/"Đã đóng". */
+    saleState: SaleState;
+    /** ISO open date — shown on notYetOpen rows ("Mở: 02/05/2029"). */
+    saleOpensAt?: string;
   };
+
+  /** Resolve a ticket type's sale window against the current clock.
+   *  Missing dates fail open (sellable) — matches web behaviour where
+   *  phases without windows are always purchasable. */
+  function resolveSaleState(validFrom?: string, validTo?: string): SaleState {
+    const now = Date.now();
+    if (validFrom) {
+      const from = new Date(validFrom).getTime();
+      if (Number.isFinite(from) && now < from) return 'notYetOpen';
+    }
+    if (validTo) {
+      const to = new Date(validTo).getTime();
+      if (Number.isFinite(to) && now > to) return 'closed';
+    }
+    return 'open';
+  }
   /**
    * Tier label resolution (verified 2026-05-28 via web compare):
    *   - When course has MULTIPLE ticket_types → use ticket_type.type_name
@@ -91,7 +113,9 @@ export default function EventDetailScreen() {
   const pickerRows: PickerRow[] = useMemo(() => {
     const rows: PickerRow[] = [];
     for (const c of courses) {
-      const tts = c.ticketTypes ?? [];
+      // Hidden ticket types (admin toggled is_show=false) never reach the
+      // picker — same as web, which omits them from the cart entirely.
+      const tts = (c.ticketTypes ?? []).filter((tt) => tt.isShow !== false);
       if (tts.length > 1) {
         for (const tt of tts) {
           rows.push({
@@ -102,6 +126,8 @@ export default function EventDetailScreen() {
             tierName: tt.typeName || undefined,
             price: tt.price,
             availableSlots: tt.remainedTicket ?? null,
+            saleState: resolveSaleState(tt.validFrom, tt.validTo),
+            saleOpensAt: tt.validFrom,
           });
         }
       } else if (tts.length === 1) {
@@ -116,6 +142,8 @@ export default function EventDetailScreen() {
           tierName,
           price: tt.price,
           availableSlots: tt.remainedTicket ?? null,
+          saleState: resolveSaleState(tt.validFrom, tt.validTo),
+          saleOpensAt: tt.validFrom,
         });
       } else {
         rows.push({
@@ -125,10 +153,16 @@ export default function EventDetailScreen() {
           tierName: c.name && c.name !== c.distance ? c.name : undefined,
           price: c.price,
           availableSlots: c.availableSlots ?? null,
+          // Legacy single-tier courses carry no window data → sellable.
+          saleState: 'open',
         });
       }
     }
-    return rows;
+    // Open phases first (web puts the live accordion on top), closed last.
+    // Backend returns Regular-before-EarlyBird on some courses, so without
+    // this sort a dead row could sit above the buyable one.
+    const order: Record<SaleState, number> = { open: 0, notYetOpen: 1, closed: 2 };
+    return rows.sort((a, b) => order[a.saleState] - order[b.saleState]);
   }, [courses]);
   const selectedRow = pickerRows.find((r) => r.key === selectedKey) ?? null;
 
@@ -203,6 +237,10 @@ export default function EventDetailScreen() {
       return;
     }
     if (!selectedRow) return;
+    // Belt-and-braces: CTA is already disabled for gated rows, but a stale
+    // selection (e.g. phase closed while screen was open) must not reach
+    // checkout — backend would accept the order and web wouldn't have.
+    if (selectedRow.saleState !== 'open') return;
     router.push({
       pathname: '/checkout',
       params: {
@@ -323,9 +361,12 @@ export default function EventDetailScreen() {
   const selectedHasStock =
     selectedRow?.availableSlots == null /* unknown → trust */ ||
     selectedRow.availableSlots > 0;
+  // Phase gating (G-13): a selected row whose sale window isn't open can't
+  // be bought — same as web's "Chưa mở" accordion items having no stepper.
+  const selectedSaleOpen = selectedRow?.saleState === 'open';
   const ctaDisabled = isClosed
     ? false
-    : !selectedRow || !selectedHasStock;
+    : !selectedRow || !selectedHasStock || !selectedSaleOpen;
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
@@ -504,6 +545,8 @@ export default function EventDetailScreen() {
                         tierName: row.tierName,
                         price: row.price,
                         availableSlots: row.availableSlots,
+                        saleState: row.saleState,
+                        saleOpenAt: row.saleOpensAt,
                       }}
                       asRadio
                       selected={selectedKey === row.key}

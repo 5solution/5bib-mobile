@@ -39,5 +39,9 @@ export default function Index() {
     return <Redirect href="/home" />;
   }
 
-  return <Redirect href={firstLaunchDone ? '/login' : '/welcome'} />;
+  // First launch → the parallax onboarding (3 slides, persists both
+  // `seenOnboarding` and the legacy `first_launch_done` flag on finish).
+  // The old /welcome screen stays routable as a fallback but is no longer
+  // the default first-launch destination.
+  return <Redirect href={firstLaunchDone ? '/login' : '/onboarding'} />;
 }

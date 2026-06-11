@@ -16,6 +16,12 @@ export interface CourseCardData {
   availableSlots?: number | null;
   saleOpenAt?: string;
   saleCloseAt?: string;
+  /**
+   * Phase gating (web parity G-13). 'notYetOpen' renders a "Chưa mở" badge
+   * + open date and blocks selection; 'closed' renders "Đã đóng" and blocks
+   * selection. Omit / 'open' → normal selectable row.
+   */
+  saleState?: 'open' | 'notYetOpen' | 'closed';
   /** Mark this card as the current course (in change-course flow). */
   current?: boolean;
   /**
@@ -41,16 +47,26 @@ function fmtVnd(n: number) {
   return v.toLocaleString('vi-VN') + 'đ';
 }
 
+function fmtShortDate(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 export function CourseCard({ course, selected, disabled, asRadio, onPress }: CourseCardProps) {
   const soldOut = course.availableSlots != null && course.availableSlots <= 0;
-  const interactionDisabled = disabled || soldOut;
+  const notYetOpen = course.saleState === 'notYetOpen';
+  const saleClosed = course.saleState === 'closed';
+  const interactionDisabled = disabled || soldOut || notYetOpen || saleClosed;
+  const openDate = notYetOpen ? fmtShortDate(course.saleOpenAt) : '';
 
   return (
     <Pressable
       onPress={interactionDisabled ? undefined : onPress}
       accessibilityRole={asRadio ? 'radio' : 'button'}
       accessibilityState={{ checked: selected, disabled: interactionDisabled }}
-      accessibilityLabel={`Cự ly ${course.distance}, ${fmtVnd(course.price)}${soldOut ? ', hết vé' : ''}`}
+      accessibilityLabel={`Cự ly ${course.distance}, ${fmtVnd(course.price)}${soldOut ? ', hết vé' : ''}${notYetOpen ? ', chưa mở bán' : ''}${saleClosed ? ', đã đóng bán' : ''}`}
       style={({ pressed }) => ({
         padding: tokens.space[4],
         borderRadius: tokens.radius.lg,
@@ -115,8 +131,15 @@ export function CourseCard({ course, selected, disabled, asRadio, onPress }: Cou
           {fmtVnd(course.price)}
           {course.availableSlots != null ? ` · Còn ${course.availableSlots} vé` : ''}
         </Text>
+        {notYetOpen && openDate ? (
+          <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.warning }}>
+            Mở bán: {openDate}
+          </Text>
+        ) : null}
       </View>
       {soldOut && <Badge variant="default">Hết vé</Badge>}
+      {notYetOpen && <Badge variant="warning">Chưa mở</Badge>}
+      {saleClosed && <Badge variant="default">Đã đóng</Badge>}
     </Pressable>
   );
 }

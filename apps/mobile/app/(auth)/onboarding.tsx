@@ -122,6 +122,10 @@ export default function OnboardingScreen() {
   const handleFinish = async () => {
     try {
       await AsyncStorage.setItem(SEEN_ONBOARDING_KEY, 'true');
+      // Also stamp the legacy flag the root gate (app/index.tsx) checks, so
+      // finishing onboarding doesn't bounce the user into the old /welcome
+      // first-launch flow on next cold start.
+      await AsyncStorage.setItem('first_launch_done', 'true');
     } catch {
       // Storage failures shouldn't block first-launch flow — worst case the
       // user sees onboarding again, which is recoverable.
