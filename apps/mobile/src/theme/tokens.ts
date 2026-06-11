@@ -20,9 +20,15 @@ export const palette = {
   // #0066FF was a pre-logo placeholder that made every CTA subtly off-brand.
   brandPrimary: '#2563EB',
   brandPrimaryDark: '#1D4ED8',
+  /** Deep end of the brand gradient ramp — hero blocks, ticket stubs. */
+  brandPrimaryDeep: '#1E40AF',
   brandPrimaryLight: '#DBEAFE',
+  /** Whisper tint of brand blue — icon bubbles, soft fills, chip bg. */
+  brandPrimarySoft: '#EFF4FF',
   brandSecondary: '#FF6B35',
   brandAccent: '#FFB800',
+  /** Soft tint of the logo magenta — LIVE chips, accent fills. */
+  magentaSoft: '#FEE7F0',
 
   // Semantic
   success: '#10B981',
@@ -53,6 +59,12 @@ export const palette = {
   surfaceCard: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
   surfaceOverlay: 'rgba(0,0,0,0.5)',
+  /**
+   * Screen-level background — a cool blue-tinted off-white so white cards
+   * actually read as cards (depth) instead of disappearing into a flat
+   * white page ("app trông toàn màu trắng" — Danny 2026-06-11).
+   */
+  surfaceScreen: '#F3F6FB',
 
   // Race-day accent — the official logo's pink flag (#F30C60). Used
   // sparingly: LIVE state, the BIB-flag wink, hover flash.

@@ -39,10 +39,14 @@ export function EmptyState({
       {icon && (
         <View
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: tokens.color.neutral100,
+            width: 72,
+            height: 72,
+            borderRadius: 36,
+            // Brand-tinted bubble instead of grey — empty walls were one of
+            // the loudest "toàn màu trắng" complaints.
+            backgroundColor: tokens.color.brandPrimarySoft,
+            borderWidth: 1,
+            borderColor: tokens.color.brandPrimaryLight,
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: tokens.space[4],

@@ -311,7 +311,8 @@
     "registerCourseFmt": "Diese Strecke anmelden — {{price}} VND",
     "soldOutLabel": "Ausverkauft",
     "saleClosed": "Anmeldung geschlossen",
-    "shareMessageFmt": "Mach mit beim {{title}}! {{url}}"
+    "shareMessageFmt": "Mach mit beim {{title}}! {{url}}",
+    "heroTagline": "Bereit für deinen nächsten Lauf?"
   },
   "checkout": {
     "stepOf": "Schritt {{step}}/{{total}}",

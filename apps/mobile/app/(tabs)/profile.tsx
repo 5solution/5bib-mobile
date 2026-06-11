@@ -6,12 +6,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, ScrollView, Alert, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Header } from '../../src/components/Header';
 import { Banner } from '../../src/components/ErrorState';
 import { ListItem } from '../../src/components/ListItem';
 import { Button } from '../../src/components/Button';
@@ -43,6 +44,7 @@ export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const online = useOnline();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(!user);
   // 6-tap on the build version opens the dev motion showcase. Easter egg
@@ -110,13 +112,27 @@ export default function ProfileScreen() {
     ]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
-      <Header title={t('profile.title')} largeTitle leading="none" />
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
 
       <ScrollView contentContainerStyle={{ paddingBottom: tokens.space[10] }}>
-        {/* Avatar block */}
-        <View style={{ alignItems: 'center', paddingVertical: tokens.space[5], gap: tokens.space[2] }}>
+        {/* Brand-gradient identity header — avatar bubble + name on the
+           gradient, edit CTA as a frosted pill. Replaces the flat white
+           header + centered avatar ("toàn màu trắng" fix). */}
+        <LinearGradient
+          colors={[tokens.color.brandPrimary, tokens.color.brandPrimaryDeep]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            paddingTop: insets.top + tokens.space[3],
+            paddingBottom: tokens.space[6],
+            paddingHorizontal: tokens.space[4],
+            borderBottomLeftRadius: tokens.radius.xl,
+            borderBottomRightRadius: tokens.radius.xl,
+            alignItems: 'center',
+            gap: tokens.space[2],
+          }}
+        >
           {loading ? (
             <>
               <Skeleton width={96} height={96} borderRadius={48} />
@@ -130,12 +146,10 @@ export default function ProfileScreen() {
                   width: 96,
                   height: 96,
                   borderRadius: 48,
-                  backgroundColor: tokens.color.brandPrimaryLight,
+                  backgroundColor: tokens.color.neutral0,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderWidth: 2,
-                  borderColor: tokens.color.surfaceBg,
-                  ...tokens.elevation[1],
+                  ...tokens.elevation[2],
                 }}
                 accessibilityLabel={`Avatar ${user?.fullName}`}
               >
@@ -153,35 +167,52 @@ export default function ProfileScreen() {
                 style={{
                   fontSize: tokens.fontSize.h2,
                   fontWeight: tokens.fontWeight.bold,
-                  color: tokens.color.neutral900,
+                  color: tokens.color.neutral0,
                 }}
               >
                 {user?.fullName}
               </Text>
-              <Text style={{ color: tokens.color.neutral600, fontSize: tokens.fontSize.bodyMd }}>
+              <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: tokens.fontSize.bodyMd }}>
                 {user?.email}
               </Text>
               {user?.phone && (
-                <Text style={{ color: tokens.color.neutral600, fontSize: tokens.fontSize.bodyMd }}>
+                <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: tokens.fontSize.bodyMd }}>
                   {user.phone}
                 </Text>
               )}
-              <View style={{ marginTop: tokens.space[3] }}>
-                <Button variant="outline" size="md" onPress={() => router.push('/profile/edit')}>
+              <Pressable
+                onPress={() => router.push('/profile/edit')}
+                accessibilityRole="button"
+                accessibilityLabel={t('profile.editProfile')}
+                style={({ pressed }) => ({
+                  marginTop: tokens.space[2],
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: tokens.space[4],
+                  paddingVertical: tokens.space[2],
+                  borderRadius: tokens.radius.full,
+                  backgroundColor: pressed
+                    ? 'rgba(255,255,255,0.35)'
+                    : 'rgba(255,255,255,0.2)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.5)',
+                })}
+              >
+                <Ionicons name="create-outline" size={16} color={tokens.color.neutral0} />
+                <Text
+                  style={{
+                    color: tokens.color.neutral0,
+                    fontWeight: tokens.fontWeight.semibold,
+                    fontSize: tokens.fontSize.labelMd,
+                  }}
+                >
                   {t('profile.editProfile')}
-                </Button>
-              </View>
+                </Text>
+              </Pressable>
             </>
           )}
-        </View>
-
-        <View
-          style={{
-            height: 1,
-            backgroundColor: tokens.color.neutral200,
-            marginHorizontal: tokens.space[4],
-          }}
-        />
+        </LinearGradient>
 
         {/* Basic info — matches web `/vi/profile` "THÔNG TIN CƠ BẢN" section */}
         {!loading && user && (

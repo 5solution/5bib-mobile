@@ -7,10 +7,72 @@
 import React from 'react';
 import { View, Text, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '../Card';
 import { Badge } from '../Badge';
+import { BrandLogo } from '../BrandLogo';
 import { tokens } from '../../theme/tokens';
 import type { Race } from '../../sdk/models';
+
+/**
+ * Branded stand-in when a race has no (or a broken) cover image — the 5bib
+ * mark on the brand gradient instead of a dead grey rectangle (UIUX P0:
+ * "hero renders as a giant blank grey block").
+ */
+function CoverFallback({ logoWidth = 56 }: { logoWidth?: number }) {
+  return (
+    <LinearGradient
+      colors={[tokens.color.brandPrimary, tokens.color.brandPrimaryDeep]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <BrandLogo width={logoWidth} color={tokens.color.neutral0} />
+    </LinearGradient>
+  );
+}
+
+/** "THG 6 / 15" floating date chip — mirrors web's related-event cards. */
+function DateChip({ iso }: { iso: string }) {
+  const d = new Date(iso);
+  if (!iso || isNaN(d.getTime())) return null;
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: tokens.color.neutral0,
+        borderRadius: tokens.radius.md,
+        paddingHorizontal: tokens.space[2],
+        paddingVertical: 4,
+        alignItems: 'center',
+        ...tokens.elevation[1],
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: tokens.fontWeight.bold,
+          color: tokens.color.magenta,
+          letterSpacing: 0.5,
+        }}
+      >
+        THG {d.getMonth() + 1}
+      </Text>
+      <Text
+        style={{
+          fontSize: tokens.fontSize.h3,
+          fontWeight: tokens.fontWeight.bold,
+          color: tokens.color.neutral900,
+          lineHeight: 22,
+        }}
+      >
+        {d.getDate()}
+      </Text>
+    </View>
+  );
+}
 
 export interface RaceCardProps {
   race: Race;
@@ -100,7 +162,16 @@ export function RaceCard({
               resizeMode="cover"
               accessibilityIgnoresInvertColors
             />
-          ) : null}
+          ) : (
+            <CoverFallback logoWidth={72} />
+          )}
+          {/* Bottom scrim — anchors the floating chips and gives the photo
+             depth even when it's a bright image. */}
+          <LinearGradient
+            colors={['transparent', 'rgba(17,24,39,0.45)']}
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 64 }}
+          />
+          <DateChip iso={race.startDate} />
           {race.isHighlight && (
             <View style={{ position: 'absolute', top: 12, left: 12 }}>
               <Badge
@@ -168,7 +239,9 @@ export function RaceCard({
               style={{ width: 80, height: 80 }}
               resizeMode="cover"
             />
-          ) : null}
+          ) : (
+            <CoverFallback logoWidth={40} />
+          )}
         </View>
         <View style={{ flex: 1, gap: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[1] }}>

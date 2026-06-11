@@ -11,6 +11,7 @@
 
 import React, { useEffect } from 'react';
 import { View, Text, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../theme/tokens';
 
 // Optional native deps — guarded so file still type-checks if not installed.
@@ -81,50 +82,31 @@ export function QRDisplayCard({
       style={{
         backgroundColor: tokens.color.surfaceCard,
         borderRadius: tokens.radius.xl,
-        padding: tokens.space[6],
-        alignItems: 'center',
-        gap: tokens.space[4],
+        overflow: 'hidden',
         ...tokens.elevation[2],
       }}
       accessibilityRole="image"
       accessibilityLabel={`Vé BIB ${bib} cho giải ${raceName}, ${courseAndDate}`}
     >
-      <View
+      {/* Ticket-stub header — race identity on the brand gradient, like a
+         physical race bib. The white QR zone below stays max-contrast for
+         scanners. */}
+      <LinearGradient
+        colors={[tokens.color.brandPrimary, tokens.color.brandPrimaryDeep]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={{
-          width: 256,
-          height: 256,
+          paddingVertical: tokens.space[4],
+          paddingHorizontal: tokens.space[5],
           alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: tokens.color.neutral0,
-          borderRadius: tokens.radius.lg,
-          padding: 8,
+          gap: 2,
         }}
       >
-        {QRCode ? (
-          <QRCode value={value} size={240} backgroundColor="white" color="#000000" />
-        ) : (
-          <View
-            style={{
-              width: 240,
-              height: 240,
-              backgroundColor: tokens.color.neutral100,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 14, color: tokens.color.neutral500 }}>
-              QR ({value.slice(0, 12)}…)
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={{ alignItems: 'center', gap: 2 }}>
         <Text
           style={{
             fontSize: tokens.fontSize.h1,
             fontWeight: tokens.fontWeight.bold,
-            color: tokens.color.neutral900,
+            color: tokens.color.neutral0,
             fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
             letterSpacing: 1,
           }}
@@ -133,53 +115,111 @@ export function QRDisplayCard({
         </Text>
         <Text
           style={{
-            fontSize: tokens.fontSize.h3,
+            fontSize: tokens.fontSize.h4,
             fontWeight: tokens.fontWeight.semibold,
-            color: tokens.color.neutral900,
+            color: tokens.color.neutral0,
             textAlign: 'center',
           }}
+          numberOfLines={2}
         >
           {raceName}
         </Text>
-        <Text
-          style={{
-            fontSize: tokens.fontSize.bodyMd,
-            color: tokens.color.neutral600,
-          }}
-        >
-          {courseAndDate}
-        </Text>
-      </View>
+        {!!courseAndDate && (
+          <Text
+            style={{
+              fontSize: tokens.fontSize.bodySm,
+              color: 'rgba(255,255,255,0.85)',
+            }}
+          >
+            {courseAndDate}
+          </Text>
+        )}
+      </LinearGradient>
 
+      {/* Perforation row — the visual "tear line" between stub and QR. */}
       <View
         style={{
           flexDirection: 'row',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: tokens.space[1],
-          paddingHorizontal: tokens.space[3],
-          paddingVertical: tokens.space[1],
-          borderRadius: tokens.radius.full,
-          backgroundColor: online ? tokens.color.successBg : tokens.color.neutral100,
+          backgroundColor: tokens.color.brandPrimaryDeep,
         }}
-        accessibilityRole="text"
       >
+        {Array.from({ length: 14 }, (_, i) => (
+          <View
+            key={i}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: tokens.color.surfaceCard,
+              marginTop: -4,
+            }}
+          />
+        ))}
+      </View>
+
+      <View style={{ alignItems: 'center', gap: tokens.space[3], padding: tokens.space[5] }}>
         <View
           style={{
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: online ? tokens.color.success : tokens.color.neutral400,
-          }}
-        />
-        <Text
-          style={{
-            fontSize: tokens.fontSize.labelSm,
-            fontWeight: tokens.fontWeight.semibold,
-            color: online ? tokens.color.success : tokens.color.neutral600,
+            width: 256,
+            height: 256,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: tokens.color.neutral0,
+            borderRadius: tokens.radius.lg,
+            padding: 8,
           }}
         >
-          {online ? 'Trực tuyến' : `Ngoại tuyến${lastSyncLabel ? ' — ' + lastSyncLabel : ''}`}
-        </Text>
+          {QRCode ? (
+            <QRCode value={value} size={240} backgroundColor="white" color="#000000" />
+          ) : (
+            <View
+              style={{
+                width: 240,
+                height: 240,
+                backgroundColor: tokens.color.neutral100,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 14, color: tokens.color.neutral500 }}>
+                QR ({value.slice(0, 12)}…)
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: tokens.space[1],
+            paddingHorizontal: tokens.space[3],
+            paddingVertical: tokens.space[1],
+            borderRadius: tokens.radius.full,
+            backgroundColor: online ? tokens.color.successBg : tokens.color.neutral100,
+          }}
+          accessibilityRole="text"
+        >
+          <View
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: online ? tokens.color.success : tokens.color.neutral400,
+            }}
+          />
+          <Text
+            style={{
+              fontSize: tokens.fontSize.labelSm,
+              fontWeight: tokens.fontWeight.semibold,
+              color: online ? tokens.color.success : tokens.color.neutral600,
+            }}
+          >
+            {online ? 'Trực tuyến' : `Ngoại tuyến${lastSyncLabel ? ' — ' + lastSyncLabel : ''}`}
+          </Text>
+        </View>
       </View>
     </View>
   );

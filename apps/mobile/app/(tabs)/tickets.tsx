@@ -153,7 +153,7 @@ export default function TicketsScreen() {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
       <Header title={t('tickets.tabTitle')} largeTitle leading="none" />
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
 

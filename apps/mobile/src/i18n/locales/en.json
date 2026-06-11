@@ -311,7 +311,8 @@
     "registerCourseFmt": "Register this course — {{price}} VND",
     "soldOutLabel": "Sold out",
     "saleClosed": "Registration closed",
-    "shareMessageFmt": "Join {{title}} with me! {{url}}"
+    "shareMessageFmt": "Join {{title}} with me! {{url}}",
+    "heroTagline": "Ready for your next run?"
   },
   "checkout": {
     "stepOf": "Step {{step}}/{{total}}",

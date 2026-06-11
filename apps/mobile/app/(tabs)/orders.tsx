@@ -118,7 +118,7 @@ export default function OrdersScreen() {
   }, [load, tab]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
       <Header title={t('orders.tabTitle')} largeTitle leading="none" />
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
 

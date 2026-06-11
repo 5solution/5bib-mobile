@@ -90,7 +90,7 @@ export default function OrderDetailScreen() {
   const isVoided = order?.financialStatus === 'voided';
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
       <Header
         title={orderNumber}
         leading="back"

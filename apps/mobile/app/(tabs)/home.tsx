@@ -24,6 +24,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '../../src/components/Header';
 import { BrandLogo } from '../../src/components/BrandLogo';
@@ -82,6 +84,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const online = useOnline();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const { show: showToast } = useToast();
   const user = useAuthStore((s) => s.user);
 
@@ -227,7 +230,7 @@ export default function HomeScreen() {
 
   if (state === 'loading') {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
         <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} actions={[]} />
         <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[4] }}>
           <Skeleton height={180} borderRadius={tokens.radius.lg} />
@@ -260,7 +263,7 @@ export default function HomeScreen() {
 
   if (state === 'empty') {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
         <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} />
         {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
         <EmptyState
@@ -273,7 +276,7 @@ export default function HomeScreen() {
 
   if (state === 'error') {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
         <Header leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />} />
         {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
         <EmptyState
@@ -287,22 +290,68 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
-      <Header
-        leading={<BrandLogo width={68} style={{ marginLeft: 4 }} />}
-        actions={[
-          {
-            icon: <Ionicons name="search-outline" size={22} color={tokens.color.neutral900} />,
-            label: t('common.search'),
-            onPress: () => router.push('/events'),
-          },
-          {
-            icon: <Ionicons name="notifications-outline" size={22} color={tokens.color.neutral900} />,
-            label: t('profile.notifications'),
-            onPress: () => {},
-          },
-        ]}
-      />
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
+      {/* Brand-gradient hero — replaces the flat white header + plain-text
+         greeting ("app trông toàn màu trắng" fix). White wordmark + greeting
+         + a tappable search pill that deep-links into the events list. The
+         dead notification bell is gone (UIUX backlog: inert buttons train
+         users that buttons don't work). */}
+      <LinearGradient
+        colors={[tokens.color.brandPrimary, tokens.color.brandPrimaryDeep]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          paddingTop: insets.top + tokens.space[2],
+          paddingHorizontal: tokens.space[4],
+          paddingBottom: tokens.space[5],
+          borderBottomLeftRadius: tokens.radius.xl,
+          borderBottomRightRadius: tokens.radius.xl,
+        }}
+      >
+        <BrandLogo width={68} color={tokens.color.neutral0} />
+        <Text
+          style={{
+            marginTop: tokens.space[3],
+            fontSize: tokens.fontSize.h2,
+            fontWeight: tokens.fontWeight.bold,
+            color: tokens.color.neutral0,
+          }}
+          accessibilityRole="header"
+        >
+          {user?.fullName
+            ? t('browse.homeGreeting', { name: user.fullName })
+            : t('browse.homeGreetingAnon')}
+        </Text>
+        <Text
+          style={{
+            marginTop: 2,
+            fontSize: tokens.fontSize.bodySm,
+            color: 'rgba(255,255,255,0.85)',
+          }}
+        >
+          {t('browse.heroTagline')}
+        </Text>
+        <Pressable
+          onPress={() => router.push('/events')}
+          accessibilityRole="search"
+          accessibilityLabel={t('browse.searchPlaceholder')}
+          style={({ pressed }) => ({
+            marginTop: tokens.space[3],
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: tokens.space[2],
+            backgroundColor: pressed ? tokens.color.neutral100 : tokens.color.neutral0,
+            borderRadius: tokens.radius.full,
+            paddingHorizontal: tokens.space[4],
+            paddingVertical: tokens.space[3],
+          })}
+        >
+          <Ionicons name="search-outline" size={18} color={tokens.color.neutral500} />
+          <Text style={{ color: tokens.color.neutral500, fontSize: tokens.fontSize.bodyMd }}>
+            {t('browse.searchPlaceholder')}
+          </Text>
+        </Pressable>
+      </LinearGradient>
       {!online && <Banner variant="warning" message={t('errors.offlineCached')} />}
 
       <FlatList
@@ -322,18 +371,6 @@ export default function HomeScreen() {
         }
         ListHeaderComponent={
           <View style={{ gap: tokens.space[4], marginBottom: tokens.space[2] }}>
-            <Text
-              style={{
-                fontSize: tokens.fontSize.bodyLg,
-                fontWeight: tokens.fontWeight.semibold,
-                color: tokens.color.neutral700,
-              }}
-            >
-              {user?.fullName
-                ? t('browse.homeGreeting', { name: user.fullName })
-                : t('browse.homeGreetingAnon')}
-            </Text>
-
             {/* Featured carousel */}
             {featured.length > 0 && (
               <View>

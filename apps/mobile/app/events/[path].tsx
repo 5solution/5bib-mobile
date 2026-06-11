@@ -324,7 +324,7 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
         <Header leading="back" onLeadingPress={() => router.back()} title="" />
         <ScrollView contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[3] }}>
           <Skeleton height={220} />
@@ -342,7 +342,7 @@ export default function EventDetailScreen() {
 
   if (notFound || !race) {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
         <Header leading="back" onLeadingPress={() => router.back()} />
         <View
           style={{
@@ -399,7 +399,7 @@ export default function EventDetailScreen() {
     : !selectedRow || !selectedHasStock || !selectedSaleOpen;
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
       <Animated.ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}

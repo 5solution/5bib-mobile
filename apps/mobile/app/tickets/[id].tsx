@@ -206,7 +206,7 @@ export default function TicketDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
         <Header
           title={t('tickets.detailTitle')}
           leading="back"
@@ -224,7 +224,7 @@ export default function TicketDetailScreen() {
 
   if (errored || !ticket) {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+      <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
         <Header
           title={t('tickets.detailTitle')}
           leading="back"
@@ -321,7 +321,7 @@ export default function TicketDetailScreen() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
       <Header
         title={t('tickets.detailTitle')}
         leading="back"

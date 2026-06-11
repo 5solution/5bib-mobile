@@ -241,7 +241,7 @@ export default function AllEventsScreen() {
     activeChips.length > 0 || (debouncedSearch?.trim().length ?? 0) > 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
+    <View style={{ flex: 1, backgroundColor: tokens.color.surfaceScreen }}>
       {searchActive ? (
         <View
           style={{
