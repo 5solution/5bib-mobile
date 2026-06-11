@@ -1,0 +1,105 @@
+# UI/UX Review 2026-06-11 — 48 verified findings (multi-agent, 58 agents)
+
+> Captured by workflow `uiux-full-review`. ✅ = đã fix trong cùng ngày.
+
+## P0
+
+- ✅ **[visual]** Emoji used as UI icons across the ENTIRE app (~70 occurrences, 60+ unique glyphs) — the #1 'hàng chợ' signal
+  - Fix: Replace every glyph with Ionicons from @expo/vector-icons — zero new dependencies. (1) TabBar: home/home-outline, ticket/ticket-outline, receipt/receipt-outline, person/person-outline pairs, tinted brandPrimary when focused (emoji can't be tinted — TabBar.tsx:91 currently fakes selection with opacit
+- ✅ **[visual]** Brand blue WAS wrong (#0066FF placeholder vs official #2563EB) — fixed in tokens by concurrent commit 3c9eeb5 TODAY; verify the sweep and rebuild
+  - Fix: Treat as fixed-pending-verification: rebuild the app and visually confirm CTAs/tab tint/links all show #2563EB. Keep the old-blue rebrand sweep OUT of new work — any agent still branching from a pre-3c9eeb5 commit will reintroduce #0066FF. Also align Badge 'brand' and ghost-button tints, which inher
+- ⬜ **[visual]** Off-brand accent rainbow: orange #FF6B35 + amber #FFB800 tokens plus hardcoded purple/sky gradients — neither exists in the web/logo palette
+  - Fix: Rebrand sweep decision needed from Danny: either (a) collapse brandSecondary/brandAccent into the official two-hue system — urgency/FOMO accents become magenta #F30C60 (the logo flag pink, already tokenized), gold countdown stays only inside the rolling-BIB game; or (b) if a warm accent must stay, p
+- ⬜ **[func]** Rolling BIB confirm step self-expires instantly — feature unusable
+  - Fix: When entering 'confirm' phase call `cd.restart(Math.floor((validUntilEpoch - Date.now())/1000))` (e.g. right after setValidUntilEpoch in startSpin/runRollAndGoConfirm), or rework useCountdown to sync `running` with the autoStart prop. Also gate the expiry effect on `liveSeconds` having been started 
+- ⬜ **[func]** Change-course paid path charges full price via a new order and never changes the course
+  - Fix: Mirror web: always PUT /codes/change-course with the athlete payload (from ticket.athleteBasicInfo.athlete_sub_info), capture the returned order id, and route to /checkout/payment-webview with that order_id when fee > 0. Change ticket.changeCourse to return the created order. Until then, hide the pa
+- ⬜ **[func]** Post-payment success CTA "Xem vé" navigates to a broken ticket page (order.ticketId never exists)
+  - Fix: Resolve the ticket via the tickets API after payment (e.g. ticket.listMyTickets sorted by createdOn DESC and match orderId, or a backend lookup by order), and only show the CTA when a real code value is found; otherwise route to /tickets list. Remove the `?? orderId` fallback.
+- ⬜ **[i18n]** Ticket status + action labels are raw VN strings in SDK constants (single biggest leak source)
+  - Fix: Change both maps to hold i18n KEYS (e.g. tickets.actions.transfer, tickets.status.new) instead of display strings; resolve with t() at render site. Add tickets.actions.* (11 keys) and tickets.status.* (8 keys) to vi/en/de.json. Note vi.json already has tickets.tab.notRegistered/registered/awaitConfi
+- ⬜ **[i18n]** StatusActionButtons compactLabel() hardcodes 8 VN tile labels
+  - Fix: Add tickets.actionsCompact.* keys to all 3 locales and resolve via useTranslation. Keep numberOfLines={1} but verify DE compact strings fit 72-96px tiles (e.g. use 'Teilen', 'Support', 'Ändern' style short forms in de.json).
+- ⬜ **[i18n]** TicketCard ticketStatusBadge fallbacks hardcode VN despite component already using useTranslation
+  - Fix: Pass t into ticketStatusBadge (or return keys) — keys exist or can be added: tickets.tabTransferred ('Đã chuyển/huỷ'), tickets.ticketCancelled ('Đã huỷ') already in vi.json; add tickets.status.finished. Localize the accessibilityLabel template too.
+- ✅ **[i18n]** Login 'hoặc' divider leaks VN into the EN/DE login screen (confirmed mixed-language repro)
+  - Fix: Add common.orDivider (vi: 'hoặc', en: 'or', de: 'oder') and replace the literal. Also localize :206 accessibilityHint 'Nhập email đã đăng ký'.
+- ⬜ **[i18n]** Onboarding slides, Skip/Next/Start CTAs fully hardcoded VN
+  - Fix: Add onboarding.slide1..3.title/body, onboarding.skip, onboarding.next, onboarding.start to all 3 locales and consume via t(SLIDE_KEYS[i]).
+- ⬜ **[i18n]** Transfer error-code map + fallback are VN-only in SDK constants
+  - Fix: Convert TRANSFER_ERROR_MESSAGES values to keys (tickets.transferErrors.OUTSIDE_TRANSFER_PERIOD etc.) + fallback key; t() at the toast/banner call site in transfer.tsx.
+- ⬜ **[i18n]** Payment method names/descriptions hardcoded VN (SDK + checkout) while payment.* locale keys already exist
+  - Fix: Replace name/description strings with i18n keys; reuse existing payment.* keys, add payment.desc.* for the 3 checkout descriptions. Brand names (VNPay/Payoo/OnePay/PayX) stay literal.
+- ⬜ **[i18n]** Shared UI components ship VN default props: ErrorState, Skeleton, WebViewWrapper, QRScannerView, QRDisplayCard, LottieView, +not-found
+  - Fix: Default props can't call hooks cheaply everywhere — either call i18n.t() directly from the shared i18n singleton inside these components, or make callers pass localized strings and set defaults via t(). WebViewWrapper should consume the existing payment.webview.* keys instead of duplicating copy.
+- ✅ **[i18n]** Root layout session-expired toast hardcodes VN although errors.sessionExpired key exists in all 3 locales
+  - Fix: Replace with i18n.t('errors.sessionExpired') (import the i18n singleton — this runs in an event-bus callback).
+- ⬜ **[i18n]** Event detail: 'Thu gọn/Xem thêm' toggle and race-day countdown (inline + CountdownRing + CountdownTimer) hardcoded VN
+  - Fix: Add browse.showMore/showLess (vi.json already has browse.loadMoreAthletes='Xem thêm' — keep separate keys), countdown.header, countdown.months/days/hours/minutes/seconds, countdown.remaining. Wire t() in the screen and pass localized label/units into CountdownRing/CountdownTimer props.
+- ⬜ **[i18n]** Card/badge components hardcode VN status vocab: RaceCard, OrderCard, StatusBadge, CourseCard + swipe-action labels in tickets/orders tabs
+  - Fix: Reuse existing browse.*/orders.*/common.* keys where wording matches; add browse.statusUpcoming, browse.statusFinished, browse.featured, browse.slotsLeft (plural-aware: {{count}}), browse.opensAt, common.details, common.payNow. Resolve via t() — these components currently have no useTranslation impo
+- ⬜ **[i18n]** VATToggleSection + BuyGroupDiscountBadge: entire user-facing forms/sheets in VN only
+  - Fix: Create checkout.vat.* and checkout.groupDiscount.* key groups (≈18 keys) in all 3 locales; use interpolation for amounts ({{amount}}, {{min}}) and t() inside both components.
+- ✅ **[sim]** Raw enum 'UNKNOWN' leaks as a red status chip on event detail
+  - Fix: Map every backend status to a localized label + color token; for unmapped statuses render nothing (hide the chip) instead of the raw enum fallback. Never ship a fallback string that is an internal enum name.
+- ⬜ **[sim]** Hero image renders as a giant blank grey block on home and event detail
+  - Fix: Investigate why this event's cover URL fails (CDN sizing param, missing banner field vs thumbnail field). Add a branded fallback: 5bib logomark on brand-blue gradient, plus a shimmer/skeleton while loading — never flat grey.
+
+## P1
+
+- ⬜ **[visual]** Hardcoded hex leaks in screens/components bypassing the token system
+  - Fix: Mechanical sweep: '#FFFFFF'/'#fff' → tokens.color.neutral0; '#000' → tokens.color.neutralBlack; add errorDark '#DC2626' and brandPrimaryDeep '#1E3A8A' tokens (or reuse the new brandPrimaryDark ramp). Add an ESLint rule (no-restricted-syntax matching /#[0-9a-fA-F]{3,8}/ in style objects) to keep it l
+- ⬜ **[visual]** Typography ignores the token scale at both extremes — 80+ raw fontSize literals, including sizes below the scale floor and 7 invented display sizes
+  - Fix: Extend the scale instead of letting screens invent sizes: add micro:10, caption:11 (with lineHeights) and display2xl:48 / display3xl:64 to tokens.fontSize, then sweep raw numbers to tokens. The 9px CountdownRing label should bump to 10 minimum (iOS legibility). Header/TabBar glyph fontSize 22 disapp
+- ⬜ **[ux]** Four dead settings rows in Profile: Language, Notifications, About, Rate App
+  - Fix: Ship the language BottomSheet (i18n.changeLanguage + persist) since i18n already supports vi/en/de; wire About to a simple info screen or webview; wire Rate App to expo-store-review / store URL. Until each is implemented, remove the row entirely — never render a tappable no-op.
+- ⬜ **[ux]** Dead notification bell in Home header
+  - Fix: Remove the bell until notifications exist, or route it to a notifications screen. A permanently inert bell on the home screen trains users that buttons don't work.
+- ⬜ **[ux]** Closing ANY in-app webview shows 'Cancel transaction? Order auto-cancels in 15 min' — including legal pages and race results
+  - Fix: Make the close-confirm opt-in: add `confirmOnClose?: { title, message }` prop to WebViewWrapper; only the payment/waiver flows pass it. Plain content webviews should close immediately. Derive the title from the URL hostname instead of hard-coding.
+- ⬜ **[ux]** Profile edit-pencil affordances route to an edit form that lacks those fields (navigation dead end)
+  - Fix: Add the missing fields (racekit/tshirtSize, achievements, club, sosPhone, idNumber, height, weight) to the edit screen, or remove the onEdit pencils for fields that can't be edited yet. Optionally pass a `?focus=<field>` param and scroll to it.
+- ⬜ **[ux]** Checkout athlete step: 12+ required fields validated silently — disabled Continue with zero inline errors
+  - Fix: Validate per-field on blur and pass `error` to each Input (the Input component already renders errors — Input.tsx:222-245). Alternatively keep the button enabled and on press scroll to + highlight the first invalid field. Replace the free-text dob with DateTimePicker and tshirtSize with a size picke
+- ⬜ **[ux]** Hardware back / swipe gestures bypass payment-cancel confirm and checkout step navigation
+  - Fix: In payment-webview and checkout, register a BackHandler (and `navigation.addListener('beforeRemove')` / `gestureEnabled: false` for the modal) that routes hardware back through the same handleClose / step-back logic as the header button.
+- ⬜ **[ux]** Tickets tab silently truncates to the 10 newest tickets — no pagination, wrong filter counts
+  - Fix: Add onEndReached pagination like home.tsx:208-220 (append pages until totalPages), or fan-out fetch all pages before computing counts. Show 'end of list' footer for parity with home/events.
+- ⬜ **[ux]** Post-payment 'View ticket' CTA falls back to orderId as a ticket id — dead end after successful payment
+  - Fix: When `order?.ticketId` is missing, route to `/tickets` (list) instead of guessing an id, or poll the order until ticketId appears before enabling the CTA.
+- ⬜ **[ux]** Order detail 'Pay now' hard-codes gateway=vnpay, ignoring the race's payment allow-list
+  - Fix: Persist the chosen gateway on the order (checkoutStore already calls selectPaymentMethod — checkout/index.tsx:470-472) or re-show the PaymentMethodPicker (filtered by race paymentOptions) before opening the webview.
+- ⬜ **[func]** JWT refresh (/renew) never wired — sessions hard-expire mid-flow and force logout
+  - Fix: On login/hydrate, schedule `user.refresh()` before token expiry (persist new token via secureSet + authStore), and/or in Fetcher attempt one /renew + retry on 401 before emitting AUTH_EXPIRED.
+- ⬜ **[func]** Tickets list swipe action "Chia sẻ" (and full-swipe) opens detail instead of sharing
+  - Fix: Implement a share handler on the list (reuse the ticket-detail share logic: Share.share with race title + BIB, optional bib-image) or relabel the action to 'Chi tiết' until share is implemented.
+- ⬜ **[func]** Language switcher is a no-op — users can never change app language
+  - Fix: Open a bottom sheet listing SUPPORTED_LOCALES, call i18n.changeLanguage(locale), persist choice (AsyncStorage) and read it in resolveInitialLocale(); per BR-AUTH-14 also reset the nav stack.
+- ⬜ **[func]** "Ủy quyền nhận racekit" (DELEGATE_RACEKIT) routes to an edit screen with no delegator fields
+  - Fix: Add a delegator section (4 fields) to edit.tsx shown when focus=delegate (or a dedicated sheet on ticket detail) submitting delegator_* via athleteSdk.simpleEdit, matching the web's delegatorSchema.
+- ⬜ **[func]** Checkout 'represent' mode collects + validates delegator info, then silently drops it
+  - Fix: Either map delegator fields into the order payload/athlete_sub_info the way backend expects (verify against web), or remove the represent-mode delegator section from checkout and use the post-purchase /athlete/register/represent flow which does send is_represent.
+- ⬜ **[func]** Dead UI fed by fields the backend never sends: race.schedule, racekitImages, latitude
+  - Fix: Remove the dead sections (or source schedule/racekit from race_extenstion fields that actually exist) and drop the phantom model fields so future screens don't build on them.
+- ⬜ **[func]** Edit-athlete save wipes existing blood type and address (always sends empty strings)
+  - Fix: Add bloodType/address to the Athlete model + normalizeAthlete, prefill them in fromAthlete, and omit keys from the simple-edit body when the form field is empty/untouched.
+- ⬜ **[func]** Order detail Pay-now hardcodes gateway 'vnpay', ignoring the race's payment_options allow-list
+  - Fix: Pass the order's original gateway (order.paymentMethod when set), or fetch race paymentOptions and present the PaymentMethodPicker before opening the webview; fall back to vnpay only as last resort.
+- ⬜ **[i18n]** Checkout/edit screens: section titles, placeholders, defaults hardcoded ('Trang phục', 'Tiêu chuẩn', 'Email & giấy tờ', 'Nguyễn Văn A', nationality default mismatch)
+  - Fix: Keys: checkout.apparelSection, checkout.racekitStandard, checkout.docsSection, auth.fullNamePlaceholder (locale-appropriate example names: 'Nguyễn Văn A' / 'John Smith' / 'Max Mustermann'), tickets.transferMessagePlaceholder. Standardize nationality default to 'Vietnam' in both forms (matches the or
+- ⬜ **[i18n]** Accessibility labels VN-only across ~12 components — screen readers speak Vietnamese on EN/DE UI
+  - Fix: Add an a11y.* key group (close, back, required, showPassword, hidePassword, clear, pageXofY with interpolation, etc.) and resolve via i18n.t() in each component during the same sweep.
+- ⬜ **[i18n]** User-facing toasts/empty states with VN + tech jargon: 'Backend đang quá tải', change-course mixed t()/literal, race-history empty state
+  - Fix: Keys: errors.serverBusy (copy: 'Hệ thống đang bận, thử lại sau ít phút' / 'Server is busy, try again shortly'), tickets.changeCourseRedirecting/Success/NoOptions/willRefund/free, result.emptyTitle/emptyDescription. Remove 'Backend' from user copy.
+- ✅ **[sim]** Header shows plain-text '5BIB' instead of the real brand logo
+  - Fix: Use the SVG wordmark (already shipped for splash/AnimatedLogo) at ~28px height in the home header. Also replace the 'Hi, ceo@5bib.com' raw-email greeting with the user's display name or just 'Xin chào 👋'-style copy.
+- ⬜ **[sim]** Mixed English/Vietnamese on every screen, sometimes within one sentence
+  - Fix: Pick Vietnamese as default locale (matches dev.5bib.com audience), run all strings through the i18n layer, and grep for hardcoded English literals. Status chips ('ONGOING', 'Open for registration', 'Not yet assigned') are the worst offenders.
+- ⬜ **[sim]** E-waiver step 1 has a 'Select race' heading with no control under it, plus the same helper sentence printed twice
+  - Fix: Render the race picker (or remove the heading when race is pre-resolved from deep link), and delete the duplicated helper line. As-is the screen looks broken to a user.
+- ⬜ **[sim]** Orders defaults to 'Awaiting payment' filter and shows a bare 'No results' wall of white
+  - Fix: Default to 'All' (or most recent orders). Build a proper empty state: small illustration/icon, one line of copy, CTA ('Khám phá giải chạy'). Add right-edge fade gradient on the chip scroller.
+- ⬜ **[sim]** Profile shows the email address three times and falls back wrong for FULL NAME
+  - Fix: Display-name fallback chain should be full_name → email-local-part, never raw email as 'name'; suppress the subtitle when identical to the title; FULL NAME should show '—'/'Chưa cập nhật' when empty, not the email. Remove the literal dash from the section header style.
+- ⬜ **[sim]** Race history rows on Result screen render '—' as their title
+  - Fix: Resolve the race name for history entries (join on race id) or hide the title line; drop the in-page H1 since the nav bar already says it; replace 🏆 with a branded illustration or tinted trophy icon.

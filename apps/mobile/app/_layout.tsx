@@ -29,7 +29,7 @@ import { initGoogleSignIn } from '../src/adapters/google-signin';
 import { initSdk } from '../src/adapters/sdk-init';
 import { eventBus } from '../src/adapters/event-bus';
 import { useAuthStore } from '../src/stores/useAuthStore';
-import '../src/i18n';
+import i18n from '../src/i18n';
 
 // Dev-only noise suppression. These warnings are cosmetic and do not affect
 // runtime behavior; they obscure the bottom-sheet CTA in QC screenshots.
@@ -57,7 +57,7 @@ function AuthExpiredListener() {
     // BR-AUTH-04: SDK emits AUTH_EXPIRED on 401 → clear store + redirect login.
     const unsub = eventBus.on('AUTH_EXPIRED', () => {
       logout();
-      toast.show({ variant: 'warning', message: 'Phiên đăng nhập hết hạn' });
+      toast.show({ variant: 'warning', message: i18n.t('errors.sessionExpired') });
       router.replace('/login');
     });
     return unsub;

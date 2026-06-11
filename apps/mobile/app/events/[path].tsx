@@ -483,7 +483,7 @@ export default function EventDetailScreen() {
           <View>
             {/* Race-type badge above title (web: "TRAIL RACE" / "ROAD MARATHON"
                in red pill, top of hero). Surfaced from race.raceType. */}
-            {race.raceType ? (
+            {race.raceType && race.raceType !== 'UNKNOWN' ? (
               <View style={{ marginBottom: tokens.space[2], alignSelf: 'flex-start' }}>
                 <Badge variant="error">{formatRaceType(race.raceType)}</Badge>
               </View>

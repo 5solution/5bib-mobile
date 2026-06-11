@@ -259,7 +259,7 @@ export default function LoginScreen() {
           >
             <View style={{ flex: 1, height: 1, backgroundColor: tokens.color.neutral200 }} />
             <Text style={{ color: tokens.color.neutral500, fontSize: tokens.fontSize.labelSm }}>
-              hoặc
+              {t('auth.or')}
             </Text>
             <View style={{ flex: 1, height: 1, backgroundColor: tokens.color.neutral200 }} />
           </View>
