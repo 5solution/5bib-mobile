@@ -27,6 +27,16 @@ export interface ListRacesParams {
    * was wrong.
    */
   province?: string;
+  /**
+   * Event-date window — ISO strings, verified live 2026-06-11. Web's
+   * "Thời gian tổ chức" combobox sends from_date=now, to_date=now+N days.
+   * ⚠️ Races with NULL event_start_date are INCLUDED in windowed results
+   * (backend behavior, web shows them too). ⚠️ The "+07:00" timezone form
+   * must be URL-encoded or the "+" decodes to a space → 400 "Mismatch
+   * request param"; axios params encoding handles this automatically.
+   */
+  fromDate?: string;
+  toDate?: string;
 }
 
 interface LegacyListRacesParams {
@@ -68,6 +78,8 @@ function toLegacyListParams(p: ListRacesParams): Record<string, unknown> {
   if (p.isHighlight !== undefined) out.is_highlight = p.isHighlight;
   if (p.bibSetUp !== undefined) out.bib_set_up = p.bibSetUp;
   if (p.province !== undefined) out.province = p.province;
+  if (p.fromDate !== undefined) out.from_date = p.fromDate;
+  if (p.toDate !== undefined) out.to_date = p.toDate;
   return out;
 }
 

@@ -34,7 +34,21 @@ interface Draft {
   status: BrowseFilterState['status'];
   raceType: BrowseFilterState['raceType'];
   city: BrowseFilterState['city'];
+  timeWindow: BrowseFilterState['timeWindow'];
 }
+
+/**
+ * Event-date windows (days from today) — web's "Thời gian tổ chức" combobox.
+ * Maps to from_date=now / to_date=now+N on the wire. Labels via
+ * t(`browse.timeWindow.${key}`).
+ */
+const TIME_WINDOWS: ReadonlyArray<{ value: number | 'ALL'; key: string }> = [
+  { value: 'ALL', key: 'all' },
+  { value: 7, key: 'week' },
+  { value: 30, key: 'month' },
+  { value: 90, key: 'quarter' },
+  { value: 180, key: 'halfYear' },
+];
 
 const STATUS_OPTIONS: { value: RaceStatus | 'ALL'; key: string }[] = [
   { value: 'ALL', key: 'all' },
@@ -71,6 +85,7 @@ export function RaceFilterSheet({ open, onClose, onApply }: RaceFilterSheetProps
     status: store.status,
     raceType: store.raceType,
     city: store.city,
+    timeWindow: store.timeWindow,
   });
 
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -83,6 +98,7 @@ export function RaceFilterSheet({ open, onClose, onApply }: RaceFilterSheetProps
         status: store.status,
         raceType: store.raceType,
         city: store.city,
+        timeWindow: store.timeWindow,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,12 +123,13 @@ export function RaceFilterSheet({ open, onClose, onApply }: RaceFilterSheetProps
     store.setFilter('status', draft.status);
     store.setFilter('raceType', draft.raceType);
     store.setFilter('city', draft.city);
+    store.setFilter('timeWindow', draft.timeWindow);
     onClose();
     onApply?.();
   };
 
   const reset = () => {
-    setDraft({ status: 'ALL', raceType: 'ALL', city: 'ALL' });
+    setDraft({ status: 'ALL', raceType: 'ALL', city: 'ALL', timeWindow: 'ALL' });
   };
 
   return (
@@ -167,6 +184,19 @@ export function RaceFilterSheet({ open, onClose, onApply }: RaceFilterSheetProps
               );
             })}
           </View>
+        </View>
+
+        {/* Event-date window — web "Thời gian tổ chức" */}
+        <View style={{ gap: tokens.space[2] }}>
+          <SectionLabel label={t('browse.filterTime')} />
+          {TIME_WINDOWS.map((tw) => (
+            <RadioRow
+              key={String(tw.value)}
+              label={t(`browse.timeWindow.${tw.key}`)}
+              checked={draft.timeWindow === tw.value}
+              onPress={() => setDraft((d) => ({ ...d, timeWindow: tw.value }))}
+            />
+          ))}
         </View>
 
         {/* City picker */}

@@ -24,6 +24,20 @@ import { secureRemove } from '../../src/adapters/secure-storage';
 import { TOKEN_KEY } from '../../src/adapters/sdk-init';
 import { signOutGoogle } from '../../src/adapters/google-signin';
 
+/**
+ * Web footer "Pháp lý" links (G-18) — slugs copied verbatim from
+ * selling-web src/app/[locale]/(pub)/footer.tsx. Opened in the in-app
+ * webview against production 5bib.com (the legally binding copies).
+ */
+const LEGAL_LINKS: ReadonlyArray<{ slug: string; key: string }> = [
+  { slug: 'quy-che-5bib-com', key: 'terms' },
+  { slug: 'chinh-sach-bao-mat-thong-tin', key: 'privacy' },
+  { slug: 'chinh-sach-bao-mat-thong-tin-thanh-toan', key: 'paymentPrivacy' },
+  { slug: 'chinh-sach-thanh-toan', key: 'payment' },
+  { slug: 'thong-tin-ve-chu-so-huu', key: 'owner' },
+  { slug: 'quy-trinh-giai-quyet-tranh-chap-khieu-nai', key: 'dispute' },
+];
+
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -347,11 +361,6 @@ export default function ProfileScreen() {
             onPress={() => router.push('/result/race-history')}
           />
           <ListItem
-            leading={<Text style={{ fontSize: 20 }}>🔒</Text>}
-            title={t('profile.privacy')}
-            onPress={() => {}}
-          />
-          <ListItem
             leading={<Text style={{ fontSize: 20 }}>ℹ️</Text>}
             title={t('profile.about')}
             onPress={() => {}}
@@ -369,6 +378,39 @@ export default function ProfileScreen() {
             destructive
             accessibilityLabel={t('profile.deleteAccount.menuTitle')}
           />
+
+          {/* Pháp lý — web footer parity (G-18). 6 policy pages opened in
+             the in-app webview against the production site (those are the
+             legally binding documents; identical paths exist on dev). */}
+          <Text
+            style={{
+              paddingHorizontal: tokens.space[4],
+              fontSize: tokens.fontSize.labelSm,
+              fontWeight: tokens.fontWeight.semibold,
+              color: tokens.color.neutral500,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              marginTop: tokens.space[5],
+              marginBottom: tokens.space[2],
+            }}
+            accessibilityRole="header"
+          >
+            {t('profile.legal.title')}
+          </Text>
+          {LEGAL_LINKS.map((l) => (
+            <ListItem
+              key={l.slug}
+              leading={<Text style={{ fontSize: 20 }}>📄</Text>}
+              title={t(`profile.legal.${l.key}`)}
+              onPress={() =>
+                router.push({
+                  pathname: '/result/webview',
+                  params: { url: `https://5bib.com/vi/privacy/${l.slug}` },
+                })
+              }
+              accessibilityLabel={t(`profile.legal.${l.key}`)}
+            />
+          ))}
         </View>
         </FadeSlideIn>
 

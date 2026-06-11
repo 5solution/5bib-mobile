@@ -22,6 +22,11 @@ export interface BrowseFilterState {
   status: RaceStatus | 'ALL';
   raceType: string | 'ALL';
   city: string | 'ALL';
+  /**
+   * Event-date window in days from today (web "Thời gian tổ chức"):
+   * 'ALL' = no window, otherwise from_date=now → to_date=now+N days.
+   */
+  timeWindow: number | 'ALL';
   sortField: SortField;
   sortDirection: SortDirection;
   searchQuery: string;
@@ -42,6 +47,7 @@ const initial: BrowseFilterState = {
   status: 'ALL',
   raceType: 'ALL',
   city: 'ALL',
+  timeWindow: 'ALL',
   sortField: 'date',
   sortDirection: 'desc',
   searchQuery: '',
@@ -58,6 +64,7 @@ export const useBrowseFilterStore = create<BrowseFilterState & BrowseFilterActio
           status: 'ALL',
           raceType: 'ALL',
           city: 'ALL',
+          timeWindow: 'ALL',
           sortField: 'date',
           sortDirection: 'desc',
           searchQuery: '',

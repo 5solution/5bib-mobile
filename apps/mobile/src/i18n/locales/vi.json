@@ -162,6 +162,15 @@
       "height": "Chiều cao",
       "weight": "Cân nặng"
     },
+    "legal": {
+      "title": "Pháp lý",
+      "terms": "Quy chế 5bib.com",
+      "privacy": "Chính sách bảo mật thông tin",
+      "paymentPrivacy": "Chính sách bảo mật thông tin thanh toán",
+      "payment": "Chính sách thanh toán",
+      "owner": "Thông tin về chủ sở hữu",
+      "dispute": "Quy trình giải quyết tranh chấp, khiếu nại"
+    },
     "dob": "Ngày sinh",
     "gender": {
       "label": "Giới tính",
@@ -247,6 +256,15 @@
     "filterType": "Loại giải",
     "filterMonth": "Tháng diễn ra",
     "filterRegion": "Khu vực",
+    "filterTime": "Thời gian tổ chức",
+    "timeWindow": {
+      "all": "Tất cả",
+      "week": "7 ngày tới",
+      "month": "30 ngày tới",
+      "quarter": "3 tháng tới",
+      "halfYear": "6 tháng tới"
+    },
+    "timeWindowChip": "{{days}} ngày tới",
     "statusOpen": "Đang mở đăng ký",
     "statusComingSoon": "Sắp mở",
     "statusClosed": "Đã đóng",

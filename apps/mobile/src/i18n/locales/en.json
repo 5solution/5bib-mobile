@@ -162,6 +162,15 @@
       "height": "Height",
       "weight": "Weight"
     },
+    "legal": {
+      "title": "Legal",
+      "terms": "5bib.com Terms",
+      "privacy": "Privacy Policy",
+      "paymentPrivacy": "Payment Data Privacy Policy",
+      "payment": "Payment Policy",
+      "owner": "Ownership Information",
+      "dispute": "Dispute & Complaint Resolution"
+    },
     "dob": "Date of birth",
     "gender": {
       "label": "Gender",
@@ -247,6 +256,15 @@
     "filterType": "Race type",
     "filterMonth": "Month",
     "filterRegion": "Region",
+    "filterTime": "Event date",
+    "timeWindow": {
+      "all": "All",
+      "week": "Next 7 days",
+      "month": "Next 30 days",
+      "quarter": "Next 3 months",
+      "halfYear": "Next 6 months"
+    },
+    "timeWindowChip": "Next {{days}} days",
     "statusOpen": "Open for registration",
     "statusComingSoon": "Coming soon",
     "statusClosed": "Closed",

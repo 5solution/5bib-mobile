@@ -98,6 +98,15 @@ export default function AllEventsScreen() {
   const fetchPage = useCallback(
     async (pageNo: number) => {
       const titleParam = debouncedSearch.trim() || undefined;
+      // Web "Thời gian tổ chức": t days → from_date=now, to_date=now+t.
+      // Backend includes NULL event_start_date races in windowed results
+      // (verified live — web behaves the same).
+      const tw = filterStore.timeWindow;
+      const fromDate = tw === 'ALL' ? undefined : new Date().toISOString();
+      const toDate =
+        tw === 'ALL'
+          ? undefined
+          : new Date(Date.now() + tw * 24 * 60 * 60 * 1000).toISOString();
       try {
         const res = await raceSdk.listRaces({
           pageNo,
@@ -108,6 +117,8 @@ export default function AllEventsScreen() {
           // client-side filter that could only see the loaded page (a
           // Hanoi race on page 2 never showed up).
           province: filterStore.city === 'ALL' ? undefined : filterStore.city,
+          fromDate,
+          toDate,
           title: titleParam,
           sortField: sortFieldToBackend(filterStore.sortField),
           sortDirection: filterStore.sortDirection === 'asc' ? 'ASC' : 'DESC',
@@ -125,6 +136,7 @@ export default function AllEventsScreen() {
       filterStore.status,
       filterStore.raceType,
       filterStore.city,
+      filterStore.timeWindow,
       filterStore.sortField,
       filterStore.sortDirection,
       showToast,
@@ -207,8 +219,22 @@ export default function AllEventsScreen() {
         clear: () => filterStore.setFilter('city', 'ALL'),
       });
     }
+    if (filterStore.timeWindow !== 'ALL') {
+      chips.push({
+        id: 'timeWindow',
+        label: t('browse.timeWindowChip', { days: filterStore.timeWindow }),
+        clear: () => filterStore.setFilter('timeWindow', 'ALL'),
+      });
+    }
     return chips;
-  }, [filterStore.status, filterStore.raceType, filterStore.city, t, filterStore]);
+  }, [
+    filterStore.status,
+    filterStore.raceType,
+    filterStore.city,
+    filterStore.timeWindow,
+    t,
+    filterStore,
+  ]);
 
   const hasFilter =
     activeChips.length > 0 || (debouncedSearch?.trim().length ?? 0) > 0;

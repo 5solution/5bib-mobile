@@ -162,6 +162,15 @@
       "height": "Körpergröße",
       "weight": "Gewicht"
     },
+    "legal": {
+      "title": "Rechtliches",
+      "terms": "5bib.com AGB",
+      "privacy": "Datenschutzerklärung",
+      "paymentPrivacy": "Zahlungsdatenschutz",
+      "payment": "Zahlungsrichtlinie",
+      "owner": "Eigentümerinformationen",
+      "dispute": "Streitbeilegung & Beschwerden"
+    },
     "dob": "Geburtsdatum",
     "gender": {
       "label": "Geschlecht",
@@ -247,6 +256,15 @@
     "filterType": "Renntyp",
     "filterMonth": "Monat",
     "filterRegion": "Region",
+    "filterTime": "Veranstaltungsdatum",
+    "timeWindow": {
+      "all": "Alle",
+      "week": "Nächste 7 Tage",
+      "month": "Nächste 30 Tage",
+      "quarter": "Nächste 3 Monate",
+      "halfYear": "Nächste 6 Monate"
+    },
+    "timeWindowChip": "Nächste {{days}} Tage",
     "statusOpen": "Anmeldung offen",
     "statusComingSoon": "Bald verfügbar",
     "statusClosed": "Geschlossen",
