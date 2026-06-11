@@ -194,9 +194,13 @@ export default function ChangeCourseScreen() {
 
   const submit = useCallback(async () => {
     if (!selected || !estimate || !ticket?.value) return;
-    const fee = estimate.changeCourseFee;
+    // ⚠️ Verified live 2026-06-11 (race 305 estimate): `final_value` is the
+    // TOTAL the user pays — price gap + change_course_fee (e.g. 200k→300k
+    // course on a 50k-fee race → final_value 140k, change_course_fee 50k).
+    // Gating on changeCourseFee alone misses paid upgrades on fee-0 races.
+    const payable = estimate.finalValue;
     // Paid change requires a gateway pick (mirrors web's PaymentScreen step).
-    if (fee > 0 && !paymentMethod) {
+    if (payable > 0 && !paymentMethod) {
       toast.show({ variant: 'warning', message: t('checkout.selectPaymentMethod') });
       return;
     }
@@ -212,7 +216,7 @@ export default function ChangeCourseScreen() {
         toCourseId: selected,
         payload: buildAthletePayload(athlete),
       });
-      if (fee > 0) {
+      if (payable > 0) {
         if (!orderId) {
           // Backend didn't return the fee order — surface instead of guessing.
           toast.show({ variant: 'error', message: t('errors.generic') });
@@ -233,7 +237,21 @@ export default function ChangeCourseScreen() {
         setFeatureAvailable(false);
         return;
       }
-      toast.show({ variant: 'error', message: t('errors.generic') });
+      // Surface the backend's business-rule message when present — live
+      // probing found real cases ("registration end time is before current
+      // time", "code have been change course before") the generic toast hid.
+      const backendMsg =
+        e instanceof FetcherError
+          ? (() => {
+              const r = e.response as Record<string, unknown> | undefined;
+              const errObj = (r?.error ?? r) as Record<string, unknown> | undefined;
+              return typeof errObj?.message === 'string' ? errObj.message : undefined;
+            })()
+          : undefined;
+      toast.show({
+        variant: 'error',
+        message: (backendMsg ?? t('errors.generic')).slice(0, 140),
+      });
     } finally {
       setSubmitting(false);
     }
@@ -276,13 +294,15 @@ export default function ChangeCourseScreen() {
     );
   }
 
-  const fee = estimate?.changeCourseFee ?? 0;
+  // `finalValue` = total the user pays (price gap + fee) — verified live
+  // 2026-06-11. `changeCourseFee` is only the fee component (a line item).
+  const payable = estimate?.finalValue ?? 0;
   const ctaLabel = !estimate
     ? t('tickets.confirmChange')
-    : fee > 0
-      ? t('checkout.payWithAmountFmt', { amount: fmtVnd(fee) })
-      : fee < 0
-        ? `${t('tickets.confirmChange')} (${t('tickets.willRefund', { amount: fmtVnd(-fee) })})`
+    : payable > 0
+      ? t('checkout.payWithAmountFmt', { amount: fmtVnd(payable) })
+      : payable < 0
+        ? `${t('tickets.confirmChange')} (${t('tickets.willRefund', { amount: fmtVnd(-payable) })})`
         : `${t('tickets.confirmChange')} (${t('tickets.feeZero')})`;
 
   return (
@@ -298,7 +318,7 @@ export default function ChangeCourseScreen() {
             variant="primary"
             size="lg"
             fullWidth
-            disabled={!selected || !estimate || submitting || (fee > 0 && !paymentMethod)}
+            disabled={!selected || !estimate || submitting || (payable > 0 && !paymentMethod)}
             loading={submitting}
             onPress={submit}
           >
@@ -344,14 +364,25 @@ export default function ChangeCourseScreen() {
 
         {estimate && (
           <FormSection title={t('tickets.feeBreakdown')}>
-            <Row label={t('tickets.newCourse')} value={fmtVnd(estimate.finalValue)} />
+            {estimate.changeCourseFee > 0 && (
+              <Row
+                label={t('tickets.changeFee')}
+                value={fmtVnd(estimate.changeCourseFee)}
+              />
+            )}
             <View style={{ height: 1, backgroundColor: tokens.color.neutral200 }} />
             <Row
-              label={fee > 0 ? t('tickets.needToPay') : fee < 0 ? 'Sẽ hoàn lại' : 'Miễn phí'}
-              value={fmtVnd(Math.abs(fee))}
+              label={
+                payable > 0
+                  ? t('tickets.needToPay')
+                  : payable < 0
+                    ? 'Sẽ hoàn lại'
+                    : 'Miễn phí'
+              }
+              value={fmtVnd(Math.abs(payable))}
               bold
-              brand={fee >= 0}
-              error={fee < 0}
+              brand={payable >= 0}
+              error={payable < 0}
             />
             {!!estimate.note && (
               <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral500 }}>
@@ -363,7 +394,7 @@ export default function ChangeCourseScreen() {
 
         {/* Gateway pick — only when the change costs money. Options filtered
            by the race's payment_options allow-list, same as checkout. */}
-        {estimate && fee > 0 && (
+        {estimate && payable > 0 && (
           <FormSection title={t('checkout.paymentMethod')}>
             <PaymentMethodPicker
               options={filterPaymentOptions(PAYMENT_OPTIONS, ticket?.race?.paymentOptions)}

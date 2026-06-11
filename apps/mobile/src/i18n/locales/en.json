@@ -552,7 +552,8 @@
       "successUpdate": "Updated",
       "failed": "Registration failed, please try again"
     },
-    "changeCourseSuccess": "Course changed successfully"
+    "changeCourseSuccess": "Course changed successfully",
+    "changeFee": "Change-course fee"
   },
   "orders": {
     "tabTitle": "Orders",

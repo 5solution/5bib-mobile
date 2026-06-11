@@ -552,7 +552,8 @@
       "successUpdate": "Cập nhật thành công",
       "failed": "Đăng ký thất bại, vui lòng thử lại"
     },
-    "changeCourseSuccess": "Đổi cự ly thành công"
+    "changeCourseSuccess": "Đổi cự ly thành công",
+    "changeFee": "Phí đổi cự ly"
   },
   "orders": {
     "tabTitle": "Đơn hàng",

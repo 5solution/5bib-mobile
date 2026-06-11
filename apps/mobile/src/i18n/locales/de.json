@@ -552,7 +552,8 @@
       "successUpdate": "Aktualisiert",
       "failed": "Registrierung fehlgeschlagen, bitte erneut versuchen"
     },
-    "changeCourseSuccess": "Strecke erfolgreich geändert"
+    "changeCourseSuccess": "Strecke erfolgreich geändert",
+    "changeFee": "Streckenwechselgebühr"
   },
   "orders": {
     "tabTitle": "Bestellungen",
