@@ -5,26 +5,102 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import NetInfo from '@react-native-community/netinfo';
+import { AppState } from 'react-native';
+import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { getApiBaseUrl } from '../adapters/sdk-init';
 
 /** Online/offline detection — BR-GLOBAL-02 + BR-BROWSE-14 + BR-WAIVER-13.
  *
- * iOS Simulator + some platform configs return `isConnected = null` and
+ * Singleton manager instead of a bare addEventListener per hook because
+ * NetInfo's `isInternetReachable` is notorious for sticking at `false`
+ * after connectivity returns (its internal probe result is cached and the
+ * recheck timer doesn't always fire — the app showed "offline" forever
+ * until restart). Three defenses:
+ *   1. Reachability probe points at OUR backend root (any HTTP response,
+ *      even 403, proves the internet + 5bib are reachable) instead of the
+ *      default clients3.google.com — which is both slower from VN and not
+ *      the thing we actually care about.
+ *   2. While offline, force `NetInfo.refresh()` every 5s so recovery is
+ *      detected promptly instead of waiting on NetInfo's own timers.
+ *   3. On app foreground (background→active), force a refresh — the classic
+ *      stuck case is toggling airplane mode while the app is backgrounded.
+ *
+ * iOS Simulator + some platform configs return `isConnected = null` /
  * `isInternetReachable = null` on first event. Treat null as "unknown" =
- * online (assume connected until proven offline). Only flip to offline when
- * NetInfo *explicitly* says false. This avoids the false "Offline — cached
- * data" banner that appeared on every screen during QC.
+ * online (assume connected until proven offline) — avoids the false
+ * "Offline" banner on every screen that appeared during QC.
  */
+type OnlineListener = (online: boolean) => void;
+const onlineListeners = new Set<OnlineListener>();
+let onlineState = true;
+let onlineManagerStarted = false;
+let offlineRecoveryTimer: ReturnType<typeof setInterval> | null = null;
+
+function computeOnline(state: NetInfoState): boolean {
+  const connected = state.isConnected !== false; // null/undefined → true
+  const reachable = state.isInternetReachable !== false; // null/undefined → true
+  return connected && reachable;
+}
+
+function setOnlineState(next: boolean) {
+  if (next !== onlineState) {
+    onlineState = next;
+    onlineListeners.forEach((l) => l(next));
+  }
+  // Recovery polling only runs while offline.
+  if (!onlineState && !offlineRecoveryTimer) {
+    offlineRecoveryTimer = setInterval(() => {
+      void refreshOnlineState();
+    }, 5_000);
+  } else if (onlineState && offlineRecoveryTimer) {
+    clearInterval(offlineRecoveryTimer);
+    offlineRecoveryTimer = null;
+  }
+}
+
+async function refreshOnlineState(): Promise<void> {
+  try {
+    const s = await NetInfo.refresh();
+    setOnlineState(computeOnline(s));
+  } catch {
+    // refresh itself failing ≠ offline; keep current state.
+  }
+}
+
+function startOnlineManager() {
+  if (onlineManagerStarted) return;
+  onlineManagerStarted = true;
+  NetInfo.configure({
+    reachabilityUrl: `${getApiBaseUrl()}/`,
+    // fetch() only resolves when SOMETHING answered over the network — any
+    // HTTP status (dapi root answers 403 in ~0.3s) means we're online.
+    reachabilityTest: async (response) => response.status > 0,
+    reachabilityShortTimeout: 5_000, // recheck cadence while offline
+    reachabilityLongTimeout: 60_000, // recheck cadence while online
+    reachabilityRequestTimeout: 10_000,
+    reachabilityShouldRun: () => true,
+    shouldFetchWiFiSSID: false,
+    useNativeReachability: false,
+  });
+  NetInfo.addEventListener((state) => setOnlineState(computeOnline(state)));
+  AppState.addEventListener('change', (st) => {
+    if (st === 'active') void refreshOnlineState();
+  });
+}
+
 export function useOnline() {
-  const [online, setOnline] = useState(true);
+  const [online, setOnline] = useState(onlineState);
   useEffect(() => {
-    const unsub = NetInfo.addEventListener((state) => {
-      const connected = state.isConnected !== false; // null/undefined → true
-      const reachable = state.isInternetReachable !== false; // null/undefined → true
-      setOnline(connected && reachable);
-    });
-    return () => unsub();
+    startOnlineManager();
+    const l: OnlineListener = (n) => setOnline(n);
+    onlineListeners.add(l);
+    // Re-sync in case state changed between render and effect.
+    setOnline(onlineState);
+    return () => {
+      onlineListeners.delete(l);
+    };
   }, []);
   return online;
 }
