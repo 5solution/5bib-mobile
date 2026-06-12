@@ -189,7 +189,9 @@ export default function TicketDetailScreen() {
       let imageUrl: string | undefined;
       if (athleteId) {
         try {
-          imageUrl = (await athleteSdk.getBibImage(athleteId, true)) || undefined;
+          imageUrl =
+            (await athleteSdk.getBibImage(athleteId, true, ticket.value)) ||
+            undefined;
         } catch {
           imageUrl = undefined;
         }

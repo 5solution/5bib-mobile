@@ -25,14 +25,32 @@ export interface PriceRule {
   usedCount?: number;
 }
 
+/**
+ * Wire discount-kind field is `value_type` with values 'fixed_amount' /
+ * 'percentage' / 'Fixed_price' (web checkout's getDiscountValue switch) —
+ * `type` does not exist on the DTO, so the old mapping left it undefined and
+ * every percentage voucher was treated as a fixed-VND amount.
+ */
+function normalizeDiscountType(v: unknown): PriceRule['type'] {
+  const s = String(v ?? '').toLowerCase();
+  if (s === 'percentage') return 'percentage';
+  if (s === 'fixed_amount' || s === 'fixed_price' || s === 'fixed') return 'fixed';
+  return undefined;
+}
+
 function normalizePriceRule(raw: unknown): PriceRule {
   const r = (raw ?? {}) as Record<string, unknown>;
+  const value =
+    (r.value as number | undefined) ?? (r.amount as number | undefined);
   return {
     id: String(r.id ?? r.price_rule_id ?? ''),
     raceId: r.race_id != null ? String(r.race_id) : undefined,
     title: String(r.title ?? r.code ?? ''),
-    value: (r.value as number | undefined) ?? (r.amount as number | undefined),
-    type: r.type as PriceRule['type'],
+    // Shopify-style price rules store discounts as NEGATIVE values — web
+    // wraps every read in Math.abs (checkout getDiscountValue); without it a
+    // fixed -50000 voucher would *increase* the displayed total.
+    value: value != null ? Math.abs(value) : undefined,
+    type: normalizeDiscountType(r.value_type ?? r.type),
     startDate: (r.start_date as string | undefined) ?? (r.startDate as string | undefined),
     endDate: (r.end_date as string | undefined) ?? (r.endDate as string | undefined),
     usageLimit: r.usage_limit as number | undefined,

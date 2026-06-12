@@ -486,6 +486,24 @@ export default function CheckoutScreen() {
       const input = buildOrderInput();
       const created = await order.createOrder(input);
       await draft.clear();
+      // Zero-total order (100%-off voucher / free add-on math): the BE
+      // answers /​{gateway}/payment with HTTP 266 ORDER_WITH_TOTAL_EQUAL_ZERO
+      // and NO gateway URL — web routes straight to the order page (api/
+      // checkout route.ts, status 266 branch). The mobile Fetcher swallows
+      // HTTP status codes, so the webview would dead-end on a retry loop.
+      // Skip the gateway entirely; the result screen polls the order and
+      // shows its real state.
+      if (total <= 0) {
+        router.replace({
+          pathname: '/checkout/result',
+          params: {
+            order_id: created.orderId,
+            orderId: created.orderId,
+            status: 'unknown',
+          },
+        });
+        return;
+      }
       const gateway = PICKER_TO_GATEWAY[paymentMethod];
       checkoutStore.selectPaymentMethod(
         gateway === 'vnpay' ? 'VNPAY' : gateway === 'payoo' ? 'PAYOO' : null,

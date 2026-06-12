@@ -118,6 +118,25 @@ function normalizeAthlete(raw: unknown): Athlete {
   };
 }
 
+/**
+ * Unwrap the share-image payload. Wire is double-nested {data:{data:<img>}}
+ * — same envelope as the payment endpoints (web's share-bib-modal reads
+ * `res?.data?.data?.data`). The old `raw.data?.url` reader never matched, so
+ * Share BIB silently degraded to text-only. Walks `data` links and accepts
+ * a string (URL or data-URI) or legacy `{url}` at any level.
+ */
+function unwrapImagePayload(body: unknown): string {
+  let cur: unknown = body;
+  for (let depth = 0; depth < 4 && cur != null; depth++) {
+    if (typeof cur === 'string') return cur;
+    if (typeof cur !== 'object') return '';
+    const o = cur as Record<string, unknown>;
+    if (typeof o.url === 'string') return o.url;
+    cur = o.data;
+  }
+  return '';
+}
+
 export const athlete = {
   /**
    * POST /athlete/register?code_value=X — claim a ticket by registering
@@ -221,15 +240,23 @@ export const athlete = {
   },
 
   /**
-   * GET /athlete/bib-image?athlete_id=X&is_fb=BOOL — share-card BIB image.
-   * `is_fb=true` returns FB-optimized variant.
+   * GET /athlete/bib-image?athlete_id=X&code=Y&is_fb=BOOL — share-card BIB
+   * image. `is_fb=true` returns FB-optimized variant. Web sends the ticket
+   * `code` alongside athlete_id (share-bib-modal.tsx) — pass it when known.
    */
-  async getBibImage(athleteId: string, isFb: boolean = false): Promise<string> {
-    const raw = await network().get<{ data: { url?: string } | string }>(
-      '/athlete/bib-image',
-      { params: { athlete_id: athleteId, is_fb: isFb } },
-    );
-    return typeof raw.data === 'string' ? raw.data : (raw.data?.url ?? '');
+  async getBibImage(
+    athleteId: string,
+    isFb: boolean = false,
+    code?: string,
+  ): Promise<string> {
+    const raw = await network().get<unknown>('/athlete/bib-image', {
+      params: {
+        athlete_id: athleteId,
+        is_fb: isFb,
+        ...(code ? { code } : {}),
+      },
+    });
+    return unwrapImagePayload(raw);
   },
 
   /**
@@ -240,17 +267,14 @@ export const athlete = {
     code: string;
     isFb?: boolean;
   }): Promise<string> {
-    const raw = await network().get<{ data: { url?: string } | string }>(
-      '/athlete/story-image',
-      {
-        params: {
-          athlete_id: input.athleteId,
-          code: input.code,
-          is_fb: input.isFb ?? false,
-        },
+    const raw = await network().get<unknown>('/athlete/story-image', {
+      params: {
+        athlete_id: input.athleteId,
+        code: input.code,
+        is_fb: input.isFb ?? false,
       },
-    );
-    return typeof raw.data === 'string' ? raw.data : (raw.data?.url ?? '');
+    });
+    return unwrapImagePayload(raw);
   },
 
   /**

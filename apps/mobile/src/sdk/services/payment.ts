@@ -20,27 +20,61 @@
 import { network } from '../core';
 import type { PaymentGateway } from '../models';
 
-/** Unwrap the various URL response envelopes backend uses. */
-function pickUrl(data: { url?: string } | string | undefined): string {
-  if (typeof data === 'string') return data;
-  return data?.url ?? '';
+/**
+ * Unwrap the gateway URL from the BE envelope. Verified live 2026-06-12 on
+ * DEV for ALL four gateways: the body is double-nested
+ * `{data:{data:"https://…"},success:true}` (web reads `body.data.data` in
+ * its /api/checkout route). The old reader looked for `data.url`, which
+ * never existed → every real payment showed "Không tải được trang thanh
+ * toán". Walks `data` links so bare-string / `{url}` / `{data:"…"}` legacy
+ * shapes keep working, and rejects non-http garbage.
+ */
+function pickUrl(body: unknown): string {
+  let cur: unknown = body;
+  for (let depth = 0; depth < 4 && cur != null; depth++) {
+    if (typeof cur === 'string') {
+      return cur.startsWith('http') ? cur : '';
+    }
+    if (typeof cur !== 'object') return '';
+    const o = cur as Record<string, unknown>;
+    if (typeof o.url === 'string') return o.url.startsWith('http') ? o.url : '';
+    cur = o.data;
+  }
+  return '';
+}
+
+/**
+ * Pull the human-readable BE message out of an error envelope. Live shapes
+ * seen on DEV: `{success:false,error:{code,message}}` (price_rule) AND
+ * `{success:false,error:{error:{code,message}}}` (props) — message depth
+ * varies, so walk the `error` links.
+ */
+export function pickApiErrorMessage(body: unknown): string | undefined {
+  let cur: unknown = body;
+  for (let depth = 0; depth < 4 && cur && typeof cur === 'object'; depth++) {
+    const o = cur as Record<string, unknown>;
+    if (typeof o.message === 'string' && o.message) return o.message;
+    cur = o.error;
+  }
+  return undefined;
 }
 
 async function getPaymentUrl(
   gateway: PaymentGateway,
   orderId: string,
   returnUrl?: string,
-): Promise<{ url: string }> {
-  const raw = await network().get<{ data: { url?: string } | string }>(
-    `/${gateway}/payment`,
-    {
-      params: {
-        order_id: orderId,
-        ...(returnUrl !== undefined && { returnUrl }),
-      },
+): Promise<{ url: string; errorMessage?: string }> {
+  const raw = await network().get<unknown>(`/${gateway}/payment`, {
+    params: {
+      order_id: orderId,
+      ...(returnUrl !== undefined && { returnUrl }),
     },
-  );
-  return { url: pickUrl(raw.data) };
+  });
+  const url = pickUrl(raw);
+  // Business errors arrive as HTTP 200 + success:false on this backend, so
+  // the Fetcher never throws — surface the BE message ("order already paid",
+  // "order expired", …) instead of a generic load failure.
+  return url ? { url } : { url, errorMessage: pickApiErrorMessage(raw) };
 }
 
 export const payment = {
@@ -48,7 +82,7 @@ export const payment = {
   async getVnpayPaymentUrl(
     orderId: string,
     returnUrl?: string,
-  ): Promise<{ url: string }> {
+  ): Promise<{ url: string; errorMessage?: string }> {
     return getPaymentUrl('vnpay', orderId, returnUrl);
   },
 
@@ -56,7 +90,7 @@ export const payment = {
   async getPayxPaymentUrl(
     orderId: string,
     returnUrl?: string,
-  ): Promise<{ url: string }> {
+  ): Promise<{ url: string; errorMessage?: string }> {
     return getPaymentUrl('payx', orderId, returnUrl);
   },
 
@@ -64,7 +98,7 @@ export const payment = {
   async getPayooPaymentUrl(
     orderId: string,
     returnUrl?: string,
-  ): Promise<{ url: string }> {
+  ): Promise<{ url: string; errorMessage?: string }> {
     return getPaymentUrl('payoo', orderId, returnUrl);
   },
 
@@ -72,22 +106,43 @@ export const payment = {
   async getOnepayPaymentUrl(
     orderId: string,
     returnUrl?: string,
-  ): Promise<{ url: string }> {
+  ): Promise<{ url: string; errorMessage?: string }> {
     return getPaymentUrl('onepay', orderId, returnUrl);
   },
 
   /**
    * GET /onepay/check?order_id=X — poll OnePay payment status.
    * Mobile uses this after user closes WebView (OnePay doesn't always
-   * deliver clean callback). Returns `{ status }` where status is the
-   * backend's raw enum (TBD — typically `SUCCESS`/`PENDING`/`FAILED`).
+   * deliver clean callback). Wire shape (verified live 2026-06-12):
+   * `{data:{data:{success:boolean, query_url:…}}}` — double-nested like the
+   * payment-URL endpoints, keyed by `success` not a status enum. Falls back
+   * to a `status` string for older shapes; anything else → 'UNKNOWN' (the
+   * result screen then polls the order itself).
    */
   async checkOnepayStatus(orderId: string): Promise<{ status: string }> {
-    const raw = await network().get<{
-      data: { status?: string } | string;
-    }>('/onepay/check', { params: { order_id: orderId } });
-    const data = raw.data;
-    const status = typeof data === 'string' ? data : (data?.status ?? 'UNKNOWN');
-    return { status };
+    const raw = await network().get<unknown>('/onepay/check', {
+      params: { order_id: orderId },
+    });
+    // Descend the `data` chain FIRST: the transport envelope carries its own
+    // `success:true` on every 200 (live 2026-06-12 the body is
+    // {data:{data:{success:false,query_url}},success:true} even for unpaid
+    // orders) — reading `success` before descending would report SUCCESS for
+    // every order. Only the innermost object speaks for the payment.
+    let cur: unknown = raw;
+    for (let depth = 0; depth < 4; depth++) {
+      if (cur == null || typeof cur !== 'object') break;
+      const next = (cur as Record<string, unknown>).data;
+      if (next == null) break;
+      cur = next;
+    }
+    if (typeof cur === 'string') return { status: cur };
+    if (cur && typeof cur === 'object') {
+      const o = cur as Record<string, unknown>;
+      if (typeof o.status === 'string') return { status: o.status };
+      if (typeof o.success === 'boolean') {
+        return { status: o.success ? 'SUCCESS' : 'UNKNOWN' };
+      }
+    }
+    return { status: 'UNKNOWN' };
   },
 };

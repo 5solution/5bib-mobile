@@ -128,3 +128,21 @@ Linking listener nào; expo-router tự xử lý deep link trong nav tree, nhưn
 RN `Modal` (DateField, rolling-bib confirm…) nằm NGOÀI nav tree nên link
 đến khi modal đang mở sẽ đổi màn bên dưới mà modal vẫn đè trên. Fix đúng
 cần per-modal dismissal theo navigation event — P3, để backlog riêng.
+
+---
+
+## UPDATE 2026-06-12 (chiều) — Payment thật fix xong + course label
+
+| ID | Finding | Fix | Verify |
+|---|---|---|---|
+| F30 | **"Không tải được trang thanh toán" với MỌI gateway thật** — BE trả URL trong envelope double-nested `{data:{data:url},success:true}` (probe live cả 4 gateway), SDK đọc `data.url` → luôn rỗng | `pickUrl` walk chuỗi `data`, reject non-http | ✅ E2E full: VNPay sandbox NCB card + OTP → intercept `vnp_ResponseCode=00` → màn thành công → BE `paid`, `payment_on` khớp (đơn 200002544) |
+| F31 | **P1 prod**: whitelist WebView thiếu `vnpay.vn` — prod gateway là `pay.vnpay.vn` (vnpayment.vn chỉ là sandbox) → lên prod VNPay trắng màn | thêm `vnpay.vn` vào GATEWAY_HOSTS | code (chỉ test được trên prod) |
+| F32 | `checkOnepayStatus`: envelope `success:true` ngoài cùng che `success:false` của payment (probe live xác nhận body 2 success 2 cấp) → đóng WebView OnePay chưa trả tiền vẫn ra màn success | descend hết chuỗi `data` rồi mới đọc status/success ở object trong cùng | probe live shape ✅, flow OnePay chưa test được (sandbox OnePay cần thẻ test riêng) |
+| F33 | Share BIB image luôn rỗng — `getBibImage`/`getStoryImage` cùng bug class double-nested (web đọc `res.data.data.data`); thiếu param `code` web có gửi | walker unwrap + truyền `ticket.value` | code |
+| F34 | Đơn 0đ (voucher 100%): BE trả HTTP 266 không URL, Fetcher nuốt status → webview kẹt retry vĩnh viễn | checkout short-circuit `total<=0` → thẳng màn kết quả (poll order) — đúng nhánh 266 của web | code (DEV k có voucher 100% để tạo đơn 0đ) |
+| F35 | Lỗi business từ BE (200 + success:false) hiện generic — message thật ("đơn đã thanh toán"…) bị vứt | `pickApiErrorMessage` walk chuỗi `error` (2 shape live khác depth) + surface ở payment-webview cả nhánh envelope lẫn FetcherError | code (DEV BE cấp URL cả cho đơn voided nên không trigger được) |
+| F36 | Voucher %: normalizer đọc `r.type` không tồn tại trên DTO (wire là `value_type`: fixed_amount/percentage/Fixed_price) → voucher 10% hiện giảm 10đ; value âm kiểu Shopify làm tổng TĂNG | map `value_type` + `Math.abs` như web | code (đối chiếu web checkout `getDiscountValue`; k mò được code voucher live trên DEV) |
+| F37 | Course picker (event detail + checkout) hiện số trống "12/21/42" vì ưu tiên `distance` (organizer nhập số) — web hiện `course.name` | CourseCard label = `name \|\| distance`, badge tier = `type_name`, dedup badge trùng label | ✅ race 257 "12KM/21km/42KM"+Early Bird/Regular; race 305 "Family/Ultra/…"+ELB; checkout step-0 + step-2 summary |
+
+Còn mở (không đổi): JWT refresh `/renew`, Pay-now hardcode vnpay,
+F28 modal-vs-deep-link, i18n nốt domain components cũ.

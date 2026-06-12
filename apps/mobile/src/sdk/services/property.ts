@@ -56,7 +56,15 @@ export const property = {
         return null;
       }
       if (raw.data === undefined || raw.data === null) return null;
-      return { value: tryParseJson(raw.data) as T };
+      // Wire shape (verified live 2026-06-12, GET /props/by-key?key=
+      // global_config): {data:{lookUpKey, value:"<JSON string>"}} — the
+      // payload string sits at data.value, not data itself.
+      const inner =
+        typeof raw.data === 'object' && raw.data !== null && 'value' in raw.data
+          ? (raw.data as { value?: unknown }).value
+          : raw.data;
+      if (inner === undefined || inner === null) return null;
+      return { value: tryParseJson(inner) as T };
     } catch (err) {
       // Backend `No key` may also surface as a 4xx FetcherError
       if (err instanceof FetcherError) {

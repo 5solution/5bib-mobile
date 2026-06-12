@@ -31,7 +31,8 @@ import { useTranslation } from 'react-i18next';
 
 import { Button } from '../../src/components/Button';
 import { useToast } from '../../src/components/Toast';
-import { payment } from '../../src/sdk/services/payment';
+import { payment, pickApiErrorMessage } from '../../src/sdk/services/payment';
+import { FetcherError } from '../../src/sdk/core';
 import type { PaymentGateway } from '../../src/sdk/models';
 import { tokens } from '../../src/theme/tokens';
 
@@ -49,7 +50,10 @@ try {
 // ---------------------------------------------------------------------------
 
 const GATEWAY_HOSTS: Record<PaymentGateway, string[]> = {
-  vnpay: ['vnpayment.vn', 'sandbox.vnpayment.vn'],
+  // vnpay.vn is the PRODUCTION gateway domain (pay.vnpay.vn/vpcpay.html);
+  // vnpayment.vn only hosts the sandbox. Missing it would blank-screen every
+  // real VNPay payment on prod while passing all DEV tests.
+  vnpay: ['vnpay.vn', 'vnpayment.vn', 'sandbox.vnpayment.vn'],
   payx: ['payx.vn', 'payx.com.vn'],
   payoo: ['payoo.vn', 'payoo.com.vn'],
   onepay: ['onepay.vn', 'mtf.onepay.vn'],
@@ -204,12 +208,17 @@ export default function PaymentWebviewScreen() {
       }[gateway];
       const res = await fn(orderId);
       if (!res.url) {
-        setError(t('payment.webview.error'));
+        // Business errors come back as HTTP 200 + success:false — show the
+        // BE's own message ("order already paid", "order expired", …) when
+        // there is one instead of the generic load failure.
+        setError(res.errorMessage || t('payment.webview.error'));
       } else {
         setUrl(res.url);
       }
-    } catch {
-      setError(t('payment.webview.error'));
+    } catch (e) {
+      const beMsg =
+        e instanceof FetcherError ? pickApiErrorMessage(e.response) : undefined;
+      setError(beMsg || t('payment.webview.error'));
     } finally {
       setLoadingUrl(false);
     }
