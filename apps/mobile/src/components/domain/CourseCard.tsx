@@ -11,6 +11,13 @@ import { tokens } from '../../theme/tokens';
 
 export interface CourseCardData {
   id: string;
+  /**
+   * Course display name (e.g. "12KM", "Family", "Half Marathon"). Web shows
+   * `course.name` everywhere (ticket-cart, order-summary) — `distance` is a
+   * bare number the organizer types ("12") and is only a fallback when the
+   * course has no name.
+   */
+  name?: string;
   distance: string;
   price: number;
   availableSlots?: number | null;
@@ -60,13 +67,19 @@ export function CourseCard({ course, selected, disabled, asRadio, onPress }: Cou
   const saleClosed = course.saleState === 'closed';
   const interactionDisabled = disabled || soldOut || notYetOpen || saleClosed;
   const openDate = notYetOpen ? fmtShortDate(course.saleOpenAt) : '';
+  // Organizers often type a bare number into `distance` ("12") — the course
+  // name ("12KM") is the human label, same field web renders.
+  const label = course.name || course.distance;
+  // Defensive: never render a tier badge that just repeats the main label.
+  const tierBadge =
+    course.tierName && course.tierName !== label ? course.tierName : undefined;
 
   return (
     <Pressable
       onPress={interactionDisabled ? undefined : onPress}
       accessibilityRole={asRadio ? 'radio' : 'button'}
       accessibilityState={{ checked: selected, disabled: interactionDisabled }}
-      accessibilityLabel={`Cự ly ${course.distance}, ${fmtVnd(course.price)}${soldOut ? ', hết vé' : ''}${notYetOpen ? ', chưa mở bán' : ''}${saleClosed ? ', đã đóng bán' : ''}`}
+      accessibilityLabel={`Cự ly ${label}, ${fmtVnd(course.price)}${soldOut ? ', hết vé' : ''}${notYetOpen ? ', chưa mở bán' : ''}${saleClosed ? ', đã đóng bán' : ''}`}
       style={({ pressed }) => ({
         padding: tokens.space[4],
         borderRadius: tokens.radius.lg,
@@ -120,11 +133,11 @@ export function CourseCard({ course, selected, disabled, asRadio, onPress }: Cou
               color: tokens.color.neutral900,
             }}
           >
-            {course.distance}
+            {label}
             {course.current ? ' (hiện tại)' : ''}
           </Text>
-          {course.tierName ? (
-            <Badge variant="brand">{course.tierName}</Badge>
+          {tierBadge ? (
+            <Badge variant="brand">{tierBadge}</Badge>
           ) : null}
         </View>
         <Text style={{ fontSize: tokens.fontSize.bodySm, color: tokens.color.neutral600 }}>

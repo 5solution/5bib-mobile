@@ -600,10 +600,10 @@ export default function CheckoutScreen() {
           }
         >
           <FormSection title={t('checkout.selectedCourse')}>
-            {/* Flatten course × ticket_type. Tier label: ticket_type.type_name
-               when course has >1 tiers (real tier pricing like Early Bird /
-               Regular), else course.name as a distinguishing label (race 305
-               pattern where all ticket_types share type_name="ELB"). */}
+            {/* Flatten course × ticket_type. Main label = course.name (web
+               parity — "12KM"/"Family"; organizers type a bare number into
+               `distance`), tier badge = ticket_type.type_name ("Early Bird"/
+               "Regular"/"ELB"). CourseCard dedups badge vs label. */}
             {courses.flatMap((c) => {
               // F5: hidden tiers (is_show=false) never render; tiers outside
               // their sale window render disabled with "Chưa mở"/"Đã đóng"
@@ -617,6 +617,7 @@ export default function CheckoutScreen() {
                     key={`${c.id}:${tt.id}`}
                     course={{
                       id: `${c.id}:${tt.id}`,
+                      name: c.name || undefined,
                       distance: c.distance || c.name,
                       tierName: tt.typeName || undefined,
                       price: tt.price,
@@ -638,15 +639,14 @@ export default function CheckoutScreen() {
                 ));
               }
               const tt = tts[0];
-              const tierName =
-                c.name && c.name !== c.distance ? c.name : undefined;
               return [
                 <CourseCard
                   key={tt ? `${c.id}:${tt.id}` : c.id}
                   course={{
                     id: tt ? `${c.id}:${tt.id}` : c.id,
+                    name: c.name || undefined,
                     distance: c.distance || c.name,
-                    tierName,
+                    tierName: tt?.typeName || undefined,
                     price: tt?.price ?? c.price,
                     availableSlots:
                       tt?.remainedTicket ?? c.availableSlots ?? undefined,
@@ -919,8 +919,12 @@ export default function CheckoutScreen() {
             <Text style={{ fontWeight: tokens.fontWeight.semibold, color: tokens.color.neutral900 }}>
               {activeCourse.name || activeCourse.distance}
             </Text>
+            {/* Tier + athlete (web order-summary: "Early Bird - 12KM").
+               `distance` here was the same bare organizer number ("12"). */}
             <Text style={{ color: tokens.color.neutral600 }}>
-              {activeCourse.distance} · {form.firstName} {form.lastName}
+              {[selectedTicketType?.typeName, `${form.firstName} ${form.lastName}`.trim()]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
           </Card>
 

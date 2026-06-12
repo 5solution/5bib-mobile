@@ -77,6 +77,9 @@ export default function EventDetailScreen() {
     key: string; // `${courseId}:${ticketTypeId}` or just courseId
     courseId: string;
     ticketTypeId?: string;
+    /** Course display name ("12KM"/"Family") — main row label, web parity. */
+    name?: string;
+    /** Bare distance the organizer typed ("12") — fallback when name empty. */
     distance: string;
     tierName?: string;
     price: number;
@@ -89,15 +92,14 @@ export default function EventDetailScreen() {
   };
 
   /**
-   * Tier label resolution (verified 2026-05-28 via web compare):
-   *   - When course has MULTIPLE ticket_types → use ticket_type.type_name
-   *     (e.g. "Early Bird"/"Regular" for Techcombank-style tiered pricing).
-   *   - When course has 1 ticket_type → use course.name as the distinguishing
-   *     label (race 305: courses are "Thường"/"Ultra"/"Family" but all share
-   *     ticket_type.type_name="ELB", so falling back to course.name is what
-   *     matches the web layout).
-   *   - Hide the badge entirely when the label collapses to just the distance
-   *     number (no extra info to convey).
+   * Label resolution (web parity — ticket-cart renders
+   * `${ticket_type.type_name} - ${course.name}`):
+   *   - Main label is course.name ("12KM"/"Family"); organizers often type a
+   *     bare number into `distance` ("12"), so distance is only a fallback.
+   *     Verified live 2026-06-12 on race 257 (name="12KM", distance="12") and
+   *     race 305 (name="Family", distance="10").
+   *   - Tier badge is ticket_type.type_name ("Early Bird"/"Regular"/"ELB");
+   *     CourseCard hides it when it would just repeat the main label.
    */
   const pickerRows: PickerRow[] = useMemo(() => {
     const rows: PickerRow[] = [];
@@ -111,6 +113,7 @@ export default function EventDetailScreen() {
             key: `${c.id}:${tt.id}`,
             courseId: c.id,
             ticketTypeId: tt.id,
+            name: c.name || undefined,
             distance: c.distance || c.name,
             tierName: tt.typeName || undefined,
             price: tt.price,
@@ -121,14 +124,13 @@ export default function EventDetailScreen() {
         }
       } else if (tts.length === 1) {
         const tt = tts[0]!;
-        const tierName =
-          c.name && c.name !== c.distance ? c.name : undefined;
         rows.push({
           key: `${c.id}:${tt.id}`,
           courseId: c.id,
           ticketTypeId: tt.id,
+          name: c.name || undefined,
           distance: c.distance || c.name,
-          tierName,
+          tierName: tt.typeName || undefined,
           price: tt.price,
           availableSlots: tt.remainedTicket ?? null,
           saleState: resolveSaleState(tt.validFrom, tt.validTo),
@@ -138,8 +140,8 @@ export default function EventDetailScreen() {
         rows.push({
           key: c.id,
           courseId: c.id,
+          name: c.name || undefined,
           distance: c.distance || c.name,
-          tierName: c.name && c.name !== c.distance ? c.name : undefined,
           price: c.price,
           availableSlots: c.availableSlots ?? null,
           // Legacy single-tier courses carry no window data → sellable.
@@ -567,6 +569,7 @@ export default function EventDetailScreen() {
                     <CourseCard
                       course={{
                         id: row.key,
+                        name: row.name,
                         distance: row.distance,
                         tierName: row.tierName,
                         price: row.price,
