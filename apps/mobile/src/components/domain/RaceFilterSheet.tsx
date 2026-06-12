@@ -50,12 +50,14 @@ const TIME_WINDOWS: ReadonlyArray<{ value: number | 'ALL'; key: string }> = [
   { value: 180, key: 'halfYear' },
 ];
 
+// Real backend enum values (web src/constants/race.ts) — the old
+// OPEN_FOR_SALE/COMING_SOON/CLOSED/FINISHED options were mobile-fiction the
+// backend matched nothing with.
 const STATUS_OPTIONS: { value: RaceStatus | 'ALL'; key: string }[] = [
   { value: 'ALL', key: 'all' },
-  { value: 'OPEN_FOR_SALE', key: 'open' },
-  { value: 'COMING_SOON', key: 'comingSoon' },
-  { value: 'CLOSED', key: 'closed' },
-  { value: 'FINISHED', key: 'finished' },
+  { value: 'GENERATED_CODE', key: 'open' },
+  { value: 'ONGOING', key: 'ongoing' },
+  { value: 'COMPLETE', key: 'finished' },
 ];
 
 /**
@@ -329,6 +331,11 @@ function statusLabel(value: RaceStatus | 'ALL' | string, t: (k: string) => strin
     case 'FINISHED':
     case 'COMPLETE':
       return t('browse.statusFinished');
+    case 'ONGOING':
+      return t('browse.statusOngoing');
+    case 'CANCEL':
+    case 'CANCELLED':
+      return t('browse.statusCancelled');
     default:
       return String(value ?? '—');
   }

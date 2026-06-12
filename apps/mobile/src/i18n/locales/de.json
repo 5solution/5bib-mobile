@@ -46,7 +46,9 @@
     "needNetwork": "Netzwerkverbindung erforderlich",
     "noResults": "Keine Ergebnisse",
     "fieldRequired": "Pflichtfeld",
-    "formInvalid": "Bitte alle Pflichtfelder ausfüllen"
+    "formInvalid": "Bitte alle Pflichtfelder ausfüllen",
+    "pageNotFound": "Seite nicht gefunden",
+    "pageNotFoundDesc": "Dieser Link existiert nicht in der App."
   },
   "validation": {
     "emailInvalid": "Ungültige E-Mail",
@@ -324,7 +326,10 @@
     "soldOutLabel": "Ausverkauft",
     "saleClosed": "Anmeldung geschlossen",
     "shareMessageFmt": "Mach mit beim {{title}}! {{url}}",
-    "heroTagline": "Bereit für deinen nächsten Lauf?"
+    "heroTagline": "Bereit für deinen nächsten Lauf?",
+    "statusOngoing": "Läuft gerade",
+    "statusCancelled": "Abgesagt",
+    "tabHome": "Start"
   },
   "checkout": {
     "stepOf": "Schritt {{step}}/{{total}}",
@@ -426,7 +431,8 @@
     },
     "paymentMethod": "Zahlungsmethode",
     "selectionBlockedHint": "Diese Kategorie ist noch nicht oder nicht mehr im Verkauf — bitte eine andere wählen",
-    "tierNoLongerAvailable": "Diese Kategorie wurde gerade geschlossen oder ist ausverkauft. Bitte erneut wählen."
+    "tierNoLongerAvailable": "Diese Kategorie wurde gerade geschlossen oder ist ausverkauft. Bitte erneut wählen.",
+    "apparelSection": "Bekleidung"
   },
   "tickets": {
     "tabTitle": "Meine Tickets",
@@ -565,7 +571,8 @@
       "submitUpdate": "Änderungen speichern",
       "successRegister": "Athlet registriert",
       "successUpdate": "Aktualisiert",
-      "failed": "Registrierung fehlgeschlagen, bitte erneut versuchen"
+      "failed": "Registrierung fehlgeschlagen, bitte erneut versuchen",
+      "sectionDocs": "E-Mail & Dokumente"
     },
     "changeCourseSuccess": "Strecke erfolgreich geändert",
     "changeFee": "Streckenwechselgebühr",
@@ -583,7 +590,9 @@
       "cccd": "Ausweisnummer der bevollmächtigten Person",
       "saved": "Vollmachtsdaten erfolgreich aktualisiert",
       "sectionTitle": "Informationen zur bevollmächtigten Person"
-    }
+    },
+    "actionTransferShort": "Übertragen",
+    "noOtherCourses": "Keine andere Distanz zum Wechseln"
   },
   "orders": {
     "tabTitle": "Bestellungen",
@@ -621,7 +630,10 @@
     "transactionId": "Transaktions-ID",
     "paidAt": "Bezahlt am",
     "relatedTicket": "Zugehöriges Ticket",
-    "viewTicket": "Ticket ansehen"
+    "viewTicket": "Ticket ansehen",
+    "noOrders": "Noch keine Bestellungen",
+    "payNow": "Jetzt zahlen",
+    "viewDetail": "Details"
   },
   "result": {
     "hubTitle": "Renn-Ergebnisse",
@@ -634,7 +646,10 @@
     "historyTitle": "Rennverlauf",
     "historySummary": "Gesamt: {{races}} Rennen · {{km}} km",
     "viewDetail": "Details ansehen",
-    "rankLabel": "Rang: #{{rank}} / {{total}}"
+    "rankLabel": "Rang: #{{rank}} / {{total}}",
+    "rankOnly": "Platz: #{{rank}}",
+    "historyEmpty": "Noch keine Rennhistorie",
+    "historyEmptyDesc": "Beende dein erstes Rennen, um es hier zu sehen"
   },
   "waiver": {
     "title": "E-Waiver unterzeichnen",

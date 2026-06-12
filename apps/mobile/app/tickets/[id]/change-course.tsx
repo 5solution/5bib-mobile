@@ -184,7 +184,25 @@ export default function ChangeCourseScreen() {
           setFeatureAvailable(false);
           return;
         }
-        toast.show({ variant: 'error', message: t('errors.generic') });
+        // F25: surface the backend's business-rule message (same extraction
+        // as the submit path) — e.g. "registration end time is before
+        // current time" — instead of hiding it behind the generic toast.
+        const backendMsg =
+          e instanceof FetcherError
+            ? (() => {
+                const r = e.response as Record<string, unknown> | undefined;
+                const errObj = (r?.error ?? r) as
+                  | Record<string, unknown>
+                  | undefined;
+                return typeof errObj?.message === 'string'
+                  ? errObj.message
+                  : undefined;
+              })()
+            : undefined;
+        toast.show({
+          variant: 'error',
+          message: (backendMsg ?? t('errors.generic')).slice(0, 140),
+        });
       } finally {
         setEstimating(false);
       }
@@ -341,7 +359,7 @@ export default function ChangeCourseScreen() {
         </FormSection>
 
         {otherCourses.length === 0 ? (
-          <Banner variant="info" message="Không có cự ly khác để đổi." />
+          <Banner variant="info" message={t('tickets.noOtherCourses')} />
         ) : (
           <FormSection title={t('tickets.selectNewCourse')}>
             {otherCourses.map((c) => (

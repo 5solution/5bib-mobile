@@ -25,6 +25,7 @@ import { Header } from '../../src/components/Header';
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { FormLayout, FormSection } from '../../src/components/FormLayout';
+import { DateField } from '../../src/components/DateField';
 import { useToast } from '../../src/components/Toast';
 import { tokens } from '../../src/theme/tokens';
 import { user as sdkUser } from '../../src/sdk/services/user';
@@ -257,12 +258,12 @@ export default function EditProfileScreen() {
             control={control}
             name="dob"
             render={({ field: { onChange, value } }) => (
-              <Input
+              // F21: proper picker (ISO in/out, displays DD/MM/YYYY) — was a
+              // raw "YYYY-MM-DD" text input with no validation.
+              <DateField
                 label={t('profile.dob')}
-                value={value}
-                onChangeText={onChange}
-                placeholder="YYYY-MM-DD"
-                // TODO: replace with native DateTimePicker
+                value={value ?? ''}
+                onChange={onChange}
               />
             )}
           />
@@ -335,7 +336,7 @@ export default function EditProfileScreen() {
             name="bloodGroup"
             render={({ field: { onChange, value } }) => (
               <Input
-                label={t('profile.bloodType')}
+                label={t('profile.medical.bloodGroup')}
                 value={value}
                 onChangeText={onChange}
                 placeholder="A+/B+/O-"

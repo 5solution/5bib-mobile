@@ -88,7 +88,21 @@ export type PaymentGateway = 'vnpay' | 'payx' | 'payoo' | 'onepay';
 // Race / Browsing (EPIC-2)
 // ---------------------------------------------------------------------------
 
-export type RaceStatus = 'OPEN_FOR_SALE' | 'COMING_SOON' | 'CLOSED' | 'FINISHED';
+/**
+ * Real backend enum (web src/constants/race.ts): DRAFT / GENERATED_CODE /
+ * ONGOING / COMPLETE / CANCEL. The first four legacy values are
+ * mobile-fiction kept for compatibility with older call sites.
+ */
+export type RaceStatus =
+  | 'DRAFT'
+  | 'GENERATED_CODE'
+  | 'ONGOING'
+  | 'COMPLETE'
+  | 'CANCEL'
+  | 'OPEN_FOR_SALE'
+  | 'COMING_SOON'
+  | 'CLOSED'
+  | 'FINISHED';
 
 /**
  * A purchasable tier within a course (e.g. ELB / FAMILY / VIP).
@@ -304,10 +318,15 @@ export interface Order {
   financialStatus: 'paid' | 'pending' | 'voided' | 'failed';
   internalStatus: string;
   createdAt: string;
+  /** Wire `payment_on` — set once the order is paid. */
   paidAt?: string;
+  /** Normalized gateway name; backend literal 'UNKNOWN' becomes undefined. */
   paymentMethod?: string;
   ticketId?: string;
   bib?: string;
+  /** From line_items[0] — the product card's real qty/unit price. */
+  lineQuantity?: number;
+  linePrice?: number;
 }
 
 export interface DiscountCheckResponse {
@@ -399,6 +418,8 @@ export interface RaceResultRow {
   certificateUrl?: string;
   raceName?: string;
   courseName?: string;
+  /** Display distance from course_info, e.g. "10KM". */
+  distance?: string;
   raceDate?: string;
 }
 

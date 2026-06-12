@@ -813,7 +813,7 @@ export default function CheckoutScreen() {
             />
           </FormSection>
 
-          <FormSection title="Trang phục">
+          <FormSection title={t('checkout.apparelSection')}>
             {/* Single size field — backend stores the shirt size in `racekit`
                (`tshirt_size` is a dead column, verified live 2026-06-11). The
                old second "Racekit" input duplicated this same BE field. */}
@@ -924,6 +924,20 @@ export default function CheckoutScreen() {
             </Text>
           </Card>
 
+          {/* F7: gateway picker FIRST (web parity — PaymentMethodSelector
+             sits at the top of the right rail, before the cart). It used to
+             be the last section, below the fold, so users could pay without
+             ever seeing which method was preselected. */}
+          <FormSection title={t('checkout.selectPaymentMethod')}>
+            <PaymentMethodPicker
+              options={filterPaymentOptions(PAYMENT_OPTIONS, allowedPayments)}
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+            />
+          </FormSection>
+
+          <SectionDivider />
+
           <FormSection title={t('checkout.discountCode')}>
             <View style={{ flexDirection: 'row', gap: tokens.space[2], alignItems: 'flex-end' }}>
               <View style={{ flex: 1 }}>
@@ -1022,15 +1036,6 @@ export default function CheckoutScreen() {
             <Row label={t('checkout.summary.total')} value={fmtVnd(total)} bold brand />
           </FormSection>
 
-          <SectionDivider />
-
-          <FormSection title={t('checkout.selectPaymentMethod')}>
-            <PaymentMethodPicker
-              options={filterPaymentOptions(PAYMENT_OPTIONS, allowedPayments)}
-              value={paymentMethod}
-              onChange={setPaymentMethod}
-            />
-          </FormSection>
         </FormLayout>
       )}
     </>

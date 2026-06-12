@@ -46,7 +46,9 @@
     "needNetwork": "Network connection required",
     "noResults": "No results",
     "fieldRequired": "This field is required",
-    "formInvalid": "Please complete all required fields"
+    "formInvalid": "Please complete all required fields",
+    "pageNotFound": "Page not found",
+    "pageNotFoundDesc": "This link does not exist in the app."
   },
   "validation": {
     "emailInvalid": "Invalid email",
@@ -324,7 +326,10 @@
     "soldOutLabel": "Sold out",
     "saleClosed": "Registration closed",
     "shareMessageFmt": "Join {{title}} with me! {{url}}",
-    "heroTagline": "Ready for your next run?"
+    "heroTagline": "Ready for your next run?",
+    "statusOngoing": "Ongoing",
+    "statusCancelled": "Cancelled",
+    "tabHome": "Home"
   },
   "checkout": {
     "stepOf": "Step {{step}}/{{total}}",
@@ -426,7 +431,8 @@
     },
     "paymentMethod": "Payment method",
     "selectionBlockedHint": "This tier is not on sale yet or has closed — please pick another tier",
-    "tierNoLongerAvailable": "This tier just closed or sold out. Please pick again."
+    "tierNoLongerAvailable": "This tier just closed or sold out. Please pick again.",
+    "apparelSection": "Apparel"
   },
   "tickets": {
     "tabTitle": "My tickets",
@@ -565,7 +571,8 @@
       "submitUpdate": "Save changes",
       "successRegister": "Athlete registered",
       "successUpdate": "Updated",
-      "failed": "Registration failed, please try again"
+      "failed": "Registration failed, please try again",
+      "sectionDocs": "Email & documents"
     },
     "changeCourseSuccess": "Course changed successfully",
     "changeFee": "Change-course fee",
@@ -583,7 +590,9 @@
       "cccd": "Delegate's ID number",
       "saved": "Delegate info updated successfully",
       "sectionTitle": "Delegate information"
-    }
+    },
+    "actionTransferShort": "Transfer",
+    "noOtherCourses": "No other distance to switch to"
   },
   "orders": {
     "tabTitle": "Orders",
@@ -621,7 +630,10 @@
     "transactionId": "Transaction ID",
     "paidAt": "Paid at",
     "relatedTicket": "Related ticket",
-    "viewTicket": "View ticket"
+    "viewTicket": "View ticket",
+    "noOrders": "No orders yet",
+    "payNow": "Pay now",
+    "viewDetail": "Details"
   },
   "result": {
     "hubTitle": "Race results lookup",
@@ -634,7 +646,10 @@
     "historyTitle": "Race history",
     "historySummary": "Total: {{races}} races · {{km}} km",
     "viewDetail": "View detail",
-    "rankLabel": "Rank: #{{rank}} / {{total}}"
+    "rankLabel": "Rank: #{{rank}} / {{total}}",
+    "rankOnly": "Rank: #{{rank}}",
+    "historyEmpty": "No race history yet",
+    "historyEmptyDesc": "Finish your first race to see it here"
   },
   "waiver": {
     "title": "Sign E-Waiver",

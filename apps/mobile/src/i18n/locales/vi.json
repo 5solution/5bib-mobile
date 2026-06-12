@@ -46,7 +46,9 @@
     "needNetwork": "Cần kết nối mạng",
     "noResults": "Không có kết quả",
     "fieldRequired": "Vui lòng nhập trường này",
-    "formInvalid": "Vui lòng nhập đầy đủ các trường bắt buộc"
+    "formInvalid": "Vui lòng nhập đầy đủ các trường bắt buộc",
+    "pageNotFound": "Không tìm thấy trang",
+    "pageNotFoundDesc": "Đường dẫn này không tồn tại trong ứng dụng."
   },
   "validation": {
     "emailInvalid": "Email không hợp lệ",
@@ -324,7 +326,10 @@
     "soldOutLabel": "Đã hết vé",
     "saleClosed": "Đã đóng đăng ký",
     "shareMessageFmt": "Tham gia {{title}} cùng tôi! {{url}}",
-    "heroTagline": "Sẵn sàng cho đường chạy tiếp theo?"
+    "heroTagline": "Sẵn sàng cho đường chạy tiếp theo?",
+    "statusOngoing": "Đang diễn ra",
+    "statusCancelled": "Đã huỷ",
+    "tabHome": "Trang chủ"
   },
   "checkout": {
     "stepOf": "Bước {{step}}/{{total}}",
@@ -426,7 +431,8 @@
     },
     "paymentMethod": "Phương thức thanh toán",
     "selectionBlockedHint": "Hạng vé này chưa mở bán hoặc đã đóng — vui lòng chọn hạng vé khác",
-    "tierNoLongerAvailable": "Hạng vé vừa đóng bán hoặc hết vé. Vui lòng chọn lại."
+    "tierNoLongerAvailable": "Hạng vé vừa đóng bán hoặc hết vé. Vui lòng chọn lại.",
+    "apparelSection": "Trang phục"
   },
   "tickets": {
     "tabTitle": "Vé của tôi",
@@ -565,7 +571,8 @@
       "submitUpdate": "Lưu thay đổi",
       "successRegister": "Đăng ký VĐV thành công",
       "successUpdate": "Cập nhật thành công",
-      "failed": "Đăng ký thất bại, vui lòng thử lại"
+      "failed": "Đăng ký thất bại, vui lòng thử lại",
+      "sectionDocs": "Email & giấy tờ"
     },
     "changeCourseSuccess": "Đổi cự ly thành công",
     "changeFee": "Phí đổi cự ly",
@@ -583,7 +590,9 @@
       "cccd": "CCCD người được uỷ quyền",
       "saved": "Cập nhật thông tin người được uỷ quyền thành công",
       "sectionTitle": "Thông tin người được uỷ quyền"
-    }
+    },
+    "actionTransferShort": "Chuyển nhượng",
+    "noOtherCourses": "Không có cự ly khác để đổi"
   },
   "orders": {
     "tabTitle": "Đơn hàng",
@@ -621,7 +630,10 @@
     "transactionId": "Mã giao dịch",
     "paidAt": "Ngày thanh toán",
     "relatedTicket": "Vé liên quan",
-    "viewTicket": "Xem vé"
+    "viewTicket": "Xem vé",
+    "noOrders": "Chưa có đơn hàng nào",
+    "payNow": "Thanh toán",
+    "viewDetail": "Chi tiết"
   },
   "result": {
     "hubTitle": "Tra cứu kết quả giải đấu",
@@ -634,7 +646,10 @@
     "historyTitle": "Lịch sử thi đấu",
     "historySummary": "Tổng: {{races}} race · {{km}} km",
     "viewDetail": "Xem chi tiết",
-    "rankLabel": "Rank: #{{rank}} / {{total}}"
+    "rankLabel": "Rank: #{{rank}} / {{total}}",
+    "rankOnly": "Hạng: #{{rank}}",
+    "historyEmpty": "Chưa có lịch sử thi đấu",
+    "historyEmptyDesc": "Hoàn thành race đầu tiên để thấy ở đây"
   },
   "waiver": {
     "title": "Ký E-Waiver",

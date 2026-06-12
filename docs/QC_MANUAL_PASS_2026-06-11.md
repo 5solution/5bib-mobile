@@ -96,3 +96,35 @@ sign rebuild). Verified live trên simulator DEV:
 - Review panel đối kháng 3-lens xác nhận + fix thêm: course toàn tier ẩn
   vẫn mua được (P2 — đã chặn cả ở selectionBlocked lẫn subtotal/variantId
   fallback), stale selection khi deep-link chéo race.
+
+## UPDATE 2026-06-12 — ĐỢT POLISH BACKLOG (toàn bộ findings còn lại)
+
+Verified live trên simulator DEV từng cụm:
+
+| ID | Fix | Verify |
+|---|---|---|
+| F3 | RaceCard/chip thêm ONGOING ("Đang diễn ra") + CANCEL; filter sheet đổi sang enum BE thật (GENERATED_CODE/ONGOING/COMPLETE — option cũ là enum hư cấu BE không match) | ✅ list sạch badge raw |
+| F4 | Events 'ALL' giờ whitelist `GENERATED_CODE,COMPLETE` như web — hết DRAFT/CANCEL/junk nổi đầu list | ✅ |
+| F7 | PaymentMethodPicker dời lên ĐẦU step thanh toán (web parity) | code (UI nav 3 bước — verify ở lần mua tới) |
+| F15 | Đã hết entities từ đợt rebuild waiver (render WebView) | ✅ từ 11/6 |
+| F16 | Empty state orders: "Chưa có đơn hàng nào" (default tab giữ Chờ thanh toán = đúng web) | code |
+| F17 | Course name từ `line_items[0].ticketType.race_course_name - type_name` → "12KM - Early Bird"; thêm qty + đơn giá line thật (trước hardcode x1 + hiện tổng đơn) | ✅ |
+| F18 | `payment_method='UNKNOWN'` → ẩn row (web parity) | ✅ |
+| F19 | Transaction time đọc `payment_on` (field `paid_at` không tồn tại trên wire) | ✅ "11/06/2026 19:54" |
+| F21 | Edit profile DOB dùng DateField (ISO in/out, hiển thị DD/MM/YYYY) | code |
+| F25 | Estimate đổi cự ly surface message BE thay vì toast generic | code |
+| F26 | E-waiver entry: email lên đầu, section "Chọn giải đấu" chỉ hiện khi có data, hết helper ×2 | ✅ AX tree |
+| F27 | Result normalizer đọc nested `course_info` + `chip_time` + `overall_rank` (string→number) + params camelCase (snake bị ignore — probe live) | ✅ "Total: 2 races · 109 km" |
+| F2 | Greeting không bao giờ hiện email thô | ✅ "Welcome to 5BIB!" |
+| F12 | Tile action 2 dòng — hết "Chuyển như…" | ✅ |
+| F13 | Toast chuyển lên ĐỈNH màn (anchor bottom cũ đè đúng sticky CTA mọi màn stack), error 5s→4s, default 3s→2.5s | ✅ |
+| — | Tickets pagination: pageSize 50 + infinite scroll (cap 10 cũ giấu vé) | code |
+| — | Language switcher WIRED (trước là no-op): row Ngôn ngữ cycle vi/en/de, persist AsyncStorage, restore khi boot | ✅ cold restart giữ tiếng Việt |
+| — | Order subtotal đọc `total_line_items_price` như web (field cũ `sub_total_price` không khớp toán discount/total trên màn) | ✅ |
+| — | i18n sweep: tab Home, swipe actions, not-found, section titles, key thô `profile.bloodType` → key thật; keys mới đủ vi/en/de | ✅ |
+
+**F28 (deep link bị modal nuốt) — INVESTIGATED, DEFER**: app không có
+Linking listener nào; expo-router tự xử lý deep link trong nav tree, nhưng
+RN `Modal` (DateField, rolling-bib confirm…) nằm NGOÀI nav tree nên link
+đến khi modal đang mở sẽ đổi màn bên dưới mà modal vẫn đè trên. Fix đúng
+cần per-modal dismissal theo navigation event — P3, để backlog riêng.

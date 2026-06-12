@@ -39,16 +39,28 @@ function medalFromRank(rank?: number): MyResultItem['medal'] {
   return null;
 }
 
+/** "10KM" / "21km" / "21.1" → metres; unparseable → 0. */
+function distanceToMeters(d?: string): number {
+  if (!d) return 0;
+  const m = /([\d.]+)/.exec(d);
+  const km = m ? Number(m[1]) : NaN;
+  return Number.isFinite(km) ? Math.round(km * 1000) : 0;
+}
+
 function rowToItem(r: RaceResultRow): MyResultItem {
-  const raceDate = r.raceDate ?? new Date().toISOString();
+  // F27: race/course identity comes from the nested course_info block (the
+  // normalizer maps it) — distance is a display string like "10KM". No
+  // race_date exists on the wire; leave it empty rather than faking today
+  // (which used to bucket every result under the current year).
+  const distance = r.distance ?? r.courseName ?? '';
   return {
     raceId: r.raceId ?? r.id,
     raceName: r.raceName ?? '—',
     courseId: r.courseId ?? '',
     courseName: r.courseName ?? '',
-    distance: r.courseName ?? '',
-    distanceMeters: 0,
-    raceDate,
+    distance,
+    distanceMeters: distanceToMeters(distance),
+    raceDate: r.raceDate ?? '',
     bib: r.bib ?? '',
     finishTime: r.finishTime ?? '',
     overallRank: r.rank ?? 0,
@@ -101,10 +113,19 @@ export default function RaceHistoryScreen() {
   }, {});
 
   const sections = Object.entries(grouped)
-    .sort(([a], [b]) => Number(b) - Number(a))
+    // Newest year first; the dateless "—" bucket sinks to the bottom.
+    .sort(([a], [b]) => {
+      const na = Number(a);
+      const nb = Number(b);
+      if (Number.isNaN(na)) return 1;
+      if (Number.isNaN(nb)) return -1;
+      return nb - na;
+    })
     .map(([year, data]) => ({ title: year, data }));
 
-  const totalKm = (items.reduce((sum, i) => sum + i.distanceMeters, 0) / 1000).toFixed(0);
+  // `|| 0` guards the athlete.getMyResults fallback path whose rows are a
+  // raw cast and may lack distanceMeters entirely (NaN poisoning the sum).
+  const totalKm = (items.reduce((sum, i) => sum + (i.distanceMeters || 0), 0) / 1000).toFixed(0);
 
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.surfaceBg }}>
@@ -126,8 +147,8 @@ export default function RaceHistoryScreen() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={<Ionicons name="trophy-outline" size={32} color={tokens.color.neutral500} />}
-          title="Chưa có lịch sử thi đấu"
-          description="Hoàn thành race đầu tiên để thấy ở đây"
+          title={t('result.historyEmpty')}
+          description={t('result.historyEmptyDesc')}
           ctaLabel={t('browse.viewAllRaces')}
           onPress={() => router.push('/events')}
         />
@@ -179,11 +200,22 @@ export default function RaceHistoryScreen() {
                   {item.raceName}
                 </Text>
                 <Text style={{ color: tokens.color.neutral600 }}>
-                  {(() => { const d = new Date(item.raceDate ?? ''); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN'); })()} · {item.distance ?? ''} · {item.finishTime ?? ''}
+                  {[
+                    (() => {
+                      const d = new Date(item.raceDate ?? '');
+                      return isNaN(d.getTime()) ? '' : d.toLocaleDateString('vi-VN');
+                    })(),
+                    item.distance,
+                    item.finishTime,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </Text>
-                <Text style={{ color: tokens.color.neutral600 }}>
-                  {t('result.rankLabel', { rank: item.overallRank, total: 250 })}
-                </Text>
+                {item.overallRank > 0 && (
+                  <Text style={{ color: tokens.color.neutral600 }}>
+                    {t('result.rankOnly', { rank: item.overallRank })}
+                  </Text>
+                )}
               </View>
               <View style={{ marginTop: tokens.space[2] }}>
                 <Button

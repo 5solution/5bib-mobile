@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, FlatList, RefreshControl } from 'react-native';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -87,6 +87,9 @@ export default function TicketsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errored, setErrored] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
     setErrored(false);
@@ -98,8 +101,11 @@ export default function TicketsScreen() {
         athleteStatus: 'ALL',
         codeStatuses: 'ACTIVE',
         pageNo: 1,
+        pageSize: 50,
       });
       setAllTickets(r.items);
+      setPage(1);
+      setTotalPages(r.pagination.totalPages ?? 1);
     } catch (e) {
       setErrored(true);
       if (e instanceof FetcherError && e.status === 401) return; // global handler
@@ -133,6 +139,45 @@ export default function TicketsScreen() {
     setRefreshing(true);
     await load();
   }, [load]);
+
+  // Pagination: backend caps a page (default 10, we request 50) — without
+  // load-more, users with many tickets never saw older ones (and the tab
+  // counts undercounted).
+  const loadMore = useCallback(async () => {
+    if (loadingMore || refreshing || loading) return;
+    if (page >= totalPages) return;
+    setLoadingMore(true);
+    try {
+      const next = page + 1;
+      const r = await ticketSdk.listMyTickets({
+        athleteStatus: 'ALL',
+        codeStatuses: 'ACTIVE',
+        pageNo: next,
+        pageSize: 50,
+      });
+      setAllTickets((prev) => {
+        const seen = new Set(prev.map((x) => x.id));
+        return [...prev, ...r.items.filter((x) => !seen.has(x.id))];
+      });
+      setPage(next);
+    } catch {
+      // silent — user can pull-to-refresh
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, refreshing, loading, page, totalPages]);
+
+  // Review fix: a filtered tab whose matches all live on unloaded pages
+  // rendered EmptyState (FlatList unmounted → onEndReached can never fire),
+  // asserting "no tickets" while pages remained. Keep fetching while the
+  // visible tab is empty and pages are left.
+  useEffect(() => {
+    if (loading || refreshing || loadingMore) return;
+    if (page >= totalPages) return;
+    if (allTickets.filter(TAB_PREDICATES[tab]).length === 0) {
+      void loadMore();
+    }
+  }, [tab, page, totalPages, allTickets, loading, refreshing, loadingMore, loadMore]);
 
   // Per-tab count for badge display + visible list.
   const counts = useMemo(() => {
@@ -226,6 +271,21 @@ export default function TicketsScreen() {
           data={visible}
           keyExtractor={(it) => it.id}
           contentContainerStyle={{ padding: tokens.space[4], gap: tokens.space[3] }}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <Text
+                style={{
+                  textAlign: 'center',
+                  color: tokens.color.neutral500,
+                  paddingVertical: tokens.space[3],
+                }}
+              >
+                {t('common.loading')}
+              </Text>
+            ) : null
+          }
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -246,7 +306,7 @@ export default function TicketsScreen() {
                     ? []
                     : [
                         {
-                          label: 'Chia sẻ',
+                          label: t('common.share'),
                           icon: (
                             <Ionicons
                               name="share-outline"
@@ -258,7 +318,7 @@ export default function TicketsScreen() {
                           onPress: () => router.push(`/tickets/${item.id}`),
                         },
                         {
-                          label: 'Chuyển nhượng',
+                          label: t('tickets.actionTransferShort'),
                           icon: (
                             <Ionicons
                               name="swap-horizontal-outline"

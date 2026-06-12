@@ -185,7 +185,7 @@ export default function OrderDetailScreen() {
                     {order.courseName || '—'}
                   </Text>
                   <Text style={{ color: tokens.color.neutral600, fontSize: tokens.fontSize.bodySm }}>
-                    x1
+                    x{order.lineQuantity ?? 1}
                   </Text>
                 </View>
                 <Text
@@ -194,7 +194,7 @@ export default function OrderDetailScreen() {
                     fontWeight: tokens.fontWeight.semibold,
                   }}
                 >
-                  {fmtVnd(order.totalAmount)}
+                  {fmtVnd(order.linePrice ?? order.totalAmount)}
                 </Text>
               </View>
             </SectionCard>

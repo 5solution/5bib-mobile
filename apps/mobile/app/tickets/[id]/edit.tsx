@@ -420,7 +420,7 @@ export default function EditTicketScreen() {
           </>
         )}
 
-        <FormSection title="Email & giấy tờ">
+        <FormSection title={t('tickets.athleteRegister.sectionDocs')}>
           <Input
             label={t('profile.emailReadOnly')}
             value={form.email}
@@ -502,7 +502,7 @@ export default function EditTicketScreen() {
           />
         </FormSection>
 
-        <FormSection title="Trang phục">
+        <FormSection title={t('checkout.apparelSection')}>
           {/* Single size field — backend stores the shirt size in `racekit`
              (`tshirt_size` is a dead column, verified live 2026-06-11).
              Read-only when the race forbids racekit edits, matching the

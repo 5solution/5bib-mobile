@@ -81,14 +81,14 @@ const COLORS: Record<Variant, { bg: string; fg: string; iconFg: string; iconBg: 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [current, setCurrent] = useState<ToastInstance | null>(null);
   const queue = useRef<ToastInstance[]>([]);
-  const translate = useRef(new Animated.Value(80)).current;
+  const translate = useRef(new Animated.Value(-80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const idCounter = useRef(0);
 
   const hide = useCallback(() => {
     Animated.parallel([
       Animated.timing(translate, {
-        toValue: 80,
+        toValue: -80,
         duration: tokens.duration.fast,
         useNativeDriver: true,
       }),
@@ -130,7 +130,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         useNativeDriver: true,
       }),
     ]).start();
-    const dur = current.durationMs ?? (current.variant === 'error' ? 5000 : 3000);
+    const dur = current.durationMs ?? (current.variant === 'error' ? 4000 : 2500);
     const t = setTimeout(hide, dur);
     return () => clearTimeout(t);
   }, [current, hide, opacity, translate]);
@@ -163,7 +163,11 @@ function ToastView({
         position: 'absolute',
         left: 0,
         right: 0,
-        bottom: insets.bottom + tokens.layout.tabBarHeight + tokens.space[3],
+        // F13: top-anchored BELOW the header band. The old bottom anchor
+        // (offset by tabBarHeight on EVERY screen) landed exactly on sticky
+        // bottom CTAs; anchoring at insets.top would land on the Header's
+        // back button instead — offset past it.
+        top: insets.top + 56,
         paddingHorizontal: tokens.space[4],
         transform: [{ translateY: translate }],
         opacity,

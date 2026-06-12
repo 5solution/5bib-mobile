@@ -125,11 +125,12 @@ function ActionTile({
       <Text
         style={{
           fontSize: 11,
+          lineHeight: 13,
           fontWeight: tokens.fontWeight.medium,
           color: tokens.color.neutral800,
           textAlign: 'center',
         }}
-        numberOfLines={1}
+        numberOfLines={2}
       >
         {compactLabel(action)}
       </Text>

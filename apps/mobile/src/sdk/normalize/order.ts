@@ -10,6 +10,23 @@ import type { Order } from '../models';
 export function normalizeOrder(raw: unknown): Order {
   const r = (raw ?? {}) as Record<string, unknown>;
 
+  // Course name is NOT a top-level field — it lives on the line item's
+  // ticketType (web parity: line-item.tsx renders
+  // `${race_course_name} - ${type_name}`, e.g. "12KM - Early Bird").
+  // Secondary source: ticket_codes[0].course_name. Verified live 2026-06-12
+  // on /order/by-id (order 200002542).
+  const lineItems = Array.isArray(r.line_items)
+    ? (r.line_items as Array<Record<string, unknown>>)
+    : [];
+  const li0 = lineItems[0];
+  const tt0 = (li0?.ticketType ?? {}) as Record<string, unknown>;
+  const ticketCodes = Array.isArray(r.ticket_codes)
+    ? (r.ticket_codes as Array<Record<string, unknown>>)
+    : [];
+  const courseFromLineItem = tt0.race_course_name
+    ? `${tt0.race_course_name}${tt0.type_name ? ` - ${tt0.type_name}` : ''}`
+    : undefined;
+
   return {
     id: String(r.id ?? r.order_id ?? ''),
     // Backend uses `name` for the printable order code (e.g. "#5B200002347IB").
@@ -27,14 +44,27 @@ export function normalizeOrder(raw: unknown): Order {
         ((r.race as { title?: string } | undefined)?.title ?? ''),
     ),
     courseId: String(r.course_id ?? r.race_course_id ?? r.courseId ?? ''),
-    courseName: String(r.course_name ?? r.courseName ?? ''),
+    courseName: String(
+      r.course_name ??
+        r.courseName ??
+        courseFromLineItem ??
+        ticketCodes[0]?.course_name ??
+        '',
+    ),
     athleteName: String(r.athlete_name ?? r.athleteName ?? ''),
     // Backend wire field is `total_price` (not `total_amount`).
     totalAmount: toNumber(
       r.total_amount ?? r.totalAmount ?? r.total_price ?? r.total ?? 0,
     ),
+    // Web's subtotal row reads total_line_items_price (934400 on order
+    // 200002542) — NOT sub_total_price (1025056 there, some VAT-inclusive
+    // figure that doesn't reconcile with discount/total on screen).
     subtotal: toNumber(
-      r.subtotal ?? r.sub_total ?? r.sub_total_price ?? 0,
+      r.total_line_items_price ??
+        r.subtotal ??
+        r.sub_total ??
+        r.sub_total_price ??
+        0,
     ),
     discountAmount: toNumber(
       r.discount_amount ?? r.discountAmount ?? r.total_discounts ?? 0,
@@ -54,15 +84,33 @@ export function normalizeOrder(raw: unknown): Order {
     createdAt: String(
       r.processed_on ?? r.created_at ?? r.createdAt ?? r.created_on ?? '',
     ),
-    paidAt: (r.paid_at as string | undefined) ?? (r.paidAt as string | undefined),
-    paymentMethod:
+    // Wire field is `payment_on` (web reads order.payment_on) — `paid_at`
+    // never existed, so transaction time rendered empty even on paid orders.
+    paidAt:
+      (r.payment_on as string | undefined) ??
+      (r.paid_at as string | undefined) ??
+      (r.paidAt as string | undefined),
+    // Backend stores literal 'UNKNOWN' when the gateway is unidentified
+    // (e.g. fake payment). Web hides the row entirely for UNKNOWN — null it
+    // here so the screen's `paymentMethod &&` guard does the same.
+    paymentMethod: normalizePaymentMethod(
       (r.payment_method as string | undefined) ??
-      (r.paymentMethod as string | undefined),
+        (r.paymentMethod as string | undefined),
+    ),
+    // Per-line purchase facts for the product card (screen previously
+    // hardcoded "x1" + showed order TOTAL as the unit price).
+    lineQuantity: li0?.quantity != null ? toNumber(li0.quantity) : undefined,
+    linePrice: li0?.price != null ? toNumber(li0.price) : undefined,
     ticketId:
       (r.ticket_id as string | undefined) ??
       (r.ticketId as string | undefined),
     bib: (r.bib as string | undefined) ?? (r.code_value as string | undefined),
   };
+}
+
+function normalizePaymentMethod(v: string | undefined): string | undefined {
+  if (!v || v.toUpperCase() === 'UNKNOWN') return undefined;
+  return v;
 }
 
 function normalizeFinancialStatus(s: unknown): Order['financialStatus'] {

@@ -318,7 +318,9 @@ export default function HomeScreen() {
           }}
           accessibilityRole="header"
         >
-          {user?.fullName
+          {/* F2: never greet with a raw email (login response's
+              full_name falls back to username=email on DEV). */}
+          {user?.fullName && !user.fullName.includes('@')
             ? t('browse.homeGreeting', { name: user.fullName })
             : t('browse.homeGreetingAnon')}
         </Text>

@@ -112,7 +112,15 @@ export default function AllEventsScreen() {
         const res = await raceSdk.listRaces({
           pageNo,
           pageSize: PAGE_SIZE,
-          status: filterStore.status === 'ALL' ? undefined : (filterStore.status as RaceStatus),
+          // F4: 'ALL' must still whitelist like the web (/events ALWAYS sends
+          // GENERATED_CODE,COMPLETE) — with no status filter the composite
+          // status-first sort floats DRAFT/CANCEL/old junk to the top.
+          // ONGOING added on top of web's pair: mobile's filter sheet offers
+          // it, and "ALL" must be a superset of every selectable filter.
+          status:
+            filterStore.status === 'ALL'
+              ? 'GENERATED_CODE,ONGOING,COMPLETE'
+              : (filterStore.status as RaceStatus),
           raceType: filterStore.raceType === 'ALL' ? undefined : filterStore.raceType,
           // Server-side, same param the web sends. Replaces the old
           // client-side filter that could only see the loaded page (a
@@ -419,6 +427,11 @@ function statusChipLabel(s: RaceStatus | string, t: (k: string) => string): stri
     case 'FINISHED':
     case 'COMPLETE':
       return t('browse.statusFinished');
+    case 'ONGOING':
+      return t('browse.statusOngoing');
+    case 'CANCEL':
+    case 'CANCELLED':
+      return t('browse.statusCancelled');
     default:
       return String(s ?? '—');
   }

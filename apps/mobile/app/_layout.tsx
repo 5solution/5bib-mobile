@@ -29,7 +29,7 @@ import { initGoogleSignIn } from '../src/adapters/google-signin';
 import { initSdk } from '../src/adapters/sdk-init';
 import { eventBus } from '../src/adapters/event-bus';
 import { useAuthStore } from '../src/stores/useAuthStore';
-import i18n from '../src/i18n';
+import i18n, { restorePersistedLocale } from '../src/i18n';
 
 // Dev-only noise suppression. These warnings are cosmetic and do not affect
 // runtime behavior; they obscure the bottom-sheet CTA in QC screenshots.
@@ -47,6 +47,8 @@ initSentry();
 void initSdk();
 // Init Google Sign-In SDK (config via app.config.js + adapters/google-signin.ts).
 initGoogleSignIn();
+// Apply the user's persisted language choice (overrides device locale).
+void restorePersistedLocale();
 
 function AuthExpiredListener() {
   const router = useRouter();

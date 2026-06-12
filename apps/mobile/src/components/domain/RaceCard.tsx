@@ -12,6 +12,7 @@ import { Card } from '../Card';
 import { Badge } from '../Badge';
 import { BrandLogo } from '../BrandLogo';
 import { tokens } from '../../theme/tokens';
+import i18n from '../../i18n';
 import type { Race } from '../../sdk/models';
 
 /**
@@ -98,19 +99,25 @@ function statusBadge(status: Race['status'] | string | undefined): { variant: 's
   //   COMPLETE       = past race, results phase
   //   CANCELLED      = race cancelled
   // Mobile-facing canonical names (OPEN_FOR_SALE etc.) kept for forward-compat.
+  // Labels via the i18n singleton (this is a plain fn, not a hook site) —
+  // re-renders on language change come from the parent screens, which all
+  // use useTranslation. Keys exist in vi/en/de.
   switch (status) {
     case 'OPEN_FOR_SALE':
     case 'GENERATED_CODE':
-      return { variant: 'success', label: 'Đang mở đăng ký' };
+      return { variant: 'success', label: i18n.t('browse.statusOpen') };
     case 'COMING_SOON':
-      return { variant: 'info', label: 'Sắp mở' };
+      return { variant: 'info', label: i18n.t('browse.statusComingSoon') };
     case 'CLOSED':
-      return { variant: 'warning', label: 'Đã đóng' };
+      return { variant: 'warning', label: i18n.t('browse.statusClosed') };
     case 'FINISHED':
     case 'COMPLETE': // backend uses COMPLETE
-      return { variant: 'default', label: 'Đã kết thúc' };
+      return { variant: 'default', label: i18n.t('browse.statusFinished') };
+    case 'ONGOING':
+      return { variant: 'info', label: i18n.t('browse.statusOngoing') };
+    case 'CANCEL': // real backend enum value (web constants/race.ts)
     case 'CANCELLED':
-      return { variant: 'warning', label: 'Đã huỷ' };
+      return { variant: 'warning', label: i18n.t('browse.statusCancelled') };
     default:
       return { variant: 'default', label: status ? String(status) : '-' };
   }

@@ -156,7 +156,7 @@ export default function OrdersScreen() {
         </View>
       ) : orders.length === 0 ? (
         <EmptyState
-          title={errored ? t('orders.loadFailed') : t('errors.noResults')}
+          title={errored ? t('orders.loadFailed') : t('orders.noOrders')}
           ctaLabel={errored ? t('common.retry') : undefined}
           onPress={errored ? refresh : undefined}
         />
@@ -182,7 +182,7 @@ export default function OrdersScreen() {
                   String(item.internalStatus) === 'WAIT_FOR_PAYMENT'
                     ? [
                         {
-                          label: 'Thanh toán',
+                          label: t('orders.payNow'),
                           icon: (
                             <Ionicons
                               name="card-outline"
@@ -194,7 +194,7 @@ export default function OrdersScreen() {
                           onPress: () => router.push(`/orders/${item.id}`),
                         },
                         {
-                          label: 'Chi tiết',
+                          label: t('orders.viewDetail'),
                           icon: (
                             <Ionicons
                               name="chevron-forward"
@@ -208,7 +208,7 @@ export default function OrdersScreen() {
                       ]
                     : [
                         {
-                          label: 'Chi tiết',
+                          label: t('orders.viewDetail'),
                           icon: (
                             <Ionicons
                               name="chevron-forward"

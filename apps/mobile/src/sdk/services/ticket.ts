@@ -24,6 +24,8 @@ import { normalizeTicket } from '../normalize/ticket';
 export interface ListUserTicketsParams {
   athleteStatus?: 'ALL' | string;
   pageNo?: number;
+  /** camelCase on the wire; backend default is 10. */
+  pageSize?: number;
   codeStatuses?: string;
 }
 
@@ -43,6 +45,7 @@ export const ticket = {
     const {
       athleteStatus = 'ALL',
       pageNo = 1,
+      pageSize = 20,
       codeStatuses = 'ACTIVE',
     } = params;
 
@@ -52,6 +55,9 @@ export const ticket = {
     // (code_statuses, athlete_status). Default sort newest-first.
     const queryParams: Record<string, unknown> = {
       pageNo,
+      // camelCase works here too (verified live 2026-06-11: pageSize=50
+      // returned 50 rows) — backend default caps at 10 otherwise.
+      pageSize,
       sortField: 'createdOn',
       sortDirection: 'DESC',
       code_statuses: codeStatuses,

@@ -25,6 +25,7 @@ import { useAuthStore } from '../../src/stores/useAuthStore';
 import { secureRemove } from '../../src/adapters/secure-storage';
 import { TOKEN_KEY } from '../../src/adapters/sdk-init';
 import { signOutGoogle } from '../../src/adapters/google-signin';
+import { setLocale, type Locale } from '../../src/i18n';
 
 /**
  * Web footer "Pháp lý" links (G-18) — slugs copied verbatim from
@@ -391,7 +392,12 @@ export default function ProfileScreen() {
             trailingText={
               i18n.language === 'vi' ? 'Tiếng Việt' : i18n.language === 'en' ? 'English' : 'Deutsch'
             }
-            onPress={() => {/* open language bottom sheet */}}
+            onPress={() => {
+              // Cycle vi → en → de → vi; persisted via setLocale.
+              const order: Locale[] = ['vi', 'en', 'de'];
+              const cur = order.indexOf(i18n.language as Locale);
+              void setLocale(order[(cur + 1) % order.length]!);
+            }}
           />
           <ListItem
             leading={<Ionicons name="notifications-outline" size={20} color={tokens.color.neutral600} />}

@@ -177,50 +177,6 @@ export default function WaiverScreen() {
             </Text>
           </View>
 
-          <FormSection title={t('waiver.selectRace')}>
-            {racesLoading ? (
-              <Skeleton height={48} />
-            ) : !racesLoaded ? (
-              <Text style={{ color: tokens.color.neutral500 }}>
-                {t('waiver.step1Desc')}
-              </Text>
-            ) : races.length === 0 ? (
-              <Text style={{ color: tokens.color.neutral500 }}>{t('waiver.noRaceAvailable')}</Text>
-            ) : (
-              <View style={{ gap: tokens.space[2] }}>
-                {races.map((r) => {
-                  const active = r.raceId === raceId;
-                  return (
-                    <Pressable
-                      key={r.raceId}
-                      onPress={() => setRaceId(r.raceId)}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: active }}
-                      style={{
-                        padding: tokens.space[3],
-                        borderRadius: tokens.radius.md,
-                        borderWidth: active ? 2 : 1,
-                        borderColor: active ? tokens.color.brandPrimary : tokens.color.neutral300,
-                        backgroundColor: active ? tokens.color.brandPrimaryLight : 'transparent',
-                        minHeight: 48,
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: active ? tokens.color.brandPrimary : tokens.color.neutral900,
-                          fontWeight: tokens.fontWeight.medium,
-                        }}
-                      >
-                        {r.title}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </FormSection>
-
           <Input
             label={t('waiver.emailLabel')}
             required
@@ -248,6 +204,52 @@ export default function WaiverScreen() {
             error={emailErr ?? undefined}
             placeholder="you@example.com"
           />
+
+          {/* F26: race picker only appears once there is something to pick —
+             email comes FIRST (races are fetched from it on blur). The old
+             order rendered a "Chọn giải đấu" heading with no control and
+             repeated the page subtitle inside it. */}
+          {(racesLoading || racesLoaded) && (
+            <FormSection title={t('waiver.selectRace')}>
+              {racesLoading ? (
+                <Skeleton height={48} />
+              ) : races.length === 0 ? (
+                <Text style={{ color: tokens.color.neutral500 }}>{t('waiver.noRaceAvailable')}</Text>
+              ) : (
+                <View style={{ gap: tokens.space[2] }}>
+                  {races.map((r) => {
+                    const active = r.raceId === raceId;
+                    return (
+                      <Pressable
+                        key={r.raceId}
+                        onPress={() => setRaceId(r.raceId)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: active }}
+                        style={{
+                          padding: tokens.space[3],
+                          borderRadius: tokens.radius.md,
+                          borderWidth: active ? 2 : 1,
+                          borderColor: active ? tokens.color.brandPrimary : tokens.color.neutral300,
+                          backgroundColor: active ? tokens.color.brandPrimaryLight : 'transparent',
+                          minHeight: 48,
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: active ? tokens.color.brandPrimary : tokens.color.neutral900,
+                            fontWeight: tokens.fontWeight.medium,
+                          }}
+                        >
+                          {r.title}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </FormSection>
+          )}
         </FormLayout>
       )}
 
