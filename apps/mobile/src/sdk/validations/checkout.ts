@@ -38,7 +38,20 @@ export type VatInput = z.infer<typeof vatSchema>;
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function calcAgeAt(dobIso: string, refIso: string): number {
+/**
+ * Today's date in the DEVICE's local calendar (YYYY-MM-DD).
+ * `new Date().toISOString()` would give the UTC date — in VN (UTC+7) that's
+ * still *yesterday* between 00:00–07:00 local, misclassifying an athlete on
+ * their exact 18th birthday. Web uses local time (dayjs().diff).
+ */
+export function localTodayIso(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+export function calcAgeAt(dobIso: string, refIso: string): number {
   const dob = new Date(dobIso);
   const ref = new Date(refIso);
   let age = ref.getFullYear() - dob.getFullYear();

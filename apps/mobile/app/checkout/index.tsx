@@ -29,11 +29,17 @@ import {
 } from '../../src/components/PaymentMethodPicker';
 import { FormLayout, FormSection, SectionDivider } from '../../src/components/FormLayout';
 import { DateField } from '../../src/components/DateField';
+import { ChipSelect } from '../../src/components/ChipSelect';
 import { useToast } from '../../src/components/Toast';
 import { useOnline, useDraftPersist } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
 import { raceCourse, priceRule, order, race as raceSdk } from '../../src/sdk';
-import type { RaceCourse, OrderCreateInput } from '../../src/sdk/models';
+import type { Race, RaceCourse, OrderCreateInput } from '../../src/sdk/models';
+import {
+  DEFAULT_TSHIRT_SIZES,
+  GUARDIAN_RELATIONS,
+} from '../../src/sdk/constants/athlete';
+import { calcAgeAt, localTodayIso } from '../../src/sdk/validations/checkout';
 import { useCheckoutStore } from '../../src/stores/useCheckoutStore';
 import { resolveSaleState } from '../../src/utils/sale-state';
 import { isProductionApi } from '../../src/adapters/sdk-init';
@@ -75,6 +81,14 @@ interface AthleteForm {
   delegatorPhone?: string;
   delegatorEmail?: string;
   delegatorCccd?: string;
+  // Guardian (người giám hộ) — required when the athlete is under 18 at
+  // registration time (web parity: useAthleteField condition age < 18).
+  guardianName: string;
+  guardianDob: string; // YYYY-MM-DD
+  guardianIdentity: string;
+  guardianEmail: string;
+  guardianPhone: string;
+  guardianRelation: string;
 }
 
 /** Map UI picker id → backend payment gateway (URL path slug). */
@@ -106,6 +120,7 @@ export default function CheckoutScreen() {
   const [coursesError, setCoursesError] = useState<string | null>(null);
   // Backend-configured payment method allow-list. Loaded async after race
   // detail fetch; undefined = unknown/loading = show all options.
+  const [raceDetail, setRaceDetail] = useState<Race | null>(null);
   const [allowedPayments, setAllowedPayments] = useState<string[] | undefined>(
     undefined,
   );
@@ -130,6 +145,12 @@ export default function CheckoutScreen() {
     nameOnBib: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
+    guardianName: '',
+    guardianDob: '',
+    guardianIdentity: '',
+    guardianEmail: '',
+    guardianPhone: '',
+    guardianRelation: '',
   });
 
   const [discountCode, setDiscountCode] = useState('');
@@ -159,8 +180,9 @@ export default function CheckoutScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raceId]);
 
-  // Load race detail in parallel — only need it for the payment_options
-  // allow-list. Soft-fail leaves allowedPayments=undefined → show all options.
+  // Load race detail in parallel — payment_options allow-list + shirt-size
+  // config + event date (guardian adult check). Soft-fail leaves
+  // allowedPayments=undefined → show all options, sizes → default list.
   useEffect(() => {
     if (!raceId) return;
     let cancelled = false;
@@ -168,6 +190,7 @@ export default function CheckoutScreen() {
       try {
         const r = await raceSdk.getRaceById(raceId);
         if (cancelled) return;
+        setRaceDetail(r);
         setAllowedPayments(r.paymentOptions);
       } catch {
         // ignore — fall back to default options
@@ -239,7 +262,11 @@ export default function CheckoutScreen() {
     (async () => {
       const restored = await draft.restore();
       if (restored) {
-        setForm(restored);
+        // MERGE over current defaults — a draft persisted by an older app
+        // version lacks newer AthleteForm keys (e.g. the guardian fields);
+        // a wholesale setForm(restored) would leave them undefined and
+        // validateAthlete()'s .trim() calls would crash the render.
+        setForm((prev) => ({ ...prev, ...restored }));
         toast.show({ variant: 'info', message: t('checkout.draftRestored') });
       }
     })();
@@ -402,6 +429,15 @@ export default function CheckoutScreen() {
   const insuranceFee = includeInsurance ? 0 : 0; // Fee TBD by backend; UI flag only for now.
   const total = Math.max(0, subtotal + insuranceFee - (discountApplied?.amount ?? 0));
 
+  // Web parity (useAthleteField): guardian section appears when the athlete
+  // is under 18 TODAY (dayjs().diff(dob,'year') < 18) — local calendar date.
+  const todayIso = localTodayIso();
+  const guardianRequired = !!form.dob && calcAgeAt(form.dob, todayIso) < 18;
+  // Guardian must be an adult by event day (existing getGuardianSchema rule).
+  const guardianIsAdult =
+    !!form.guardianDob &&
+    calcAgeAt(form.guardianDob, raceDetail?.startDate || todayIso) >= 18;
+
   const validateAthlete = (): boolean => {
     if (form.firstName.trim().length < 1) return false;
     if (form.lastName.trim().length < 1) return false;
@@ -414,6 +450,14 @@ export default function CheckoutScreen() {
     if (!form.nameOnBib) return false;
     if (!form.emergencyContactName) return false;
     if (!VN_PHONE_RX.test(form.emergencyContactPhone)) return false;
+    if (guardianRequired) {
+      if (form.guardianName.trim().length < 1) return false;
+      if (!guardianIsAdult) return false;
+      if (form.guardianIdentity.trim().length < 6) return false;
+      if (!EMAIL_RX.test(form.guardianEmail.trim())) return false;
+      if (!VN_PHONE_RX.test(form.guardianPhone)) return false;
+      if (!form.guardianRelation) return false;
+    }
     if (form.mode === 'represent') {
       if (!form.delegatorName) return false;
       if (!VN_PHONE_RX.test(form.delegatorPhone ?? '')) return false;
@@ -457,6 +501,18 @@ export default function CheckoutScreen() {
       emergencyContactName: form.emergencyContactName,
       emergencyContactPhone: normalizePhone(form.emergencyContactPhone),
     },
+    ...(guardianRequired
+      ? {
+          guardian: {
+            name: form.guardianName.trim(),
+            dob: form.guardianDob,
+            identity: form.guardianIdentity.trim(),
+            email: form.guardianEmail.trim(),
+            phone: normalizePhone(form.guardianPhone),
+            relation: form.guardianRelation,
+          },
+        }
+      : {}),
     ...(discountApplied ? { discountCode: discountApplied.code } : {}),
     includedInsurance: includeInsurance,
   });
@@ -833,15 +889,34 @@ export default function CheckoutScreen() {
 
           <FormSection title={t('checkout.apparelSection')}>
             {/* Single size field — backend stores the shirt size in `racekit`
-               (`tshirt_size` is a dead column, verified live 2026-06-11). The
-               old second "Racekit" input duplicated this same BE field. */}
-            <Input
+               (`tshirt_size` is a dead column, verified live 2026-06-11).
+               Options come from the race's t_shirt_sizes config (web parity);
+               default list when the organizer left it empty (race 257). */}
+            <ChipSelect
               label={t('checkout.tshirtSize')}
               required
+              options={
+                raceDetail?.tshirtSizes?.length
+                  ? raceDetail.tshirtSizes
+                  : DEFAULT_TSHIRT_SIZES
+              }
               value={form.tshirtSize}
-              onChangeText={(v) => setForm({ ...form, tshirtSize: v })}
-              placeholder="M"
+              onChange={(v) => setForm({ ...form, tshirtSize: v })}
             />
+            {!!raceDetail?.tshirtSizeTableUrl && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onPress={() =>
+                  router.push({
+                    pathname: '/result/webview',
+                    params: { url: raceDetail.tshirtSizeTableUrl! },
+                  })
+                }
+              >
+                {t('checkout.sizeTable')}
+              </Button>
+            )}
             <Input
               label={t('checkout.nameOnBib')}
               required
@@ -867,6 +942,64 @@ export default function CheckoutScreen() {
               onChangeText={(v) => setForm({ ...form, emergencyContactPhone: v })}
             />
           </FormSection>
+
+          {/* Guardian — required for under-18 athletes (web parity:
+             useAthleteField shows the section when age < 18; payload nests
+             athlete_represent inside athlete_sub_info). */}
+          {guardianRequired && (
+            <FormSection title={t('checkout.guardian.section')}>
+              <Banner variant="info" message={t('checkout.guardian.hint')} />
+              <Input
+                label={t('checkout.guardian.name')}
+                required
+                value={form.guardianName}
+                onChangeText={(v) => setForm({ ...form, guardianName: v })}
+              />
+              <DateField
+                label={t('checkout.guardian.dob')}
+                required
+                value={form.guardianDob}
+                onChange={(v) => setForm({ ...form, guardianDob: v })}
+              />
+              {!!form.guardianDob && !guardianIsAdult && (
+                <Text
+                  style={{
+                    fontSize: tokens.fontSize.labelSm,
+                    color: tokens.color.error,
+                  }}
+                >
+                  {t('checkout.guardian.mustBeAdult')}
+                </Text>
+              )}
+              <Input
+                label={t('checkout.guardian.identity')}
+                required
+                value={form.guardianIdentity}
+                onChangeText={(v) => setForm({ ...form, guardianIdentity: v })}
+              />
+              <Input
+                label={t('checkout.guardian.email')}
+                required
+                variant="email"
+                value={form.guardianEmail}
+                onChangeText={(v) => setForm({ ...form, guardianEmail: v })}
+              />
+              <Input
+                label={t('checkout.guardian.phone')}
+                required
+                variant="phone"
+                value={form.guardianPhone}
+                onChangeText={(v) => setForm({ ...form, guardianPhone: v })}
+              />
+              <ChipSelect
+                label={t('checkout.guardian.relation')}
+                required
+                options={GUARDIAN_RELATIONS}
+                value={form.guardianRelation}
+                onChange={(v) => setForm({ ...form, guardianRelation: v })}
+              />
+            </FormSection>
+          )}
 
           {form.mode === 'represent' && (
             <FormSection title={t('checkout.delegatorSection')}>

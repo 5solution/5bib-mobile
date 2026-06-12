@@ -432,7 +432,19 @@
     "paymentMethod": "Zahlungsmethode",
     "selectionBlockedHint": "Diese Kategorie ist noch nicht oder nicht mehr im Verkauf — bitte eine andere wählen",
     "tierNoLongerAvailable": "Diese Kategorie wurde gerade geschlossen oder ist ausverkauft. Bitte erneut wählen.",
-    "apparelSection": "Bekleidung"
+    "apparelSection": "Bekleidung",
+    "guardian": {
+      "section": "Erziehungsberechtigte(r)",
+      "hint": "Athleten unter 18 Jahren müssen Angaben zum Erziehungsberechtigten machen",
+      "name": "Name des Erziehungsberechtigten",
+      "dob": "Geburtsdatum des Erziehungsberechtigten",
+      "identity": "Ausweis/Pass des Erziehungsberechtigten",
+      "email": "E-Mail des Erziehungsberechtigten",
+      "phone": "Telefon des Erziehungsberechtigten",
+      "relation": "Beziehung",
+      "mustBeAdult": "Der Erziehungsberechtigte muss am Veranstaltungstag mindestens 18 Jahre alt sein"
+    },
+    "sizeTable": "Größentabelle ansehen"
   },
   "tickets": {
     "tabTitle": "Meine Tickets",
@@ -572,7 +584,8 @@
       "successRegister": "Athlet registriert",
       "successUpdate": "Aktualisiert",
       "failed": "Registrierung fehlgeschlagen, bitte erneut versuchen",
-      "sectionDocs": "E-Mail & Dokumente"
+      "sectionDocs": "E-Mail & Dokumente",
+      "racekitLocked": "Bei diesem Lauf kann die Shirtgröße nach der Anmeldung nicht geändert werden"
     },
     "changeCourseSuccess": "Strecke erfolgreich geändert",
     "changeFee": "Streckenwechselgebühr",

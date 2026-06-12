@@ -225,6 +225,14 @@ export interface Race {
   /** `race_extenstion.enable_delegation_skip_liabilty` (sic) — racekit
    *  delegation option in the check-in/waiver flow. */
   delegationEnable?: boolean;
+  /**
+   * Shirt-size options from `race_extenstion.t_shirt_sizes` (CSV string the
+   * organizer types, e.g. "M,L,XS,VL,TOVL" — verified live race 305).
+   * Undefined/empty → UI falls back to DEFAULT_TSHIRT_SIZES (web parity).
+   */
+  tshirtSizes?: string[];
+  /** `race_extenstion.t_shirt_size_table_url` — size-chart image URL. */
+  tshirtSizeTableUrl?: string;
 }
 
 export interface Pagination {
@@ -263,6 +271,8 @@ export interface AthleteCreatePayload {
   address?: string;
   club?: string;
   achievements?: string;
+  /** Required when the athlete is under 18 — maps to `athlete_represent`. */
+  guardian?: GuardianPayload;
 }
 
 export interface DelegatorPayload {
@@ -512,6 +522,24 @@ export interface Athlete {
   delegatorEmail?: string;
   delegatorPhone?: string;
   delegatorCccd?: string;
+  /** Guardian (người giám hộ, athlete under 18) — read from top-level
+   *  `athlete_represent`; written via the same key on order-create sub_info
+   *  and simple-edit (verified live 2026-06-12, represent_id persisted). */
+  guardianName?: string;
+  /** ISO YYYY-MM-DD (wire reads back ISO even when written DD/MM/YYYY). */
+  guardianDob?: string;
+  guardianIdentity?: string;
+  guardianEmail?: string;
+  guardianPhone?: string;
+  guardianRelation?: string;
+  /**
+   * Raw passthrough of athlete_represent fields mobile doesn't edit
+   * (guardian_shirt_size / guardian_bib_name / guardian_address /
+   * guardian_sex — web writes these for FAMILY/KID courses). The BE
+   * treats athlete_represent as a FULL REPLACE, so any save must echo
+   * these back or they get wiped.
+   */
+  guardianExtras?: Record<string, unknown>;
 }
 
 export interface SigningTicket {

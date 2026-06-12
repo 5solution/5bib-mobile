@@ -146,3 +146,25 @@ cần per-modal dismissal theo navigation event — P3, để backlog riêng.
 
 Còn mở (không đổi): JWT refresh `/renew`, Pay-now hardcode vnpay,
 F28 modal-vs-deep-link, i18n nốt domain components cũ.
+
+### F38 + F39 (2026-06-12 chiều): Guardian <18 + size áo theo config giải
+
+| ID | Nội dung | Verify |
+|---|---|---|
+| F38 | **Người giám hộ cho VĐV <18 tuổi** (trước đây mobile hoàn toàn không có): section hiện ở checkout step-1 + edit vé khi tuổi < 18 (đúng điều kiện web `age<18` tại ngày hiện tại, giờ LOCAL); 6 field: tên/ngày sinh/CMND/email/SĐT/quan hệ (chips song ngữ đúng 7 option web); giám hộ phải ≥18 tại ngày sự kiện; wire `athlete_represent` nested (probe + E2E sống: athlete 11655, represent_id 2904, app Lưu → BE đủ 6 field) | ✅ sống cả read + write |
+| F39 | **Size áo = chips theo `race_extenstion.t_shirt_sizes`** (CSV organizer nhập, verify race 305 "M,L,XS,VL,TOVL"); fallback 15 size chuẩn của web khi giải bỏ trống (race 257); giữ nguyên khoá racekit_edit_enable; value lạ ngoài config vẫn hiện chip riêng | ✅ sống 2 giải |
+
+Review đối kháng bắt + đã fix: draft checkout version cũ thiếu key guardian
+→ crash `.trim()` (merge-over-defaults khi restore); **BE full-replace
+`athlete_represent`** → edit mobile từng wipe field FAMILY web ghi
+(guardian_shirt_size/bib_name/sex/address — giờ echo passthrough); 2 màn
+validate guardian lệch nhau (đồng bộ regex + chuẩn hoá +84); tuổi tính theo
+UTC lệch 7h ở biên sinh nhật 18 (đổi local date); header ✓ hiện như bấm
+được khi validation đang chặn (đồng bộ canSubmit); chip ma khi value cũ
+'m '/lowercase (so khớp case-insensitive).
+
+Known-divergence (ghi nhận, chưa làm): bộ field guardian mở rộng cho course
+FAMILY/KID (web có guardian_shirt_size/sex/bib_name/address + luôn hiện
+cho KID/FAMILY bất kể tuổi) — mobile mới gate theo tuổi; data web ghi được
+bảo toàn nhờ passthrough. Athlete DEV 11655 (vé VN5BIB21K-575-QKPOBAS1)
+đang để dob 2016 + guardian đầy đủ làm data demo.

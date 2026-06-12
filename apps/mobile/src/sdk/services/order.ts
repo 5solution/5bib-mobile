@@ -92,6 +92,24 @@ export const order = {
    */
   async createOrder(input: OrderCreateInput): Promise<OrderCreateResponse> {
     const subInfo = mapAthleteToSubInfo(input.athlete);
+    // Under-18 athlete → guardian rides inside the same sub_info entry as
+    // `athlete_represent` (web parity: services/athlete/local.ts nests it at
+    // profile level). Wire contract verified live 2026-06-12: PUT
+    // /athlete/simple-edit with this exact object persisted represent_id.
+    if (input.guardian) {
+      const g = input.guardian;
+      subInfo.athlete_represent = {
+        name: g.name,
+        idpp: g.identity,
+        email: g.email,
+        guardian_name: g.name,
+        guardian_dob: toDDMMYYYY(g.dob),
+        guardian_card_id: g.identity,
+        guardian_email: g.email,
+        guardian_phone_number: g.phone,
+        guardian_relationship: g.relation,
+      };
+    }
 
     const body = {
       order: {

@@ -432,7 +432,19 @@
     "paymentMethod": "Payment method",
     "selectionBlockedHint": "This tier is not on sale yet or has closed — please pick another tier",
     "tierNoLongerAvailable": "This tier just closed or sold out. Please pick again.",
-    "apparelSection": "Apparel"
+    "apparelSection": "Apparel",
+    "guardian": {
+      "section": "Guardian",
+      "hint": "Athletes under 18 must provide guardian information",
+      "name": "Guardian's full name",
+      "dob": "Guardian's date of birth",
+      "identity": "Guardian's ID/Passport",
+      "email": "Guardian's email",
+      "phone": "Guardian's phone",
+      "relation": "Relationship",
+      "mustBeAdult": "The guardian must be at least 18 years old on event day"
+    },
+    "sizeTable": "View size chart"
   },
   "tickets": {
     "tabTitle": "My tickets",
@@ -572,7 +584,8 @@
       "successRegister": "Athlete registered",
       "successUpdate": "Updated",
       "failed": "Registration failed, please try again",
-      "sectionDocs": "Email & documents"
+      "sectionDocs": "Email & documents",
+      "racekitLocked": "This race does not allow changing shirt size after registration"
     },
     "changeCourseSuccess": "Course changed successfully",
     "changeFee": "Change-course fee",

@@ -33,6 +33,7 @@ import { Skeleton } from '../../../src/components/Skeleton';
 import { FormLayout, FormSection } from '../../../src/components/FormLayout';
 import { BottomSheet } from '../../../src/components/BottomSheet';
 import { DateField } from '../../../src/components/DateField';
+import { ChipSelect } from '../../../src/components/ChipSelect';
 import { SegmentedTabs } from '../../../src/components/domain/SegmentedTabs';
 import { useToast } from '../../../src/components/Toast';
 import { tokens } from '../../../src/theme/tokens';
@@ -42,7 +43,25 @@ import { ticket as ticketSdk } from '../../../src/sdk/services/ticket';
 import { athlete as athleteSdk } from '../../../src/sdk/services/athlete';
 import { profile as profileSdk } from '../../../src/sdk/services/profile';
 import { FetcherError } from '../../../src/sdk/core';
-import type { Athlete, AthleteCreatePayload, Profile, Ticket } from '../../../src/sdk/models';
+import type { Athlete, AthleteCreatePayload, GuardianPayload, Profile, Ticket } from '../../../src/sdk/models';
+import {
+  DEFAULT_TSHIRT_SIZES,
+  GUARDIAN_RELATIONS,
+} from '../../../src/sdk/constants/athlete';
+import { calcAgeAt, localTodayIso } from '../../../src/sdk/validations/checkout';
+
+// Mirrors checkout's guardian contact rules so the same BE field gets the
+// same format regardless of which screen wrote it (+84-normalized phone,
+// real email) — review caught the two screens diverging.
+const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VN_PHONE_RX = /^(0|\+84)?[35789][0-9]{8}$/;
+function normalizeGuardianPhone(raw: string): string {
+  const s = raw.trim();
+  if (s.startsWith('+84')) return s;
+  if (s.startsWith('0')) return '+84' + s.slice(1);
+  if (/^[35789][0-9]{8}$/.test(s)) return '+84' + s;
+  return s;
+}
 
 interface FormState {
   firstName: string;
@@ -64,6 +83,13 @@ interface FormState {
   currentMedication: string;
   address: string;
   club: string;
+  // Guardian (người giám hộ) — required when the athlete is under 18.
+  guardianName: string;
+  guardianDob: string; // ISO YYYY-MM-DD
+  guardianIdentity: string;
+  guardianEmail: string;
+  guardianPhone: string;
+  guardianRelation: string;
 }
 
 const EMPTY: FormState = {
@@ -84,6 +110,12 @@ const EMPTY: FormState = {
   currentMedication: '',
   address: '',
   club: '',
+  guardianName: '',
+  guardianDob: '',
+  guardianIdentity: '',
+  guardianEmail: '',
+  guardianPhone: '',
+  guardianRelation: '',
 };
 
 function fromAthlete(a: Athlete | null, fallbackEmail: string): FormState {
@@ -112,6 +144,13 @@ function fromAthlete(a: Athlete | null, fallbackEmail: string): FormState {
     // sosPhone packed as "phone-name" by SDK mapper.
     emergencyContactPhone: (a.sosPhone ?? '').split('-')[0] ?? '',
     emergencyContactName: (a.sosPhone ?? '').split('-').slice(1).join('-') ?? '',
+    // Guardian prefill — read back from athlete_represent (normalizer maps it).
+    guardianName: a.guardianName ?? '',
+    guardianDob: toIsoDate(a.guardianDob ?? ''),
+    guardianIdentity: a.guardianIdentity ?? '',
+    guardianEmail: a.guardianEmail ?? '',
+    guardianPhone: a.guardianPhone ?? '',
+    guardianRelation: a.guardianRelation ?? '',
     bloodType: a.bloodType ?? '',
     medicalInformation: a.medicalInfo ?? '',
     currentMedication: a.currentMedication ?? '',
@@ -146,8 +185,27 @@ function fromProfile(p: Profile, fallbackEmail: string): FormState {
   };
 }
 
+/** Web parity (useAthleteField): guardian needed when athlete < 18 today. */
+function needsGuardian(dobIso: string): boolean {
+  if (!dobIso) return false;
+  return calcAgeAt(dobIso, localTodayIso()) < 18;
+}
+
+function buildGuardian(f: FormState): GuardianPayload | undefined {
+  if (!needsGuardian(f.dob)) return undefined;
+  return {
+    name: f.guardianName.trim(),
+    dob: f.guardianDob,
+    identity: f.guardianIdentity.trim(),
+    email: f.guardianEmail.trim(),
+    phone: normalizeGuardianPhone(f.guardianPhone),
+    relation: f.guardianRelation,
+  };
+}
+
 function toCreatePayload(f: FormState): AthleteCreatePayload {
   return {
+    guardian: buildGuardian(f),
     firstName: f.firstName,
     lastName: f.lastName,
     email: f.email,
@@ -181,6 +239,7 @@ function toCreatePayload(f: FormState): AthleteCreatePayload {
 function toSimpleEditBody(
   f: FormState,
   racekitEditable: boolean,
+  guardianExtras?: Record<string, unknown>,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = {
     first_name: f.firstName,
@@ -199,6 +258,26 @@ function toSimpleEditBody(
     address: f.address,
   };
   if (racekitEditable) body.racekit = f.racekit;
+  // Under-18 → guardian rides as athlete_represent (wire verified live
+  // 2026-06-12 on athlete 11655: simple-edit persisted represent_id).
+  // ⚠️ BE FULL-REPLACES this object (a partial write wipes the rest —
+  // observed live), so echo back the fields mobile doesn't edit
+  // (guardian_shirt_size/bib_name/address/sex from web FAMILY/KID regs).
+  const g = buildGuardian(f);
+  if (g) {
+    body.athlete_represent = {
+      ...(guardianExtras ?? {}),
+      name: g.name,
+      idpp: g.identity,
+      email: g.email,
+      guardian_name: g.name,
+      guardian_dob: toDDMMYYYY(g.dob),
+      guardian_card_id: g.identity,
+      guardian_email: g.email,
+      guardian_phone_number: g.phone,
+      guardian_relationship: g.relation,
+    };
+  }
   return body;
 }
 
@@ -297,7 +376,11 @@ export default function EditTicketScreen() {
         if (!existingAthlete?.id) throw new Error('missing athlete id');
         await athleteSdk.simpleEdit({
           athleteId: existingAthlete.id,
-          payload: toSimpleEditBody(form, racekitEditable),
+          payload: toSimpleEditBody(
+            form,
+            racekitEditable,
+            existingAthlete.guardianExtras,
+          ),
         });
         toast.show({ variant: 'success', message: t('tickets.athleteRegister.successUpdate') });
       }
@@ -379,7 +462,24 @@ export default function EditTicketScreen() {
     );
   }
 
-  const canSubmit = dirty && !submitting && !!form.firstName && !!form.lastName && !!form.email;
+  const guardianRequired = needsGuardian(form.dob);
+  const guardianIsAdult =
+    !!form.guardianDob &&
+    calcAgeAt(
+      form.guardianDob,
+      ticket?.race?.startDate || localTodayIso(),
+    ) >= 18;
+  const guardianOk =
+    !guardianRequired ||
+    (!!form.guardianName.trim() &&
+      guardianIsAdult &&
+      form.guardianIdentity.trim().length >= 6 &&
+      EMAIL_RX.test(form.guardianEmail.trim()) &&
+      VN_PHONE_RX.test(form.guardianPhone.trim()) &&
+      !!form.guardianRelation);
+
+  const canSubmit =
+    dirty && !submitting && !!form.firstName && !!form.lastName && !!form.email && guardianOk;
 
   return (
     <>
@@ -389,7 +489,10 @@ export default function EditTicketScreen() {
         onLeadingPress={() => router.back()}
         actions={[
           {
-            icon: dirty && !submitting ? '✓' : ' ',
+            // Icon must mirror canSubmit — `dirty` alone rendered an
+            // actionable-looking ✓ whose taps were silently dropped while
+            // validation (e.g. incomplete guardian) blocked submit.
+            icon: canSubmit ? '✓' : ' ',
             label: t('common.save'),
             onPress: canSubmit ? submit : () => {},
           },
@@ -505,19 +608,25 @@ export default function EditTicketScreen() {
         <FormSection title={t('checkout.apparelSection')}>
           {/* Single size field — backend stores the shirt size in `racekit`
              (`tshirt_size` is a dead column, verified live 2026-06-11).
-             Read-only when the race forbids racekit edits, matching the
+             Options come from the race's t_shirt_sizes config (web parity);
+             read-only when the race forbids racekit edits, matching the
              server rule that rejects the whole payload otherwise. */}
-          <Input
+          <ChipSelect
             label={t('checkout.tshirtSize')}
             required
             readOnly={mode === 'edit' && !racekitEditable}
             helper={
               mode === 'edit' && !racekitEditable
-                ? 'Giải này không cho phép đổi size áo sau khi đăng ký'
+                ? t('tickets.athleteRegister.racekitLocked')
                 : undefined
             }
+            options={
+              ticket?.race?.tshirtSizes?.length
+                ? ticket.race.tshirtSizes
+                : DEFAULT_TSHIRT_SIZES
+            }
             value={form.racekit}
-            onChangeText={(v) => set('racekit', v)}
+            onChange={(v) => set('racekit', v)}
           />
           <Input
             label={t('checkout.nameOnBib')}
@@ -549,6 +658,82 @@ export default function EditTicketScreen() {
             onChangeText={(v) => set('emergencyContactPhone', v)}
           />
         </FormSection>
+
+        {/* Guardian — required for under-18 athletes (web parity: edit page
+           uses the same useAthleteField condition; payload nests
+           athlete_represent, verified live 2026-06-12). */}
+        {guardianRequired && (
+          <FormSection title={t('checkout.guardian.section')}>
+            <Banner variant="info" message={t('checkout.guardian.hint')} />
+            <Input
+              label={t('checkout.guardian.name')}
+              required
+              value={form.guardianName}
+              onChangeText={(v) => set('guardianName', v)}
+            />
+            <DateField
+              label={t('checkout.guardian.dob')}
+              required
+              value={form.guardianDob}
+              onChange={(v) => set('guardianDob', v)}
+            />
+            {!!form.guardianDob && !guardianIsAdult && (
+              <Text
+                style={{
+                  fontSize: tokens.fontSize.labelSm,
+                  color: tokens.color.error,
+                }}
+              >
+                {t('checkout.guardian.mustBeAdult')}
+              </Text>
+            )}
+            <Input
+              label={t('checkout.guardian.identity')}
+              required
+              value={form.guardianIdentity}
+              onChangeText={(v) => set('guardianIdentity', v)}
+              error={
+                form.guardianIdentity.trim() &&
+                form.guardianIdentity.trim().length < 6
+                  ? t('validation.required')
+                  : undefined
+              }
+            />
+            <Input
+              label={t('checkout.guardian.email')}
+              required
+              variant="email"
+              value={form.guardianEmail}
+              onChangeText={(v) => set('guardianEmail', v)}
+              error={
+                form.guardianEmail.trim() &&
+                !EMAIL_RX.test(form.guardianEmail.trim())
+                  ? t('validation.emailInvalid')
+                  : undefined
+              }
+            />
+            <Input
+              label={t('checkout.guardian.phone')}
+              required
+              variant="phone"
+              value={form.guardianPhone}
+              onChangeText={(v) => set('guardianPhone', v)}
+              error={
+                form.guardianPhone.trim() &&
+                !VN_PHONE_RX.test(form.guardianPhone.trim())
+                  ? t('validation.phoneInvalid')
+                  : undefined
+              }
+            />
+            <ChipSelect
+              label={t('checkout.guardian.relation')}
+              required
+              options={GUARDIAN_RELATIONS}
+              value={form.guardianRelation}
+              onChange={(v) => set('guardianRelation', v)}
+            />
+          </FormSection>
+        )}
 
         <FormSection title={t('checkout.healthOptional')}>
           <Input

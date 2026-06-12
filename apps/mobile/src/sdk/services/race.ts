@@ -207,6 +207,16 @@ export function normalizeRace(raw: unknown): Race {
       ext.enable_delegation_skip_liabilty != null
         ? Boolean(ext.enable_delegation_skip_liabilty)
         : undefined,
+    // CSV string from admin ("M,L,XS,VL,TOVL") — web splits on ',' in
+    // convertToObject. Empty string (race 257) → undefined → UI fallback.
+    tshirtSizes:
+      typeof ext.t_shirt_sizes === 'string' && ext.t_shirt_sizes.trim()
+        ? (ext.t_shirt_sizes as string)
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : undefined,
+    tshirtSizeTableUrl: asImageUrl(ext.t_shirt_size_table_url) ?? undefined,
   };
 }
 

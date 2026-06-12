@@ -66,7 +66,22 @@ function mapAthleteToLegacy(
     current_medication: a.currentMedication ?? '',
     blood_type: a.bloodType ?? '',
     achievements: a.achievements ?? '',
-    athlete_represent: {},
+    // Under-18 athlete → guardian nests here (web parity local.ts; wire
+    // verified live 2026-06-12 via simple-edit on athlete 11655 —
+    // represent_id persisted with these exact keys).
+    athlete_represent: a.guardian
+      ? {
+          name: a.guardian.name,
+          idpp: a.guardian.identity,
+          email: a.guardian.email,
+          guardian_name: a.guardian.name,
+          guardian_dob: toDDMMYYYY(a.guardian.dob),
+          guardian_card_id: a.guardian.identity,
+          guardian_email: a.guardian.email,
+          guardian_phone_number: a.guardian.phone,
+          guardian_relationship: a.guardian.relation,
+        }
+      : {},
     disclaimer_status: false,
     is_represent: isRepresent,
     customize_fields: null,
@@ -115,6 +130,37 @@ function normalizeAthlete(raw: unknown): Athlete {
     disclaimerStatus: (si.disclaimer_status ?? r.disclaimer_status) as
       | boolean
       | undefined,
+    // Guardian reads back from TOP-LEVEL `athlete_represent` (verified live
+    // 2026-06-12, athlete 11655: represent_id + guardian_* fields persisted;
+    // guardian_dob comes back ISO even when written DD/MM/YYYY).
+    ...(() => {
+      const ar = (r.athlete_represent ?? null) as Record<
+        string,
+        unknown
+      > | null;
+      if (!ar) return {};
+      const extras: Record<string, unknown> = {};
+      for (const k of [
+        'guardian_shirt_size',
+        'guardian_bib_name',
+        'guardian_address',
+        'guardian_sex',
+        'detail',
+      ]) {
+        if (ar[k] != null) extras[k] = ar[k];
+      }
+      return {
+        guardianName: (ar.guardian_name ?? ar.name) as string | undefined,
+        guardianDob: toIsoDate(ar.guardian_dob as string | undefined) || undefined,
+        guardianIdentity: (ar.guardian_card_id ?? ar.idpp) as
+          | string
+          | undefined,
+        guardianEmail: (ar.guardian_email ?? ar.email) as string | undefined,
+        guardianPhone: ar.guardian_phone_number as string | undefined,
+        guardianRelation: ar.guardian_relationship as string | undefined,
+        ...(Object.keys(extras).length ? { guardianExtras: extras } : {}),
+      };
+    })(),
   };
 }
 

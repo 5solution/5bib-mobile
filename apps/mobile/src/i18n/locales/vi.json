@@ -432,7 +432,19 @@
     "paymentMethod": "Phương thức thanh toán",
     "selectionBlockedHint": "Hạng vé này chưa mở bán hoặc đã đóng — vui lòng chọn hạng vé khác",
     "tierNoLongerAvailable": "Hạng vé vừa đóng bán hoặc hết vé. Vui lòng chọn lại.",
-    "apparelSection": "Trang phục"
+    "apparelSection": "Trang phục",
+    "guardian": {
+      "section": "Người giám hộ",
+      "hint": "Vận động viên dưới 18 tuổi cần thông tin người giám hộ",
+      "name": "Họ tên người giám hộ",
+      "dob": "Ngày sinh người giám hộ",
+      "identity": "CMND/CCCD/Passport người giám hộ",
+      "email": "Email người giám hộ",
+      "phone": "SĐT người giám hộ",
+      "relation": "Mối quan hệ",
+      "mustBeAdult": "Người giám hộ phải đủ 18 tuổi tính tới ngày sự kiện"
+    },
+    "sizeTable": "Xem bảng size"
   },
   "tickets": {
     "tabTitle": "Vé của tôi",
@@ -572,7 +584,8 @@
       "successRegister": "Đăng ký VĐV thành công",
       "successUpdate": "Cập nhật thành công",
       "failed": "Đăng ký thất bại, vui lòng thử lại",
-      "sectionDocs": "Email & giấy tờ"
+      "sectionDocs": "Email & giấy tờ",
+      "racekitLocked": "Giải này không cho phép đổi size áo sau khi đăng ký"
     },
     "changeCourseSuccess": "Đổi cự ly thành công",
     "changeFee": "Phí đổi cự ly",
