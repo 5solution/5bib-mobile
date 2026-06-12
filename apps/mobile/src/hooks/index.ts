@@ -90,6 +90,15 @@ function startOnlineManager() {
   });
 }
 
+/**
+ * Re-point the reachability probe after an environment switch (hidden
+ * DEV↔PROD toggle) — NetInfo.configure merges partial config.
+ */
+export function updateReachabilityUrl(baseUrl: string) {
+  NetInfo.configure({ reachabilityUrl: `${baseUrl}/` });
+  void refreshOnlineState();
+}
+
 export function useOnline() {
   const [online, setOnline] = useState(onlineState);
   useEffect(() => {

@@ -26,7 +26,9 @@ import { ToastProvider, useToast } from '../src/components';
 import { AppLaunchIntro } from '../src/components/motion';
 import { initSentry } from '../src/adapters/sentry';
 import { initGoogleSignIn } from '../src/adapters/google-signin';
-import { initSdk } from '../src/adapters/sdk-init';
+import { getApiBaseUrl, initSdk } from '../src/adapters/sdk-init';
+import { ENV_URLS, getEnvOverride } from '../src/adapters/env-override';
+import { updateReachabilityUrl } from '../src/hooks';
 import { eventBus } from '../src/adapters/event-bus';
 import { useAuthStore } from '../src/stores/useAuthStore';
 import i18n, { restorePersistedLocale } from '../src/i18n';
@@ -45,6 +47,17 @@ if (__DEV__) {
 initSentry();
 // Init SDK Fetcher BEFORE any service call. Synchronous-safe (no network here).
 void initSdk();
+// Hidden env switch (tap login logo 6×): apply the persisted override. Runs
+// right after the default init so the fetcher is never uninitialized; a
+// request racing the AsyncStorage read (~ms) would hit the build-default env
+// once — acceptable for an internal test tool.
+void (async () => {
+  const override = await getEnvOverride();
+  if (override && ENV_URLS[override] !== getApiBaseUrl()) {
+    await initSdk({ baseURL: ENV_URLS[override] });
+    updateReachabilityUrl(ENV_URLS[override]);
+  }
+})();
 // Init Google Sign-In SDK (config via app.config.js + adapters/google-signin.ts).
 initGoogleSignIn();
 // Apply the user's persisted language choice (overrides device locale).

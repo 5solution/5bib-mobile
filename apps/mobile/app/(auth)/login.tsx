@@ -5,8 +5,16 @@
  *  - Initial / Filled / Submitting / Error 401 / Error 423 (locked) / Offline / Success
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+  Pressable,
+  Alert,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +29,8 @@ import { useOnline } from '../../src/hooks';
 import { tokens } from '../../src/theme/tokens';
 import { user as sdkUser } from '../../src/sdk/services/user';
 import { secureSet } from '../../src/adapters/secure-storage';
-import { TOKEN_KEY } from '../../src/adapters/sdk-init';
+import { TOKEN_KEY, getApiBaseUrl, isProductionApi } from '../../src/adapters/sdk-init';
+import { switchApiEnv, envForUrl } from '../../src/adapters/env-override';
 import { useAuthStore } from '../../src/stores/useAuthStore';
 import { signInWithGoogle } from '../../src/adapters/google-signin';
 import { addBreadcrumb, captureError } from '../../src/adapters/sentry';
@@ -41,6 +50,47 @@ export default function LoginScreen() {
   const [pwdErr, setPwdErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [lockSeconds, setLockSeconds] = useState<number | null>(null);
+
+  // ---------------------------------------------------------------------
+  // Hidden env switch — tap the logo 6× (within 2s between taps) to toggle
+  // DEV ↔ PROD. Badge below the logo shows the live env whenever NOT on
+  // prod so a switched build can never be mistaken for production.
+  // ---------------------------------------------------------------------
+  const [apiUrl, setApiUrl] = useState(getApiBaseUrl());
+  const envTapCount = useRef(0);
+  const envTapLastAt = useRef(0);
+
+  const onLogoTap = () => {
+    const now = Date.now();
+    envTapCount.current = now - envTapLastAt.current < 2000 ? envTapCount.current + 1 : 1;
+    envTapLastAt.current = now;
+    if (envTapCount.current < 6) return;
+    envTapCount.current = 0;
+    const current = envForUrl(getApiBaseUrl());
+    const next = current === 'prod' ? 'dev' : 'prod';
+    Alert.alert(
+      'Môi trường API',
+      `Đang dùng: ${current.toUpperCase()}\n${getApiBaseUrl()}\n\nChuyển sang ${next.toUpperCase()}? Phiên đăng nhập hiện tại sẽ bị xoá.`,
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        {
+          text: `Chuyển sang ${next.toUpperCase()}`,
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const url = await switchApiEnv(next);
+              useAuthStore.getState().logout();
+              setApiUrl(url);
+              toast.show({
+                variant: 'success',
+                message: `Đã chuyển sang ${next.toUpperCase()} (${url})`,
+              });
+            })();
+          },
+        },
+      ],
+    );
+  };
 
   const formValid =
     EMAIL_RX.test(email.trim()) && password.length >= 8 && !lockSeconds && online;
@@ -174,9 +224,25 @@ export default function LoginScreen() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Logo — official wordmark (replaces the old blue "5" square). */}
+        {/* Logo — official wordmark. Pressable hosts the hidden 6-tap env
+           switch (no accessibility role on purpose — it must stay invisible
+           to normal users; testers know the gesture). */}
         <View style={{ alignItems: 'center', marginBottom: tokens.space[6] }}>
-          <BrandLogo width={132} style={{ marginBottom: tokens.space[5] }} />
+          <Pressable onPress={onLogoTap}>
+            <BrandLogo width={132} style={{ marginBottom: tokens.space[5] }} />
+          </Pressable>
+          {!isProductionApi() && (
+            <Text
+              style={{
+                fontSize: tokens.fontSize.labelSm,
+                color: tokens.color.warning,
+                fontWeight: tokens.fontWeight.semibold,
+                marginBottom: tokens.space[2],
+              }}
+            >
+              {envForUrl(apiUrl).toUpperCase()} · {apiUrl.replace('https://', '')}
+            </Text>
+          )}
           <Text
             style={{
               fontSize: tokens.fontSize.h1,
