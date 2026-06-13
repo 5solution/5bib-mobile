@@ -11,13 +11,12 @@
  *   - `purple` — purple.700 → blue.600 (Rolling BIB header/idle)
  *   - `gold`   — accent gradient (Rolling BIB success / celebratory)
  *
- * NOTE: Uses simple two-layer View + opacity overlay as fallback if
- * `expo-linear-gradient` is not installed. Once dep is added, swap
- * `<FallbackGradient />` with `<LinearGradient />` (TODO marked below).
+ * Renders a true diagonal gradient via expo-linear-gradient.
  */
 
 import React from 'react';
 import { View, ViewStyle, StyleProp } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../../theme/tokens';
 
 export type GradientVariant = 'purple' | 'gold';
@@ -49,41 +48,6 @@ const VARIANT_COLORS: Record<GradientVariant, { top: string; bottom: string }> =
   },
 };
 
-/**
- * Fallback gradient — stacks an overlay View on top of base color.
- * TODO(expo-linear-gradient): Once `expo-linear-gradient` is installed, replace
- *  this with `<LinearGradient colors={[top, bottom]} ... />` for true gradient.
- */
-function FallbackGradient({
-  top,
-  bottom,
-  borderRadius,
-  children,
-}: {
-  top: string;
-  bottom: string;
-  borderRadius: number;
-  children?: React.ReactNode;
-}) {
-  return (
-    <View style={{ backgroundColor: top, borderRadius, overflow: 'hidden' }}>
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          top: '40%',
-          backgroundColor: bottom,
-          opacity: 0.85,
-        }}
-      />
-      {children}
-    </View>
-  );
-}
-
 export function GradientCard({
   variant = 'purple',
   children,
@@ -102,9 +66,14 @@ export function GradientCard({
       accessibilityLabel={accessibilityLabel}
       style={[{ borderRadius: r }, style]}
     >
-      <FallbackGradient top={colors.top} bottom={colors.bottom} borderRadius={r}>
+      <LinearGradient
+        colors={[colors.top, colors.bottom]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ borderRadius: r, overflow: 'hidden' }}
+      >
         <View style={{ padding: p }}>{children}</View>
-      </FallbackGradient>
+      </LinearGradient>
     </View>
   );
 }

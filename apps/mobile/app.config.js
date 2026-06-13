@@ -44,6 +44,19 @@ const googleServiceAndroid = IS_DEV
 
 const firebaseProjectId = IS_DEV ? 'bib-dev-b4d19' : 'bib-60bff';
 
+// Google Sign-In needs the iOS OAuth client's REVERSED_CLIENT_ID registered
+// as a URL scheme (the OAuth callback target) — otherwise the native sign-in
+// dialog opens but never returns. This is the REVERSED_CLIENT_ID from the
+// env's GoogleService-Info.plist.
+//   PROD `bib-60bff`: present (Google provider enabled for iOS app).
+//   DEV  `bib-dev-b4d19`: ⚠️ no iOS OAuth client yet — Google provider not
+//     enabled for the iOS app, so the plist has no CLIENT_ID. Once Danny
+//     enables it + re-downloads GoogleService-Info.dev.plist, paste the
+//     reversed id here and the plugin auto-registers it.
+const GOOGLE_IOS_URL_SCHEME = IS_DEV
+  ? undefined
+  : 'com.googleusercontent.apps.47150553581-gvff8not3telqajbs0ta533qkmsfmqrg';
+
 // Sentry — 2 projects (created Danny 2026-05-26)
 // Org slug: 5bib | Org ID: o4511451510079488
 //   - prod project ID: 4511454305714176
@@ -119,6 +132,17 @@ module.exports = {
     plugins: [
       'expo-router',
       'expo-secure-store',
+      // Google Sign-In — registers the iOS OAuth callback URL scheme. Only
+      // added when a reversed client id exists for this env (prod has it; dev
+      // is pending the Firebase iOS Google provider — see GOOGLE_IOS_URL_SCHEME).
+      ...(GOOGLE_IOS_URL_SCHEME
+        ? [
+            [
+              '@react-native-google-signin/google-signin',
+              { iosUrlScheme: GOOGLE_IOS_URL_SCHEME },
+            ],
+          ]
+        : []),
       // Firebase native modules (added 2026-05-25 — reuse project 5BIB hiện tại)
       '@react-native-firebase/app',
       '@react-native-firebase/crashlytics',

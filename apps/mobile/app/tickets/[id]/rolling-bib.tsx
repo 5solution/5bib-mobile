@@ -11,14 +11,16 @@
  * Test Cases covered (inline references):
  *  - TC-TICKETS-21 → 29
  *
- * Dependencies:
- *  - Zustand store `useRollingBibStore` (TODO: skeleton — implement in src/stores/rolling-bib.store.ts)
- *  - @5bib/sdk athlete.rollingBib() + athlete.confirmRollingBib() (TODO: SDK extract)
- *  - Custom components: GradientCard, RollingNumber, SlotMachine, BIBNumberCard, CountdownTimer
- *    (TODO: skeleton imports — implement in src/components/domain/)
+ * Dependencies (all wired):
+ *  - athlete.rollingBib(courseId, code, confirmed) — preview (false) + commit
+ *    (true); surfaces the BE "not available to roll" reason on failure.
  *  - react-native-reanimated 3000ms spin animation
  *  - expo-haptics ImpactFeedbackStyle.Light ticks during spin
- *    (TODO: add `expo-haptics` to package.json — fallback no-op if missing)
+ *  - expo-linear-gradient for the purple/gold state cards
+ *
+ * ⚠️ Live E2E of an actual roll needs a DEV race with bib_set_up=true + a
+ *    fresh (un-rolled) ticket on it — none exist on DEV as of 2026-06-13, so
+ *    the roll/confirm path is code-complete but BE-data-blocked for live test.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -44,6 +46,7 @@ import Animated, {
 import { useTranslation } from 'react-i18next';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import * as Haptics from 'expo-haptics';
 
@@ -208,10 +211,12 @@ export default function RollingBibScreen() {
       if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
       setPhase('confirm');
     } catch (err) {
-      // TC-TICKETS-28: network fail mid-roll → toast + back to State 1
+      // TC-TICKETS-28: network fail mid-roll → toast + back to State 1.
+      // Surface the BE reason ("not available to roll anymore" — pool closed /
+      // already rolled) instead of a generic network error.
       if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
       if (err instanceof FetcherError && err.status === 401) return;
-      toast.show({ variant: 'error', message: t('errors.network') });
+      toast.show({ variant: 'error', message: rollErrorMessage(err, t) });
       setPhase('noBib');
     }
   }, [reduceMotion, ticket, previewRoll, toast, t]);
@@ -224,7 +229,7 @@ export default function RollingBibScreen() {
       setPhase('confirm');
     } catch (e) {
       if (e instanceof FetcherError && e.status === 401) return;
-      toast.show({ variant: 'error', message: t('errors.network') });
+      toast.show({ variant: 'error', message: rollErrorMessage(e, t) });
       setPhase('noBib');
     }
   }, [previewRoll, toast, t]);
@@ -281,7 +286,7 @@ export default function RollingBibScreen() {
       setPhase('success');
     } catch (e) {
       if (e instanceof FetcherError && e.status === 401) return;
-      toast.show({ variant: 'error', message: t('errors.generic') });
+      toast.show({ variant: 'error', message: rollErrorMessage(e, t) });
       setPhase('confirm');
     }
   }, [ticket, toast, t]);
@@ -351,7 +356,12 @@ function NoBibState({
         onLeadingPress={onBack}
       />
       <ScrollView contentContainerStyle={styles.bodyPad}>
-        <View style={[styles.gradientCard, { padding: tokens.space[7] }]}>
+        <LinearGradient
+          colors={[GRADIENT_START, GRADIENT_END]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.gradientCard, { padding: tokens.space[7] }]}
+        >
           <Text style={styles.gradientHeading}>
             <Ionicons name="dice-outline" size={22} color={tokens.color.neutral0} />{' '}
             {t('tickets.rollingBib.randomBib')}
@@ -364,7 +374,7 @@ function NoBibState({
             ))}
           </View>
           <Text style={styles.gradientHelp}>{t('tickets.rollingBib.tagline')}</Text>
-        </View>
+        </LinearGradient>
         <Text style={styles.warningText} accessibilityLabel={t('tickets.rollingBib.onceWarning')}>
           <Ionicons name="warning-outline" size={13} color={tokens.color.warning} />{' '}
           {t('tickets.rollingBib.onceWarning')}
@@ -509,7 +519,12 @@ function ConfirmState({
            "tada!" feel without any confetti needed inside the card itself
            (we layer Skia confetti above). */}
         <Flip3D trigger={!!bib} axis="y" perspective={1200} duration={900}>
-          <View style={[styles.gradientCard, { padding: tokens.space[7] }]}>
+          <LinearGradient
+            colors={[GRADIENT_START, GRADIENT_END]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.gradientCard, { padding: tokens.space[7] }]}
+          >
             <Text style={styles.gradientHeading}>
               <Ionicons name="sparkles-outline" size={22} color={tokens.color.neutral0} />{' '}
               {t('tickets.rollingBib.luckyBib')}
@@ -525,7 +540,7 @@ function ConfirmState({
               <Ionicons name="timer-outline" size={14} color={COUNTDOWN_COLOR} />{' '}
               {t('tickets.rollingBib.timeLeft')}: {hh}:{mm}:{ss}
             </Text>
-          </View>
+          </LinearGradient>
         </Flip3D>
       </ScrollView>
       <View style={[styles.stickyBottom, { flexDirection: 'row', gap: tokens.space[3] }]}>
@@ -636,6 +651,24 @@ interface RollingResult {
  * normalize into a stable {bib, validUntilEpoch} pair so the screen doesn't
  * depend on backend shape. Fallback validUntil to "now + 5h" if backend omits.
  */
+/**
+ * Pull the human reason out of a rolling-bib failure (BE answers 200 +
+ * {success:false, error:{message}}), falling back to a generic network error.
+ */
+function rollErrorMessage(
+  err: unknown,
+  t: (k: string) => string,
+): string {
+  if (err instanceof FetcherError) {
+    const r = err.response as { error?: { message?: string } } | undefined;
+    const msg = r?.error?.message ?? err.message;
+    if (typeof msg === 'string' && msg && msg !== 'rolling_bib_failed') {
+      return msg.slice(0, 140);
+    }
+  }
+  return t('errors.network');
+}
+
 function parseRollingResponse(raw: unknown): RollingResult {
   const r = (raw ?? {}) as Record<string, unknown>;
   const bibRaw =
@@ -675,9 +708,10 @@ const styles = StyleSheet.create({
     gap: tokens.space[4],
   },
   gradientCard: {
+    // Colors come from the <LinearGradient> wrapper (GRADIENT_START→END);
+    // backgroundColor here is just the fallback while the gradient paints.
     borderRadius: 24,
     backgroundColor: GRADIENT_START,
-    // TODO: replace with expo-linear-gradient (GRADIENT_START → GRADIENT_END)
     overflow: 'hidden',
     gap: tokens.space[4],
     alignItems: 'center',

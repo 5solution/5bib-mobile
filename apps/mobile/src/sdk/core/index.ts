@@ -48,6 +48,15 @@ export interface FetcherAdapter {
    * and trigger the app's sign-out flow. SDK does NOT touch storage directly.
    */
   onUnauthorized?: () => void | Promise<void>;
+  /**
+   * Optional one-shot token refresh. Called by the Fetcher on a 401 BEFORE
+   * giving up: the adapter should hit `/renew`, persist the fresh token, and
+   * return it (or `null` if refresh failed). When it returns a token the
+   * Fetcher retries the original request once with the new credential; only
+   * if it returns null does `onUnauthorized` fire. Single-token model — there
+   * is no separate refresh token, the about-to-expire JWT renews itself.
+   */
+  refreshToken?: () => Promise<string | null>;
   /** Optional request timeout in ms. Default: 15000. */
   timeoutMs?: number;
   /** Optional default headers (e.g. `Accept-Language`). */
@@ -122,6 +131,23 @@ export class Fetcher {
 
   private emit(event: FetcherEvent, payload?: unknown): void {
     this.listeners.forEach((l) => l(event, payload));
+  }
+
+  /**
+   * Shared refresh: many requests can 401 at once (token just expired); we
+   * must call `/renew` exactly ONCE and let them all await the same result.
+   */
+  private refreshInFlight: Promise<string | null> | null = null;
+  private refreshOnce(): Promise<string | null> {
+    if (!this.adapter.refreshToken) return Promise.resolve(null);
+    if (!this.refreshInFlight) {
+      this.refreshInFlight = Promise.resolve(this.adapter.refreshToken())
+        .catch(() => null)
+        .finally(() => {
+          this.refreshInFlight = null;
+        });
+    }
+    return this.refreshInFlight;
   }
 
   /**
@@ -200,6 +226,9 @@ export class Fetcher {
     }
 
     let lastError: unknown;
+    // Guards the one-shot reactive token refresh (below) so a request whose
+    // retry ALSO 401s logs out instead of looping on /renew forever.
+    let didRefresh = false;
 
     for (let attempt = 0; attempt < (noRetry ? 1 : MAX_RETRIES); attempt++) {
       try {
@@ -210,8 +239,28 @@ export class Fetcher {
         const axiosErr = err as AxiosError;
         const status = axiosErr.response?.status;
 
-        // 401 → emit auth expired + invoke adapter, do NOT retry
+        // 401 → try a one-shot token refresh, then retry; only logout if that
+        // fails. Skip for the /renew call itself (can't refresh a refresh).
         if (status === 401) {
+          if (
+            this.adapter.refreshToken &&
+            !didRefresh &&
+            axiosConfig.url !== '/renew'
+          ) {
+            didRefresh = true;
+            const newToken = await this.refreshOnce();
+            if (newToken) {
+              axiosConfig.headers = {
+                ...axiosConfig.headers,
+                Authorization: `Bearer ${newToken}`,
+              };
+              // Re-run THIS attempt with the fresh credential (decrement so
+              // the loop bound — even noRetry's bound of 1 — still allows it).
+              attempt--;
+              continue;
+            }
+          }
+          // No refresh available, or it failed → expire the session.
           this.emit(FETCHER_EVENTS.AUTH_EXPIRED, {
             url: axiosConfig.url,
           });

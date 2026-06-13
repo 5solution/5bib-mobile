@@ -8,7 +8,7 @@
  *         01-ba-prd-epic-3-checkout.md, 01-ba-prd-epic-4-tickets.md,
  *         01-ba-prd-epic-5-result.md
  */
-import { network } from '../core';
+import { network, FetcherError } from '../core';
 import { toDDMMYYYY, toIsoDate } from '../../utils/date';
 import type {
   Athlete,
@@ -263,14 +263,25 @@ export const athlete = {
     code: string,
     confirmed: boolean,
   ): Promise<unknown> {
-    const raw = await network().put<{ data: unknown }>(
-      '/athlete/rolling-bib',
-      null,
-      {
-        params: { course_id: courseId, code, confirmed },
-        noRetry: true,
-      },
-    );
+    const raw = await network().put<{
+      data?: unknown;
+      success?: boolean;
+      error?: { message?: string };
+    }>('/athlete/rolling-bib', null, {
+      params: { course_id: courseId, code, confirmed },
+      noRetry: true,
+    });
+    // BE answers HTTP 200 + {success:false, error} when the athlete can't roll
+    // (pool closed, already rolled — live: "This athlete is not available to
+    // roll anymore"). Surface that as a throw so the screen shows the real
+    // reason instead of advancing to a blank confirm card.
+    if (raw && raw.success === false) {
+      throw new FetcherError(
+        raw.error?.message ?? 'rolling_bib_failed',
+        200,
+        raw,
+      );
+    }
     return raw.data;
   },
 

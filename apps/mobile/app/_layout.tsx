@@ -14,7 +14,7 @@
 
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { AppState, LogBox } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -26,7 +26,7 @@ import { ToastProvider, useToast } from '../src/components';
 import { AppLaunchIntro } from '../src/components/motion';
 import { initSentry } from '../src/adapters/sentry';
 import { initGoogleSignIn } from '../src/adapters/google-signin';
-import { getApiBaseUrl, initSdk } from '../src/adapters/sdk-init';
+import { getApiBaseUrl, initSdk, maybeRefreshToken } from '../src/adapters/sdk-init';
 import { ENV_URLS, getEnvOverride } from '../src/adapters/env-override';
 import { updateReachabilityUrl } from '../src/hooks';
 import { eventBus } from '../src/adapters/event-bus';
@@ -62,6 +62,9 @@ void (async () => {
 initGoogleSignIn();
 // Apply the user's persisted language choice (overrides device locale).
 void restorePersistedLocale();
+// Proactively renew the JWT at boot so a returning user with a near-expiry
+// token never gets bounced to login. (Reactive 401-refresh is the safety net.)
+void maybeRefreshToken();
 
 function AuthExpiredListener() {
   const router = useRouter();
@@ -77,6 +80,15 @@ function AuthExpiredListener() {
     });
     return unsub;
   }, [router, toast, logout]);
+
+  // Renew on every return-to-foreground too — covers the app sitting
+  // backgrounded for days past the proactive window.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') void maybeRefreshToken();
+    });
+    return () => sub.remove();
+  }, []);
 
   return null;
 }

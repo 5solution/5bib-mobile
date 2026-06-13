@@ -168,3 +168,20 @@ FAMILY/KID (web có guardian_shirt_size/sex/bib_name/address + luôn hiện
 cho KID/FAMILY bất kể tuổi) — mobile mới gate theo tuổi; data web ghi được
 bảo toàn nhờ passthrough. Athlete DEV 11655 (vé VN5BIB21K-575-QKPOBAS1)
 đang để dob 2016 + guardian đầy đủ làm data demo.
+
+---
+
+## UPDATE 2026-06-13 — Go-live batch 1: JWT refresh, Google plugin, rolling-bib, verify gateway
+
+| Hạng mục | Trạng thái | Verify |
+|---|---|---|
+| **JWT refresh** (blocker) | ✅ code + no-regression | Fetcher 401 → gọi `/renew` → retry 1 lần (mutex chống gọi trùng) trước khi logout; proactive renew ở boot + foreground (decode exp, refresh khi <2 ngày). Verify sống: reload app session còn nguyên, 50 vé load OK. `/renew` đã confirm trả token 7 ngày. (Đường 401-retry là logic-verified — khó ép 401 thật từ UI.) |
+| **Payoo** | ✅ load gateway | Webview render trang Payoo thật (đơn + 1.386.410đ + QR/thẻ/ví) — unwrap double-nested OK |
+| **PayX** | ✅ load gateway | Render "Thẻ ngân hàng nội địa" + list bank + countdown |
+| **OnePay** | ✅ integration + **F35** | Đơn đã-paid → BE trả "This order status is invalid" → app hiện ĐÚNG message BE (không phải câu generic) → verify luôn surface BE error message |
+| **Rolling-bib** | ✅ code + gradient + error path | Gradient thật (tím→xanh) qua expo-linear-gradient; error path surface message BE "not available to roll" thay vì confirm trống; comment TODO stale dọn sạch. ⚠️ Roll thật chưa E2E được — **không race DEV nào bib_set_up=true** (cần BE bật pool + cấp vé chưa roll) |
+| **Google Sign-In** | iOS plugin added (prod) | Thiếu hẳn config plugin `@react-native-google-signin` → thêm với `iosUrlScheme` = REVERSED_CLIENT_ID prod. **DEV iOS vẫn blocked**: plist DEV không có CLIENT_ID (Firebase DEV chưa bật Google provider cho iOS app) |
+| Đơn 0đ (266) | code-only | DEV không có voucher 100% để tạo đơn 0đ — chưa trigger được |
+| Change-password success | code-only | ceo@ không đổi được MK (seed hash) — cần tài khoản activated thật |
+
+Cosmetic placeholder cần Danny cấp: **Lottie JSON** (animation, nếu muốn — hiện để null an toàn) + **slot-machine vector/Lottio** designed (rolling-bib spin — hiện dùng SVG placeholder chạy được). Gradient KHÔNG cần asset (đã dùng expo-linear-gradient).
